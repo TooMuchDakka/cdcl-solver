@@ -28,11 +28,12 @@ int main(int argc, char* argv[])
 		std::ostringstream out;
 		if (!foundErrorsDuringSatFormulaParsingFromFile.empty())
 		{
-			std::copy(std::begin(foundErrorsDuringSatFormulaParsingFromFile), std::end(foundErrorsDuringSatFormulaParsingFromFile) - 1, std::ostream_iterator<std::string>(out, ";"));
+			std::copy(std::begin(foundErrorsDuringSatFormulaParsingFromFile), std::end(foundErrorsDuringSatFormulaParsingFromFile) - 1, std::ostream_iterator<std::string>(out, "\r\n"));
 			out << foundErrorsDuringSatFormulaParsingFromFile.back();
+			std::cerr << out.str() << std::endl;
 		}
-		std::cerr << out.str() << std::endl;
 		return EXIT_FAILURE;
 	}
+	std::cout << "Parsing of SAT formula @ " + dimacsSatFormulaFile + " OK" << std::endl;
 	return EXIT_SUCCESS;
 }
