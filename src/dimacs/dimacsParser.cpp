@@ -61,6 +61,9 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemF
 
 	if (!foundErrorsDuringCurrentParsingAttempt)
 		return std::move(problemDefinition);
+
+	if (optionalFoundErrors)
+		*optionalFoundErrors = foundErrors;
 	return std::nullopt;
 }
 

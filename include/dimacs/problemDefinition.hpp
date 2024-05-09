@@ -14,13 +14,13 @@ namespace dimacs
 			class Clause
 			{
 			public:
-				std::vector<std::size_t> literals;
+				std::vector<long> literals;
 			};
 
 			ProblemDefinition() = delete;
 			ProblemDefinition(std::size_t numLiterals, std::size_t numClauses)
 			{
-				literalValues = std::vector<bool>(numLiterals, 0);
+				literalValues = std::vector<bool>(numLiterals, false);
 				clauses = std::vector<Clause>(numClauses, Clause());
 			}
 
