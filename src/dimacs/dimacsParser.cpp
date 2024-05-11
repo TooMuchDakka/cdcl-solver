@@ -1,5 +1,4 @@
-#include "dimacs/dimacsParser.hpp"
-
+#include <dimacsParser.hpp>
 #include <fstream>
 #include <sstream>
 #include <string>

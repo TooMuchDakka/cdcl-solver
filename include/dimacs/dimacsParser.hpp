@@ -3,8 +3,9 @@
 
 #include <optional>
 #include <string>
-#include <dimacs/problemDefinition.hpp>
 #include <vector>
+
+#include "problemDefinition.hpp"
 
 namespace dimacs
 {
@@ -13,7 +14,7 @@ namespace dimacs
 	public:
 		using ptr = std::unique_ptr<DimacsParser>;
 
-		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromFile(const std::string& dimacsFilePath, std::vector<std::string>* optionalFoundErrors);
+		[[nodiscard]] std::optional<dimacs::ProblemDefinition::ptr> readProblemFromFile(const std::string& dimacsFilePath, std::vector<std::string>* optionalFoundErrors);
 		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromString(const std::string& dimacsContent, std::vector<std::string>* optionalFoundErrors);
 
 		DimacsParser(): recordFoundErrors(false), foundErrorsDuringCurrentParsingAttempt(false) {}

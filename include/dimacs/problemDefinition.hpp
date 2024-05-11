@@ -14,6 +14,8 @@ namespace dimacs
 			class Clause
 			{
 			public:
+				using ptr = std::shared_ptr<Clause>;
+				using constPtr = std::shared_ptr<const Clause>;
 				std::vector<long> literals;
 			};
 

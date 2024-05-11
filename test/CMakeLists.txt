@@ -9,11 +9,13 @@ add_executable(cdcl-tests "")
 target_sources(cdcl-tests
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/dimacsParserTestFixture.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/baseBlockedClauseEliminationTestsFixture.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/dimacsParserTests.cpp	
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseEliminationTests.cpp
 )
 target_include_directories(cdcl-tests
 	PRIVATE
 		${CMAKE_SOURCE_DIR}/external/googletest/googletest/include
 )
-target_link_libraries(cdcl-tests DimacsParser gtest gtest_main)
+target_link_libraries(cdcl-tests DimacsAbstractions DimacsParser BlockedClauseElimination gtest gtest_main)
 gtest_discover_tests(cdcl-tests)
