@@ -38,3 +38,6 @@ out/
 
 # Visual studio specific files
 .vs/
+
+# External git submodules
+external/*

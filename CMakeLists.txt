@@ -7,3 +7,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_subdirectory(src)
+
+# add test code
+option(BUILD_TESTS "Whether the test for this project shall be built" ON)
+if(BUILD_TESTS)
+  enable_testing()
+  include(GoogleTest)
+  add_subdirectory(test)
+endif()
