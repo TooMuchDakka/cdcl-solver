@@ -15,8 +15,10 @@ add_library(Solver "")
 target_sources(Solver
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/solver/solver.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/solver/solver.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination.hpp
 )
 target_include_directories(Solver
 	PUBLIC
