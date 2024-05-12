@@ -22,7 +22,11 @@ int main(int argc, char* argv[])
 	const std::string dimacsSatFormulaFile = argv[1];
 	std::vector<std::string> foundErrorsDuringSatFormulaParsingFromFile;
 
-	const std::optional<dimacs::ProblemDefinition::ptr>& parsedSatFormula = dimacsParser->readProblemFromFile(dimacsSatFormulaFile, &foundErrorsDuringSatFormulaParsingFromFile);
+	auto optimizationsConfig = dimacs::DimacsParser::PreprocessingOptimizationsConfig();
+	optimizationsConfig.singleLiteralClauseRemovalEnabled = true;
+	optimizationsConfig.localClauseLiteralRemovalEnabled = true;
+
+	const std::optional<dimacs::ProblemDefinition::ptr>& parsedSatFormula = dimacsParser->readProblemFromFile(dimacsSatFormulaFile, &foundErrorsDuringSatFormulaParsingFromFile, optimizationsConfig);
 	if (!parsedSatFormula)
 	{
 		std::ostringstream out;

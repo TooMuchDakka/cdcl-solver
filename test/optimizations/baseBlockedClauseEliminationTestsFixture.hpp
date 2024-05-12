@@ -7,7 +7,7 @@ class BaseBlockedClauseEliminationTestsFixture : public ::testing::Test
 {
 protected:
 	void SetUp() override {
-		GTEST_SKIP() << "Skipping all tests for this fixture";
+		//GTEST_SKIP() << "Skipping all tests for this fixture";
 	}
 };
 

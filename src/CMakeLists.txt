@@ -8,6 +8,8 @@ add_library(DimacsParser "")
 target_sources(DimacsParser
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/dimacsParser.cpp
+		${CMAKE_SOURCE_DIR}/include/dimacs/localClauseLiteralRemover.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/localClauseLiteralRemover.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/dimacs/dimacsParser.hpp
 )
