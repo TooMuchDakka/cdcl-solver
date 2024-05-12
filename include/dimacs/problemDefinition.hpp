@@ -81,10 +81,10 @@ namespace dimacs
 
 			[[maybe_unused]] bool fixVariableAssignment(long literal)
 			{
-				if (fixVariableValues.count(std::abs(literal)))
+				if (variablesWithValuesDeterminedDuringPreprocessing.count(std::abs(literal)))
 					return false;
 
-				fixVariableValues.emplace(std::abs(literal));
+				variablesWithValuesDeterminedDuringPreprocessing.emplace(std::abs(literal));
 				setLiteral(literal, literal > 0 ? true : false);
 				return true;
 			}
@@ -95,9 +95,14 @@ namespace dimacs
 				literalValues.at(numUserDeclaredVariables - literal) = !assignedValue;
 			}
 
+			[[nodiscard]] std::vector<long> getVariablesWithValueDeterminedDuringPreprocessing() const
+			{
+				return { variablesWithValuesDeterminedDuringPreprocessing.cbegin(), variablesWithValuesDeterminedDuringPreprocessing.cend() };
+			}
+
 		protected:
 			std::size_t numUserDeclaredVariables;
-			std::unordered_set<long> fixVariableValues;
+			std::unordered_set<long> variablesWithValuesDeterminedDuringPreprocessing;
 			std::vector<bool> literalValues;
 			std::shared_ptr<std::vector<Clause::ptr>> clauses;
 	};

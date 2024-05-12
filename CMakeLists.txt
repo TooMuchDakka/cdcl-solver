@@ -9,7 +9,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 add_subdirectory(src)
 
 # add test code
-option(BUILD_TESTS "Whether the test for this project shall be built" ON)
+option(BUILD_TESTS "Whether the test for this project shall be built" OFF)
+option(BUILD_BLOCKED_CLAUSE_ELIMINATION_BENCHMARK_EXECUTABLE "Whether the executable to measure the performance of the blocked clause elimination optimization shall be built" OFF)
+option(BUILD_SOLVER_EXECUTABLE "Whether the SAT solver executable shall be built" ON)
 if(BUILD_TESTS)
   enable_testing()
   include(GoogleTest)

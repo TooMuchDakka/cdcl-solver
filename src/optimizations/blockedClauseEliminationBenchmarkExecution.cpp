@@ -1,8 +1,10 @@
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 
 #include "dimacs/dimacsParser.hpp"
+#include "optimizations/blockedClauseElimination.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -47,7 +49,7 @@ int main(int argc, char* argv[])
 
 	std::transform(
 		variablesWithValueDeterminedDuringPreprocessing.cbegin(),
-		variablesWithValueDeterminedDuringPreprocessing.cend(), 
+		variablesWithValueDeterminedDuringPreprocessing.cend(),
 		std::back_inserter(stringifiedVariablesWithValueDeterminedDuringPreprocessing),
 		[](const long variable) {return std::to_string(variable); }
 	);
@@ -70,5 +72,26 @@ int main(int argc, char* argv[])
 		bufferForStringifiedVariableIdentsWithValueDeterminedDuringPreprocessing << "<NONE>";
 	}
 	std::cout << "Variables with value determined during preprocessing: " << bufferForStringifiedVariableIdentsWithValueDeterminedDuringPreprocessing.str() << std::endl;
+
+
+	const std::unique_ptr<blockedClauseElimination::BaseBlockedClauseEliminator> blockedClauseEliminator = std::make_unique<blockedClauseElimination::BaseBlockedClauseEliminator>(*parsedSatFormula);
+	if (!blockedClauseEliminator)
+		return EXIT_FAILURE;
+
+	using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
+	long long benchmarkExecutionTime = 0;
+	
+	const std::size_t numClausesToCheck = parsedSatFormula->get()->getClauses()->size();
+	for (std::size_t i = 0; i < numClausesToCheck; ++i)
+	{
+		const TimePoint startTimeForSearchForBlockingLiteralOfClause = std::chrono::system_clock::now();
+		const blockedClauseElimination::BaseBlockedClauseEliminator::BlockedClauseSearchResult searchResult = *blockedClauseEliminator->isClauseBlocked(i);
+		const TimePoint endTimeForSearchForBlockingLiteralOfClause = std::chrono::system_clock::now();
+
+		const auto durationForSearchOfBlockingLiteralForClause = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeForSearchForBlockingLiteralOfClause - startTimeForSearchForBlockingLiteralOfClause);
+		std::cout << "Clause " + std::to_string(i) + " blocked: " + std::to_string(searchResult.isBlocked) + " by clause @ index " + std::to_string(searchResult.idxOfClauseDefiningBlockingLiteral) + " in formula | Check duration: " + std::to_string(durationForSearchOfBlockingLiteralForClause.count()) + "ms" << std::endl;
+		benchmarkExecutionTime += durationForSearchOfBlockingLiteralForClause.count();
+	}
+	std::cout << "Total duration: " + std::to_string(benchmarkExecutionTime) + "ms" << std::endl;
 	return EXIT_SUCCESS;
 }

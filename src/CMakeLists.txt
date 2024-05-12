@@ -32,18 +32,23 @@ target_include_directories(BlockedClauseElimination
 )
 target_link_libraries(BlockedClauseElimination PRIVATE DimacsAbstractions)
 
-add_library(Solver "")
-target_sources(Solver
-	PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}/solver/solver.cpp
-	PUBLIC
-		${CMAKE_SOURCE_DIR}/include/solver/solver.hpp
-)
-target_include_directories(Solver
-	PUBLIC
-		${CMAKE_SOURCE_DIR}/include
-)
-target_link_libraries(Solver PRIVATE DimacsParser BlockedClauseElimination)
+if (BUILD_BLOCKED_CLAUSE_ELIMINATION_BENCHMARK_EXECUTABLE)
+	add_executable(BlockedClauseEliminationBenchmarking ${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseEliminationBenchmarkExecution.cpp)
+	target_link_libraries(BlockedClauseEliminationBenchmarking PRIVATE BlockedClauseElimination DimacsParser)
+else()
+	add_library(Solver "")
+	target_sources(Solver
+		PRIVATE
+			${CMAKE_CURRENT_SOURCE_DIR}/solver/solver.cpp
+		PUBLIC
+			${CMAKE_SOURCE_DIR}/include/solver/solver.hpp
+	)
+	target_include_directories(Solver
+		PUBLIC
+			${CMAKE_SOURCE_DIR}/include
+	)
+	target_link_libraries(Solver PRIVATE DimacsParser BlockedClauseElimination)
 
-add_executable(SolverExecutable main.cpp)
-target_link_libraries(SolverExecutable PRIVATE Solver)
+	add_executable(SolverExecutable main.cpp)
+	target_link_libraries(SolverExecutable PRIVATE Solver)
+endif()
