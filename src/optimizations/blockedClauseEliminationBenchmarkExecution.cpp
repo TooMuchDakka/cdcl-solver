@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 		std::ostringstream out;
 		if (!foundErrorsDuringSatFormulaParsingFromFile.empty())
 		{
-			std::copy(foundErrorsDuringSatFormulaParsingFromFile.cbegin(), std::prev(foundErrorsDuringSatFormulaParsingFromFile.cend(), 2), std::ostream_iterator<std::string>(out, "\r\n"));
+			std::copy(foundErrorsDuringSatFormulaParsingFromFile.cbegin(), std::prev(foundErrorsDuringSatFormulaParsingFromFile.cend()), std::ostream_iterator<std::string>(out, "\r\n"));
 			out << foundErrorsDuringSatFormulaParsingFromFile.back();
 			std::cerr << out.str() << std::endl;
 		}
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
 	{
 		if (variablesWithValueDeterminedDuringPreprocessing.size() > 1)
 		{
-			std::copy(stringifiedVariablesWithValueDeterminedDuringPreprocessing.cbegin(), std::prev(stringifiedVariablesWithValueDeterminedDuringPreprocessing.cend(), 2), std::ostream_iterator<std::string>(bufferForStringifiedVariableIdentsWithValueDeterminedDuringPreprocessing, " | "));
+			std::copy(stringifiedVariablesWithValueDeterminedDuringPreprocessing.cbegin(), std::prev(stringifiedVariablesWithValueDeterminedDuringPreprocessing.cend()), std::ostream_iterator<std::string>(bufferForStringifiedVariableIdentsWithValueDeterminedDuringPreprocessing, " | "));
 			bufferForStringifiedVariableIdentsWithValueDeterminedDuringPreprocessing << *std::prev(stringifiedVariablesWithValueDeterminedDuringPreprocessing.end());
 		}
 		else
@@ -80,18 +80,40 @@ int main(int argc, char* argv[])
 
 	using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
 	long long benchmarkExecutionTime = 0;
-	
+
+	std::cout << "=== START - BUILDING INTERNAL DATA STRUCTURE FOR BCE CHECK ===" << std::endl;
+	const TimePoint startTimeForBuildOfInternalDataStructure = std::chrono::system_clock::now();
+	if (!blockedClauseEliminator->initializeInternalHelperStructures())
+		return EXIT_FAILURE;
+
+	const TimePoint endTimeForBuildOfInternalDataStructure = std::chrono::system_clock::now();
+	const auto durationForBuildOfInternalDataStructure = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeForBuildOfInternalDataStructure - startTimeForBuildOfInternalDataStructure).count();
+	std::cout << "Build of internal data structure duration: " + std::to_string(durationForBuildOfInternalDataStructure) + "ms" << std::endl;
+	std::cout << "=== END - BUILDING INTERNAL DATA STRUCTURE FOR BCE CHECK ===" << std::endl;
+
 	const std::size_t numClausesToCheck = parsedSatFormula->get()->getClauses()->size();
+	const std::string stringifiedNumClausesToCheck = std::to_string(numClausesToCheck);
 	for (std::size_t i = 0; i < numClausesToCheck; ++i)
 	{
+		if (i % 2500 == 0 || i == numClausesToCheck - 1)
+			std::cout << "Handled [" + std::to_string(i + 1) + "|" + stringifiedNumClausesToCheck + "] clauses, current benchmark duration: " + std::to_string(benchmarkExecutionTime) + "ms" << std::endl;
+
 		const TimePoint startTimeForSearchForBlockingLiteralOfClause = std::chrono::system_clock::now();
-		const blockedClauseElimination::BaseBlockedClauseEliminator::BlockedClauseSearchResult searchResult = *blockedClauseEliminator->isClauseBlocked(i);
+		const std::optional<blockedClauseElimination::BaseBlockedClauseEliminator::BlockedClauseSearchResult> searchResult = blockedClauseEliminator->isClauseBlocked(i);
 		const TimePoint endTimeForSearchForBlockingLiteralOfClause = std::chrono::system_clock::now();
 
+		if (!searchResult.has_value())
+		{
+			std::cout << "Failed to determine BCE-check result for clause @ index " + std::to_string(i) + " in formula!";
+			return EXIT_FAILURE;
+		}
 		const auto durationForSearchOfBlockingLiteralForClause = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeForSearchForBlockingLiteralOfClause - startTimeForSearchForBlockingLiteralOfClause);
-		std::cout << "Clause " + std::to_string(i) + " blocked: " + std::to_string(searchResult.isBlocked) + " by clause @ index " + std::to_string(searchResult.idxOfClauseDefiningBlockingLiteral) + " in formula | Check duration: " + std::to_string(durationForSearchOfBlockingLiteralForClause.count()) + "ms" << std::endl;
+		//std::cout << "C: " + std::to_string(i) + " | B: " + std::to_string(searchResult.isBlocked) + "| BY: " + std::to_string(searchResult.idxOfClauseDefiningBlockingLiteral) + "| Duration: " + std::to_string(durationForSearchOfBlockingLiteralForClause.count()) + "ms" << std::endl;
 		benchmarkExecutionTime += durationForSearchOfBlockingLiteralForClause.count();
 	}
-	std::cout << "Total duration: " + std::to_string(benchmarkExecutionTime) + "ms" << std::endl;
+	std::cout << "=== RESULTS ===" << std::endl;
+	std::cout << "BCE check duration: " + std::to_string(benchmarkExecutionTime) + "ms" << std::endl;
+	std::cout << "Build of internal data structure duration: " + std::to_string(durationForBuildOfInternalDataStructure) + "ms" << std::endl;
+	std::cout << "TOTAL: " + std::to_string(benchmarkExecutionTime + durationForBuildOfInternalDataStructure) + "ms" << std::endl;
 	return EXIT_SUCCESS;
 }

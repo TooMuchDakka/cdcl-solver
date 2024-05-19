@@ -1,3 +1,4 @@
+# For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 if (NOT TARGET gtest)
@@ -9,8 +10,13 @@ add_executable(cdcl-tests "")
 target_sources(cdcl-tests
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/dimacsParserTestFixture.hpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/baseBlockedClauseEliminationTestsFixture.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/dimacsParserTests.cpp	
+
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTreeTestsFixture.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/baseBlockedClauseEliminationTestsFixture.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/opaqueAvlTree.hpp
+
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTreeTests.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseEliminationTests.cpp
 )
 target_include_directories(cdcl-tests

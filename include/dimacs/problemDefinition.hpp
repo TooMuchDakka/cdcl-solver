@@ -21,6 +21,12 @@ namespace dimacs
 				using ptr = std::shared_ptr<Clause>;
 				using constPtr = std::shared_ptr<const Clause>;
 
+				Clause() = default;
+				explicit Clause(std::vector<long> literals) : literals(std::move(literals))
+				{
+					sortLiterals();
+				}
+
 				struct LiteralBounds
 				{
 					long smallestLiteral;
@@ -28,20 +34,101 @@ namespace dimacs
 
 					explicit LiteralBounds(long smallestLiteral, long largestLiteral)
 						: smallestLiteral(smallestLiteral), largestLiteral(largestLiteral) {}
+
+					[[nodiscard]] bool operator==(const LiteralBounds& other) const
+					{
+						return std::tie(smallestLiteral, largestLiteral) == std::tie(other.smallestLiteral, other.largestLiteral);
+					}
+
+					[[nodiscard]] bool operator<(const LiteralBounds& other) const
+					{
+						return smallestLiteral < other.smallestLiteral&& largestLiteral <= other.largestLiteral;
+					}
+
+					[[nodiscard]] bool operator>(const LiteralBounds& other) const
+					{
+						return largestLiteral > other.largestLiteral;
+					}
+
+					[[nodiscard]] bool contains(long literal) const
+					{
+						return literal >= smallestLiteral && literal <= largestLiteral;
+					}
 				};
 
-				std::vector<long> literals;
 				[[nodiscard]] LiteralBounds getLiteralBounds() const
 				{
 					if (literals.size() == 1)
 						return LiteralBounds(literals.front(), literals.front());
 					return LiteralBounds(literals.front(), literals.back());
 				}
-
 				void sortLiterals()
 				{
 					std::stable_sort(literals.begin(), literals.end(), std::less_equal<>());
 				}
+				[[nodiscard]] bool containsLiteral(long literal) const
+				{
+					if (literals.empty() || literals.front() > literal || literals.back() < literal)
+						return false;
+
+					std::size_t low = 0;
+					std::size_t high = literals.size() - 1;
+					while (low <= high)
+					{
+						std::size_t mid = low + ((high - low) / 2);
+						const long literalAtMidPosition = literals.at(mid);
+						if (literalAtMidPosition == literal)
+							return true;
+						if (literalAtMidPosition < literal)
+							low = mid + 1;
+						else
+							high = mid - 1;
+					}
+					return false;
+				}
+
+				[[nodiscard]] bool containsLiteralSmallerThanGivenBound(LiteralBounds literalBounds) const
+				{
+					if (literals.empty() || literalBounds.smallestLiteral < literals.front())
+						return false;
+
+					constexpr std::size_t low = 0;
+					std::size_t high = literals.size() - 1;
+					while (high >= low)
+					{
+						const std::size_t mid = low + ((high - low) / 2);
+						const long literalAtMidPosition = literals.at(mid);
+						if (literalAtMidPosition < literalBounds.largestLiteral)
+							return true;
+
+						if (!high)
+							return false;
+
+						high = mid - 1;
+					}
+					return false;
+				}
+
+				[[nodiscard]] bool containsLiteralLargerThanGivenBound(LiteralBounds literalBounds) const
+				{
+					if (literals.empty() || literalBounds.largestLiteral > literals.back())
+						return false;
+
+					std::size_t low = 0;
+					const std::size_t high = literals.size() - 1;
+					while (low <= high)
+					{
+						const std::size_t mid = low + ((high - low) / 2);
+						const long literalAtMidPosition = literals.at(mid);
+						if (literalAtMidPosition > literalBounds.largestLiteral)
+							return true;
+						
+						low = mid + 1;
+					}
+					return false;
+				}
+
+				std::vector<long> literals;
 			};
 
 			ProblemDefinition() = delete;

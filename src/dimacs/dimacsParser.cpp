@@ -8,6 +8,7 @@ using namespace dimacs;
 
 std::optional<ProblemDefinition::ptr> DimacsParser::readProblemFromFile(const std::string& dimacsFilePath, std::vector<std::string>* optionalFoundErrors, const PreprocessingOptimizationsConfig& preprocessingOptimizationsConfig)
 {
+	resetInternals(optionalFoundErrors);
 	/*
 	 * The data return by tellg(..) as well as seekg is only correct, if the content from the file is read in binary mode.
 	 * see: https://stackoverflow.com/questions/47508335/what-is-tellg-in-file-handling-in-c-and-how-does-it-work
@@ -26,12 +27,12 @@ std::optional<ProblemDefinition::ptr> DimacsParser::readProblemFromFile(const st
 std::optional<ProblemDefinition::ptr> DimacsParser::readProblemFromString(const std::string& dimacsContent, std::vector<std::string>* optionalFoundErrors, const PreprocessingOptimizationsConfig& preprocessingOptimizationsConfig)
 {
 	std::istringstream buffer(dimacsContent);
+	resetInternals(optionalFoundErrors);
 	return parseDimacsContent(buffer, optionalFoundErrors, preprocessingOptimizationsConfig);
 }
 
 std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basic_istream<char>& stream, std::vector<std::string>* optionalFoundErrors, const PreprocessingOptimizationsConfig& preprocessingOptimizationsConfig)
 {
-	resetInternals(optionalFoundErrors);
 	std::optional<std::unique_ptr<localClauseLiteralRemoval::LocalClauseLiteralRemover>> optionalLocalClauseLiteralRemover;
 	
 	std::size_t currProcessedLine = 1 + skipCommentLines(stream);

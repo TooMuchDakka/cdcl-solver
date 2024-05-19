@@ -23,8 +23,10 @@ add_library(BlockedClauseElimination "")
 target_sources(BlockedClauseElimination
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTree.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/avlTree.hpp
 )
 target_include_directories(BlockedClauseElimination
 	PUBLIC
@@ -35,7 +37,7 @@ target_link_libraries(BlockedClauseElimination PRIVATE DimacsAbstractions)
 if (BUILD_BLOCKED_CLAUSE_ELIMINATION_BENCHMARK_EXECUTABLE)
 	add_executable(BlockedClauseEliminationBenchmarking ${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseEliminationBenchmarkExecution.cpp)
 	target_link_libraries(BlockedClauseEliminationBenchmarking PRIVATE BlockedClauseElimination DimacsParser)
-else()
+elseif(BUILD_SOLVER_EXECUTABLE)
 	add_library(Solver "")
 	target_sources(Solver
 		PRIVATE
