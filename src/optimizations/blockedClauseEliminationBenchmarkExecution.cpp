@@ -4,7 +4,9 @@
 #include <sstream>
 
 #include "dimacs/dimacsParser.hpp"
-#include "optimizations/blockedClauseElimination.hpp"
+#include "optimizations/arrayBasedBlockedClauseEliminator.hpp"
+#include "optimizations/avlTreeBlockedClauseEliminator.hpp"
+
 
 int main(int argc, char* argv[])
 {
@@ -28,6 +30,10 @@ int main(int argc, char* argv[])
 	optimizationsConfig.singleLiteralClauseRemovalEnabled = true;
 	optimizationsConfig.localClauseLiteralRemovalEnabled = true;
 
+	using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
+
+	std::cout << "=== START - PROCESSING OF DIMACS FORMULA ===\n";
+	const TimePoint startTimeForProcessingOfDimacsFormula = std::chrono::system_clock::now();
 	const std::optional<dimacs::ProblemDefinition::ptr>& parsedSatFormula = dimacsParser->readProblemFromFile(dimacsSatFormulaFile, &foundErrorsDuringSatFormulaParsingFromFile, optimizationsConfig);
 	if (!parsedSatFormula)
 	{
@@ -40,6 +46,8 @@ int main(int argc, char* argv[])
 		}
 		return EXIT_FAILURE;
 	}
+	const TimePoint endTimeForProcessingOfDimacsFormula = std::chrono::system_clock::now();
+
 	std::cout << "Parsing of SAT formula @ " + dimacsSatFormulaFile + " OK\n";
 	std::cout << "Parsed formula had " + std::to_string(parsedSatFormula->get()->getClauses()->size()) + " clauses after all preprocessing optimizations were done\n";
 
@@ -73,12 +81,14 @@ int main(int argc, char* argv[])
 	}
 	std::cout << "Variables with value determined during preprocessing: " << bufferForStringifiedVariableIdentsWithValueDeterminedDuringPreprocessing.str() << "\n";
 
+	const auto durationForProcessingOfDimacsFormula = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeForProcessingOfDimacsFormula - startTimeForProcessingOfDimacsFormula).count();
+	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(durationForProcessingOfDimacsFormula) + "ms\n";
+	std::cout << "=== END - PROCESSING OF DIMACS FORMULA ===\n";
 
-	const std::unique_ptr<blockedClauseElimination::BaseBlockedClauseEliminator> blockedClauseEliminator = std::make_unique<blockedClauseElimination::BaseBlockedClauseEliminator>(*parsedSatFormula);
+	const std::unique_ptr<blockedClauseElimination::BaseBlockedClauseEliminator> blockedClauseEliminator = std::make_unique<blockedClauseElimination::ArrayBasedBlockedClauseEliminator>(*parsedSatFormula);
 	if (!blockedClauseEliminator)
 		return EXIT_FAILURE;
 
-	using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
 	long long benchmarkExecutionTime = 0;
 
 	std::cout << "=== START - BUILDING INTERNAL DATA STRUCTURE FOR BCE CHECK ===\n";
@@ -93,10 +103,22 @@ int main(int argc, char* argv[])
 
 	const std::size_t numClausesToCheck = parsedSatFormula->get()->getClauses()->size();
 	const std::string stringifiedNumClausesToCheck = std::to_string(numClausesToCheck);
+
+	constexpr std::size_t percentageThreshold = 5;
+	const std::size_t numClausesToProcessUntilPercentageThresholdIsReached = numClausesToCheck / (100 / percentageThreshold);
+	std::size_t percentThresholdReachedCounter = 0;
+	std::size_t remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
+
+	std::size_t numBlockedClauses = 0;
 	for (std::size_t i = 0; i < numClausesToCheck; ++i)
 	{
-		if (i % 2500 == 0 || i == numClausesToCheck - 1)
-			std::cout << "Handled [" + std::to_string(i + 1) + "|" + stringifiedNumClausesToCheck + "] clauses, current benchmark duration: " + std::to_string(benchmarkExecutionTime) + "ms\n";
+		--remainingNumClausesForPercentageThreshold;
+		if (!remainingNumClausesForPercentageThreshold)
+		{
+			remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
+			++percentThresholdReachedCounter;
+			std::cout << "Handled [" + std::to_string(percentThresholdReachedCounter * percentageThreshold) + "%] of all clauses, current benchmark duration: " + std::to_string(benchmarkExecutionTime) + "ms\n";
+		}
 
 		const TimePoint startTimeForSearchForBlockingLiteralOfClause = std::chrono::system_clock::now();
 		const std::optional<blockedClauseElimination::BaseBlockedClauseEliminator::BlockedClauseSearchResult> searchResult = blockedClauseEliminator->isClauseBlocked(i);
@@ -107,13 +129,27 @@ int main(int argc, char* argv[])
 			std::cout << "Failed to determine BCE-check result for clause @ index " + std::to_string(i) + " in formula!";
 			return EXIT_FAILURE;
 		}
+		if (searchResult->isBlocked)
+		{
+			++numBlockedClauses;
+			if (!blockedClauseEliminator->excludeClauseFromSearchSpace(i))
+			{
+				std::cout << "Failed to exclude blocked clause @ index " + std::to_string(i) + " in formula from further search!";
+				return EXIT_FAILURE;
+			}
+		}
+
 		const auto durationForSearchOfBlockingLiteralForClause = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeForSearchForBlockingLiteralOfClause - startTimeForSearchForBlockingLiteralOfClause);
 		//std::cout << "C: " + std::to_string(i) + " | B: " + std::to_string(searchResult.isBlocked) + "| BY: " + std::to_string(searchResult.idxOfClauseDefiningBlockingLiteral) + "| Duration: " + std::to_string(durationForSearchOfBlockingLiteralForClause.count()) + "ms" << std::endl;
 		benchmarkExecutionTime += durationForSearchOfBlockingLiteralForClause.count();
 	}
 	std::cout << "=== RESULTS ===\n";
-	std::cout << "BCE check duration: " + std::to_string(benchmarkExecutionTime) + "ms\n";
+	std::cout << "Are blocked clauses removed from search space: " + std::to_string(true) + "\n";
+	std::cout << std::to_string(numBlockedClauses) + " clauses out of " + std::to_string(numClausesToCheck) + " were blocked!\n";
+	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(durationForProcessingOfDimacsFormula) + "ms\n";
 	std::cout << "Build of internal data structure duration: " + std::to_string(durationForBuildOfInternalDataStructure) + "ms\n";
-	std::cout << "TOTAL: " + std::to_string(benchmarkExecutionTime + durationForBuildOfInternalDataStructure) + "ms\n";
+	std::cout << "BCE check duration: " + std::to_string(benchmarkExecutionTime) + "ms\n";
+	std::cout << "TOTAL: " + std::to_string( durationForProcessingOfDimacsFormula + benchmarkExecutionTime + durationForBuildOfInternalDataStructure) + "ms\n";
+	std::cout << "TOTAL (excluding processing of DIMACS formula): " + std::to_string(benchmarkExecutionTime + durationForBuildOfInternalDataStructure) + "ms\n";
 	return EXIT_SUCCESS;
 }

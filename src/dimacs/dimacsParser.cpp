@@ -76,7 +76,7 @@ std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basi
 	std::string clauseProcessingError;
 
 	bool continueProcessingClauses = true;
-	std::optional<ProblemDefinition::Clause::ptr> parsedClause = parseClauseDefinition(stream, numLiterals, &clauseProcessingError);
+	std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, numLiterals, &clauseProcessingError);
 	while (parsedClause.has_value() && continueProcessingClauses) {
 		if (currNumProcessedClauses == numClauses)
 		{
@@ -90,9 +90,9 @@ std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basi
 			continueProcessingClauses = false;
 		}
 
-		if (parsedClause->get()->literals.size() == 1 && preprocessingOptimizationsConfig.singleLiteralClauseRemovalEnabled)
+		if (parsedClause->literals.size() == 1 && preprocessingOptimizationsConfig.singleLiteralClauseRemovalEnabled)
 		{
-			problemDefinition->fixVariableAssignment(parsedClause->get()->literals.front());
+			problemDefinition->fixVariableAssignment(parsedClause->literals.front());
 			++currNumProcessedClauses;
 		}
 		else
@@ -104,7 +104,7 @@ std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basi
 
 		if (preprocessingOptimizationsConfig.localClauseLiteralRemovalEnabled && optionalLocalClauseLiteralRemover.has_value())
 		{
-			for (const long clauseLiteral : parsedClause->get()->literals)
+			for (const long clauseLiteral : parsedClause->literals)
 			{
 				optionalLocalClauseLiteralRemover->get()->recordLiteralUsageInClause(clauseLiteral, currNumProcessedClauses - 1);
 			}
@@ -243,25 +243,22 @@ inline std::optional<std::pair<std::size_t, std::size_t>> DimacsParser::processP
 	return std::nullopt;
 }
 
-inline std::optional<ProblemDefinition::Clause::ptr> DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDeclaredLiterals, std::string* optionalFoundErrors)
+inline std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDeclaredLiterals, std::string* optionalFoundErrors)
 {
 	std::string clauseDefinition;
 	if (!std::getline(inputStream, clauseDefinition))
 		return std::nullopt;
 
-	ProblemDefinition::Clause::ptr clause = std::make_shared<ProblemDefinition::Clause>();
-	if (!clause)
-	{
-		if (optionalFoundErrors)
-			*optionalFoundErrors = "Could not allocate memory for clause";
-		return std::nullopt;
-	}
+	ProblemDefinition::Clause clause = ProblemDefinition::Clause();
 
 	const std::vector<std::string> stringifiedClauseLiterals = splitStringAtDelimiter(clauseDefinition, ' ');
 	if (stringifiedClauseLiterals.empty())
 		return clause;
 
+	clause.literals.reserve(stringifiedClauseLiterals.size() - 1);
+
 	std::size_t clauseLiteralIdx = 0;
+	bool foundZeroLiteral = false;
 	for (const std::string& clauseLiteralData : stringifiedClauseLiterals)
 	{
 		std::string stringToNumberConversionError;
@@ -273,12 +270,9 @@ inline std::optional<ProblemDefinition::Clause::ptr> DimacsParser::parseClauseDe
 			return std::nullopt;
 		}
 
-		if (!*parsedClauseLiteral && clauseLiteralIdx < stringifiedClauseLiterals.size() - 1)
-		{
-			if (optionalFoundErrors)
-				*optionalFoundErrors = "Literal 0 cannot only be used as the closing delimiter of a clause but was actually defines as the " + std::to_string(clauseLiteralIdx) + "-th literal of the clause";
-			return std::nullopt;
-		}
+		foundZeroLiteral = !*parsedClauseLiteral;
+		if (foundZeroLiteral)
+			break;
 
 		if (std::abs(*parsedClauseLiteral) > static_cast<long>(numDeclaredLiterals))
 		{
@@ -287,48 +281,55 @@ inline std::optional<ProblemDefinition::Clause::ptr> DimacsParser::parseClauseDe
 			return std::nullopt;
 		}
 		
-		clause->literals.emplace_back(*parsedClauseLiteral);
+		clause.literals.emplace_back(*parsedClauseLiteral);
 		++clauseLiteralIdx;
 	}
 
-	if (clause->literals.back())
+	if (!foundZeroLiteral)
 	{
 		if (optionalFoundErrors)
 			*optionalFoundErrors = "Clause must define literal 0 as its closing delimiter";
 		return std::nullopt;
 	}
 
-	clause->literals.pop_back();
-	clause->sortLiterals();
+	if (clauseLiteralIdx < stringifiedClauseLiterals.size() - 1)
+	{
+		if (optionalFoundErrors)
+			*optionalFoundErrors = "Literal 0 cannot only be used as the closing delimiter of a clause but was actually defines as the " + std::to_string(clauseLiteralIdx) + "-th literal of the clause";
+		return std::nullopt;
+	}
+	clause.sortLiterals();
 	return clause;
 }
 
 void DimacsParser::removeLocalClauseLiteralsFromFormula(ProblemDefinition& problemDefinition, const localClauseLiteralRemoval::LocalClauseLiteralRemover& localClauseLiteralRemover)
 {
 	std::vector<long> removedLiterals;
-	const std::shared_ptr<std::vector<ProblemDefinition::Clause::ptr>> formulaClauses = problemDefinition.getClauses();
-	for (auto formulaClauseIterator = formulaClauses->begin(); formulaClauseIterator !=formulaClauses->end();)
+	const std::size_t numClausesToCheck = problemDefinition.getNumClauses();
+	for (std::size_t i = 0; i < numClausesToCheck; ++i)
 	{
-		const std::size_t declaredNumLiteralsOfClause = formulaClauseIterator->get()->literals.size();
-		const std::vector<long> removedLiteralsOfClause = localClauseLiteralRemover.removeLocalLiteralsFromClause(**formulaClauseIterator);
-		if (removedLiteralsOfClause.size() == declaredNumLiteralsOfClause
-			|| (declaredNumLiteralsOfClause - removedLiteralsOfClause.size() && doesClauseOnlyDefineOneLiteralWithSamePolarity(**formulaClauseIterator)))
+		const std::optional<ProblemDefinition::Clause*> referenceClause = problemDefinition.getClauseByIndexInFormula(i);
+		if (!referenceClause || !referenceClause.has_value())
+			return;
+
+		const std::size_t numDeclaredLiteralsOfClause = referenceClause.value()->literals.size();
+		const std::vector<long> removedLiteralsOfClause = localClauseLiteralRemover.removeLocalLiteralsFromClause(**referenceClause);
+		if (removedLiteralsOfClause.size() == numDeclaredLiteralsOfClause || doesClauseOnlyDefineOneLiteralWithSamePolarity(**referenceClause))
 		{
-			formulaClauseIterator = formulaClauses->erase(formulaClauseIterator);
-		}
-		else
-		{
-			++formulaClauseIterator;
+			referenceClause.value()->literals.clear();
 		}
 
 		if (!removedLiteralsOfClause.empty())
 		{
 			for (const long removedLiteral : removedLiteralsOfClause)
-			{
 				problemDefinition.fixVariableAssignment(removedLiteral);
-			}
 		}
 	}
+
+	std::shared_ptr<std::vector<ProblemDefinition::Clause>> formulaClauses = problemDefinition.getClauses();
+	const auto iteratorToFirstClauseToRemoveInFormula = std::remove_if(formulaClauses->begin(), formulaClauses->end(), [](const ProblemDefinition::Clause& clause) {return clause.literals.empty(); });
+	if (iteratorToFirstClauseToRemoveInFormula != formulaClauses->cend())
+		formulaClauses->erase(iteratorToFirstClauseToRemoveInFormula, formulaClauses->end());
 }
 
 bool DimacsParser::doesClauseOnlyDefineOneLiteralWithSamePolarity(const ProblemDefinition::Clause& clause)

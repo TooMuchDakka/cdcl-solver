@@ -137,15 +137,15 @@ namespace dimacs
 				this->numUserDeclaredVariables = numVariables;
 				literalValues = std::vector<bool>((numVariables * 2) + 1, false);
 
-				clauses = std::make_shared<std::vector<Clause::ptr>>();
+				clauses = std::make_shared<std::vector<Clause>>();
 				clauses->reserve(numClauses);
 				for (std::size_t i = 0; i < numClauses; ++i)
 				{
-					clauses->push_back(std::make_shared<Clause>());
+					clauses->emplace_back();
 				}
 			}
 
-			[[maybe_unused]] bool addClause(std::size_t index, Clause::ptr clause) const
+			[[maybe_unused]] bool addClause(std::size_t index, Clause clause) const
 			{
 				if (clauses->size() <= index)
 					return false;
@@ -154,16 +154,25 @@ namespace dimacs
 				return true;
 			}
 
-			[[nodiscard]] std::shared_ptr<std::vector<Clause::ptr>> getClauses() const
+			[[nodiscard]] std::shared_ptr<std::vector<Clause>> getClauses() const
 			{
 				return clauses;
 			}
 
-			[[nodiscard]] std::optional<Clause::ptr> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const
+			[[nodiscard]] std::optional<const Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const
 			{
 				if (idxOfClauseInFormula >= clauses->size())
 					return std::nullopt;
-				return clauses->at(idxOfClauseInFormula);
+
+				return clauses->data() + idxOfClauseInFormula;
+			}
+
+			[[nodiscard]] std::optional<Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula)
+			{
+				if (idxOfClauseInFormula >= clauses->size())
+					return std::nullopt;
+
+				return clauses->data() + idxOfClauseInFormula;
 			}
 
 			[[maybe_unused]] bool fixVariableAssignment(long literal)
@@ -172,7 +181,7 @@ namespace dimacs
 					return false;
 
 				variablesWithValuesDeterminedDuringPreprocessing.emplace(std::abs(literal));
-				setLiteral(literal, literal > 0 ? true : false);
+				setLiteral(literal, literal > 0);
 				return true;
 			}
 
@@ -187,11 +196,14 @@ namespace dimacs
 				return { variablesWithValuesDeterminedDuringPreprocessing.cbegin(), variablesWithValuesDeterminedDuringPreprocessing.cend() };
 			}
 
+			[[nodiscard]] std::size_t getNumVariablesInFormula() const { return numUserDeclaredVariables; }
+			[[nodiscard]] std::size_t getNumClauses() const { return clauses->size(); }
+
 		protected:
 			std::size_t numUserDeclaredVariables;
 			std::unordered_set<long> variablesWithValuesDeterminedDuringPreprocessing;
 			std::vector<bool> literalValues;
-			std::shared_ptr<std::vector<Clause::ptr>> clauses;
+			std::shared_ptr<std::vector<Clause>> clauses;
 	};
 }
 #endif

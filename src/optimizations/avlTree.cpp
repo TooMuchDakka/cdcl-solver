@@ -74,6 +74,9 @@ bool AvlTree::insert(long literal)
 
 	for (AvlTreeNode::ptr parentNode = traversalNode->parent; parentNode; parentNode = traversalNode->parent)
 	{
+		if (traversalNode->key == 702)
+			int z = 0;
+
 		if (parentNode->left == traversalNode)
 		{
 			// Rebalancing required due to the parent node already being left heavy
@@ -89,6 +92,10 @@ bool AvlTree::insert(long literal)
 					int x = 0;
 
 				assertNodeInvariant(*newSubtreeRoot);
+
+
+				if (newSubtreeRoot->key == 702 && newSubtreeRoot->parent->key == 726)
+					int t = 0;
 			}
 			else
 			{
@@ -112,6 +119,10 @@ bool AvlTree::insert(long literal)
 		{
 			if (parentNode->balancingFactor == AvlTreeNode::RIGHT_HEAVY)
 			{
+				if (traversalNode->key == 726 && traversalNode->balancingFactor != AvlTreeNode::LEFT_HEAVY)
+					int s = 0;
+
+
 				grandParent = parentNode->parent;
 				if (traversalNode->balancingFactor == AvlTreeNode::LEFT_HEAVY)
 					newSubtreeRoot = rotateRightLeft(parentNode, traversalNode);
@@ -123,6 +134,8 @@ bool AvlTree::insert(long literal)
 
 				assertNodeInvariant(*newSubtreeRoot);
 
+				if (newSubtreeRoot->key == 702 && newSubtreeRoot->parent->key == 726)
+					int t = 0;
 			}
 			else
 			{
@@ -371,6 +384,7 @@ AvlTree::AvlTreeNode::ptr AvlTree::rotateLeftRight(const AvlTreeNode::ptr& paren
 
 	leftChild->parent = nodeZ;
 	leftChild->right = rightChildOfNodeZ;
+
 	if (rightChildOfNodeZ)
 		rightChildOfNodeZ->parent = parentNode;
 

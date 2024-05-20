@@ -38,7 +38,7 @@ namespace dimacs
 		[[nodiscard]] static std::vector<std::string> splitStringAtDelimiter(const std::string& stringToSplit, char delimiter);
 		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string& stringToConvert, std::string* optionalFoundError);
 		[[nodiscard]] static std::optional<std::pair<std::size_t, std::size_t>> processProblemDefinitionLine(std::basic_istream<char>& inputStream, std::string* optionalFoundError);
-		[[nodiscard]] static std::optional<ProblemDefinition::Clause::ptr> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDeclaredLiterals, std::string* optionalFoundErrors);
+		[[nodiscard]] static std::optional<ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDeclaredLiterals, std::string* optionalFoundErrors);
 		static void removeLocalClauseLiteralsFromFormula(ProblemDefinition& problemDefinition, const localClauseLiteralRemoval::LocalClauseLiteralRemover& localClauseLiteralRemover);
 		[[nodiscard]] static bool doesClauseOnlyDefineOneLiteralWithSamePolarity(const ProblemDefinition::Clause& clause);
 	};
