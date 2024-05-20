@@ -149,13 +149,13 @@ void DimacsParser::recordError(std::size_t line, std::size_t column, const std::
 }
 
 
-inline std::vector<std::string> DimacsParser::splitStringAtDelimiter(const std::string& stringToSplit, char delimiter)
+inline std::vector<std::string_view> DimacsParser::splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter)
 {
 	std::size_t lastFoundDelimiterPosition = 0;
-	std::vector<std::string> splitStringParts;
+	std::vector<std::string_view> splitStringParts;
 
 	std::size_t foundDelimiterPosition = stringToSplit.find(delimiter, lastFoundDelimiterPosition);
-	while(!(foundDelimiterPosition == std::string::npos))
+	while(foundDelimiterPosition != std::string::npos)
 	{
 		if (const std::size_t splitPartLength = foundDelimiterPosition - lastFoundDelimiterPosition)
 			splitStringParts.emplace_back(stringToSplit.substr(lastFoundDelimiterPosition, splitPartLength));
@@ -200,7 +200,7 @@ inline std::size_t DimacsParser::skipCommentLines(std::basic_istream<char>& inpu
 	return numCommentLines;
 }
 
-inline std::optional<long> DimacsParser::tryConvertStringToLong(const std::string& stringToConvert, std::string* optionalFoundError)
+inline std::optional<long> DimacsParser::tryConvertStringToLong(const std::string_view& stringToConvert, std::string* optionalFoundError)
 {
 	if (stringToConvert == "0")
 		return 0;
@@ -211,7 +211,7 @@ inline std::optional<long> DimacsParser::tryConvertStringToLong(const std::strin
 	if (errno == ERANGE || !convertedNumericValue)
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Conversion of string " + stringToConvert + " to numeric value failed";
+			*optionalFoundError = "Conversion of string " + std::string(stringToConvert) + " to numeric value failed";
 		return std::nullopt;
 	}
 	return convertedNumericValue;
@@ -227,7 +227,7 @@ inline std::optional<std::pair<std::size_t, std::size_t>> DimacsParser::processP
 		return std::nullopt;
 	}
 
-	if (const std::vector<std::string> splitProblemDefinitionLineData = splitStringAtDelimiter(readProblemLineDefinition, ' '); splitProblemDefinitionLineData.size() == 4
+	if (const std::vector<std::string_view> splitProblemDefinitionLineData = splitStringAtDelimiter(readProblemLineDefinition, ' '); splitProblemDefinitionLineData.size() == 4
 		|| splitProblemDefinitionLineData.at(1) != "cnf")
 	{
 		const std::optional<long> numUserDefinedLiterals = tryConvertStringToLong(splitProblemDefinitionLineData.at(2), nullptr);
@@ -251,7 +251,7 @@ inline std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinit
 
 	ProblemDefinition::Clause clause = ProblemDefinition::Clause();
 
-	const std::vector<std::string> stringifiedClauseLiterals = splitStringAtDelimiter(clauseDefinition, ' ');
+	const std::vector<std::string_view> stringifiedClauseLiterals = splitStringAtDelimiter(clauseDefinition, ' ');
 	if (stringifiedClauseLiterals.empty())
 		return clause;
 
@@ -259,7 +259,7 @@ inline std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinit
 
 	std::size_t clauseLiteralIdx = 0;
 	bool foundZeroLiteral = false;
-	for (const std::string& clauseLiteralData : stringifiedClauseLiterals)
+	for (const std::string_view& clauseLiteralData : stringifiedClauseLiterals)
 	{
 		std::string stringToNumberConversionError;
 		const std::optional<long> parsedClauseLiteral = tryConvertStringToLong(clauseLiteralData, &stringToNumberConversionError);
@@ -319,11 +319,8 @@ void DimacsParser::removeLocalClauseLiteralsFromFormula(ProblemDefinition& probl
 			referenceClause.value()->literals.clear();
 		}
 
-		if (!removedLiteralsOfClause.empty())
-		{
-			for (const long removedLiteral : removedLiteralsOfClause)
-				problemDefinition.fixVariableAssignment(removedLiteral);
-		}
+		for (const long removedLiteral : removedLiteralsOfClause)
+			problemDefinition.fixVariableAssignment(removedLiteral);
 	}
 
 	std::shared_ptr<std::vector<ProblemDefinition::Clause>> formulaClauses = problemDefinition.getClauses();

@@ -35,8 +35,8 @@ namespace dimacs
 
 		[[nodiscard]] std::optional<ProblemDefinition::ptr> parseDimacsContent(std::basic_istream<char>& stream, std::vector<std::string>* optionalFoundErrors, const PreprocessingOptimizationsConfig& preprocessingOptimizationsConfig);
 		[[nodiscard]] static std::size_t skipCommentLines(std::basic_istream<char>& inputStream);
-		[[nodiscard]] static std::vector<std::string> splitStringAtDelimiter(const std::string& stringToSplit, char delimiter);
-		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string& stringToConvert, std::string* optionalFoundError);
+		[[nodiscard]] static std::vector<std::string_view> splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter);
+		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string_view& stringToConvert, std::string* optionalFoundError);
 		[[nodiscard]] static std::optional<std::pair<std::size_t, std::size_t>> processProblemDefinitionLine(std::basic_istream<char>& inputStream, std::string* optionalFoundError);
 		[[nodiscard]] static std::optional<ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDeclaredLiterals, std::string* optionalFoundErrors);
 		static void removeLocalClauseLiteralsFromFormula(ProblemDefinition& problemDefinition, const localClauseLiteralRemoval::LocalClauseLiteralRemover& localClauseLiteralRemover);
