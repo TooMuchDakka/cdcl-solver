@@ -25,11 +25,17 @@ target_sources(BlockedClauseElimination
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/arrayBasedBlockedClauseEliminator.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTreeBlockedClauseEliminator.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTree.cpp
+
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTree.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTreeNode.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/arrayBasedBlockedClauseEliminator.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/avlTreeBlockedClauseEliminator.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/avlTree.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/baseBlockedClauseEliminator.hpp
+
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/avlIntervalTree.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/avlIntervalTreeNode.hpp
 )
 target_include_directories(BlockedClauseElimination
 	PUBLIC
