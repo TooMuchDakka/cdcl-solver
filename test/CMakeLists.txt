@@ -13,14 +13,10 @@ target_sources(cdcl-tests
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/dimacsParserTests.cpp	
 
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlIntervalTreeTestsFixture.hpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTreeTestsFixture.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/baseBlockedClauseEliminationTestsFixture.hpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/opaqueAvlTree.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/opaqueAvlIntervalTree.hpp
 
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlIntervalTreeTests.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTreeTests.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/arrayBasedBlockedClauseEliminatorTests.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseEliminationTests.cpp
 )
 target_include_directories(cdcl-tests

@@ -22,16 +22,12 @@ target_link_libraries(DimacsParser INTERFACE DimacsAbstractions)
 add_library(BlockedClauseElimination "")
 target_sources(BlockedClauseElimination
 	PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/arrayBasedBlockedClauseEliminator.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTreeBlockedClauseEliminator.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlTree.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/avlIntervalTreeBlockedClauseEliminator.cpp
 
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTree.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTreeNode.cpp
 	PUBLIC
-		${CMAKE_SOURCE_DIR}/include/optimizations/arrayBasedBlockedClauseEliminator.hpp
-		${CMAKE_SOURCE_DIR}/include/optimizations/avlTreeBlockedClauseEliminator.hpp
-		${CMAKE_SOURCE_DIR}/include/optimizations/avlTree.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/avlIntervalTreeBlockedClauseEliminator.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/baseBlockedClauseEliminator.hpp
 
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/avlIntervalTree.hpp

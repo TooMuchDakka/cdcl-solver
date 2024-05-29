@@ -1,0 +1,75 @@
+#include "optimizations/avlIntervalTreeBlockedClauseEliminator.hpp"
+#include <algorithm>
+
+using namespace blockedClauseElimination;
+bool AvlIntervalTreeBlockedClauseEliminator::initializeInternalHelperStructures()
+{
+	if (!avlIntervalTree)
+		return false;
+
+	for (std::size_t i = 0; i < problemDefinition->getNumClauses(); ++i)
+	{
+		if (!includeClauseInSearchSpace(i))
+			return false;
+	}
+	return true;
+}
+
+std::optional<BaseBlockedClauseEliminator::BlockedClauseSearchResult> AvlIntervalTreeBlockedClauseEliminator::isClauseBlocked(const std::size_t idxOfClauseToCheckInFormula)
+{
+	if (!avlIntervalTree)
+		return std::nullopt;
+
+	const std::optional<dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToCheckInFormula);
+	if (!optionalMatchingClauseForIdx)
+		return std::nullopt;
+
+	const dimacs::ProblemDefinition::Clause* matchingClauseForIdx = *optionalMatchingClauseForIdx;
+	for (const long clauseLiteral : matchingClauseForIdx->literals)
+	{
+		// Get all potentially overlapping clauses (based on the clause literal bounds)
+		for (const std::size_t indexOfClauseWithOverlappingLiteral : avlIntervalTree->getOverlappingIntervalsForLiteral(-clauseLiteral))
+		{
+			const std::optional<dimacs::ProblemDefinition::Clause*> optionalPotentiallyOverlappingClause = problemDefinition->getClauseByIndexInFormula(indexOfClauseWithOverlappingLiteral);
+			if (!optionalPotentiallyOverlappingClause.has_value() || indexOfClauseWithOverlappingLiteral == idxOfClauseToCheckInFormula || !optionalPotentiallyOverlappingClause.value()->containsLiteral(-clauseLiteral))
+				continue;
+
+			// Check if the resolvent of the clause for which we would like to determine whether it is literal blocked and the clause, for which we have determine that it contains the literal to be looked for with negative polarity, form a tautology
+			const dimacs::ProblemDefinition::Clause* clauseOverlappingLiteral = *optionalPotentiallyOverlappingClause;
+			if (doesResolventContainTautology(matchingClauseForIdx, clauseLiteral, clauseOverlappingLiteral))
+				return BlockedClauseSearchResult({ true, indexOfClauseWithOverlappingLiteral });
+		}
+	}
+	return BlockedClauseSearchResult({ false, std::nullopt });
+}
+
+bool AvlIntervalTreeBlockedClauseEliminator::excludeClauseFromSearchSpace(std::size_t idxOfClauseToIgnoreInFurtherSearch)
+{
+	if (!avlIntervalTree)
+		return true;
+
+	const std::optional<dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToIgnoreInFurtherSearch);
+	return optionalMatchingClauseForIdx.has_value() && avlIntervalTree->removeClause(idxOfClauseToIgnoreInFurtherSearch, optionalMatchingClauseForIdx.value()->getLiteralBounds());
+}
+
+// BEGIN NON_PUBLIC FUNCTIONALITY
+bool AvlIntervalTreeBlockedClauseEliminator::includeClauseInSearchSpace(std::size_t idxOfClauseToIncludeInFurtherSearch)
+{
+	if (!avlIntervalTree)
+		return true;
+
+	const std::optional<dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToIncludeInFurtherSearch);
+	return optionalMatchingClauseForIdx.has_value() && avlIntervalTree->insertClause(idxOfClauseToIncludeInFurtherSearch, optionalMatchingClauseForIdx.value()->getLiteralBounds());
+}
+
+bool AvlIntervalTreeBlockedClauseEliminator::doesResolventContainTautology(const dimacs::ProblemDefinition::Clause* resolventLeftOperand, long resolventLiteral, const dimacs::ProblemDefinition::Clause* resolventRightOperand)
+{
+	return std::any_of(
+		resolventLeftOperand->literals.cbegin(),
+		resolventLeftOperand->literals.cend(),
+		[resolventLiteral, &resolventRightOperand](const long clauseLiteralToCheckForTautology)
+		{
+			return clauseLiteralToCheckForTautology != resolventLiteral && resolventRightOperand->containsLiteral(-clauseLiteralToCheckForTautology);
+		}
+	);
+}

@@ -4,9 +4,7 @@
 #include <sstream>
 
 #include "dimacs/dimacsParser.hpp"
-#include "optimizations/arrayBasedBlockedClauseEliminator.hpp"
-#include "optimizations/avlTreeBlockedClauseEliminator.hpp"
-
+#include "optimizations/avlIntervalTreeBlockedClauseEliminator.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -28,7 +26,7 @@ int main(int argc, char* argv[])
 
 	auto optimizationsConfig = dimacs::DimacsParser::PreprocessingOptimizationsConfig();
 	optimizationsConfig.singleLiteralClauseRemovalEnabled = true;
-	optimizationsConfig.localClauseLiteralRemovalEnabled = true;
+	optimizationsConfig.localClauseLiteralRemovalEnabled = false;
 
 	using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
 
@@ -85,7 +83,7 @@ int main(int argc, char* argv[])
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(durationForProcessingOfDimacsFormula) + "ms\n";
 	std::cout << "=== END - PROCESSING OF DIMACS FORMULA ===\n";
 
-	const std::unique_ptr<blockedClauseElimination::BaseBlockedClauseEliminator> blockedClauseEliminator = std::make_unique<blockedClauseElimination::ArrayBasedBlockedClauseEliminator>(*parsedSatFormula);
+	const std::unique_ptr<blockedClauseElimination::BaseBlockedClauseEliminator> blockedClauseEliminator = std::make_unique<blockedClauseElimination::AvlIntervalTreeBlockedClauseEliminator>(*parsedSatFormula);
 	if (!blockedClauseEliminator)
 		return EXIT_FAILURE;
 
