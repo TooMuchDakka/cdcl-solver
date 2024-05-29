@@ -27,10 +27,13 @@ namespace avlIntervalTreeTests {
 
 			if (!expected->parent)
 			{
-				ASSERT_FALSE(actual->parent);
-				return;
+				ASSERT_FALSE(actual->parent) << "Expected node with key " << std::to_string(expected->key) << " to have no parent node";
 			}
-			ASSERT_EQ(expected->parent->key, actual->parent->key) << "Parent key missmatch in node with key" << std::to_string(expected->key);
+			else
+			{
+				ASSERT_TRUE(actual->parent) << "Expected node with key " << std::to_string(expected->key) << " to have parent node";
+				ASSERT_EQ(expected->parent->key, actual->parent->key) << "Parent key missmatch in node with key " << std::to_string(expected->key);
+			}
 			ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expected->left, actual->left)) << "Left child missmatch in node with key " << std::to_string(expected->key);
 			ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expected->right, actual->right)) << "Right child missmatch in node with key " << std::to_string(expected->key);
 		}
@@ -53,9 +56,12 @@ namespace avlIntervalTreeTests {
 		static void assertThatClauseIndicesOfOverlappingIntervalsMatch(const std::vector<std::size_t>& expectedClauseIndices, const std::vector<std::size_t>& actualClauseIndices)
 		{
 			ASSERT_EQ(expectedClauseIndices.size(), actualClauseIndices.size());
-			for (std::size_t i = 0; i < expectedClauseIndices.size(); ++i)
+			const std::unordered_set<std::size_t> setOfExpectedClauseIndices(expectedClauseIndices.cbegin(), expectedClauseIndices.cend());
+			const std::unordered_set<std::size_t> setOfActualClauseIndices(actualClauseIndices.cbegin(), actualClauseIndices.cend());
+
+			for (const std::size_t expectedClauseIndex : setOfExpectedClauseIndices)
 			{
-				ASSERT_EQ(expectedClauseIndices.at(i), actualClauseIndices.at(i));
+				ASSERT_TRUE(setOfActualClauseIndices.count(expectedClauseIndex)) << "Expected clause with index " + std::to_string(expectedClauseIndex) << " was not found in set of actual clause indices";
 			}
 		}
 	};

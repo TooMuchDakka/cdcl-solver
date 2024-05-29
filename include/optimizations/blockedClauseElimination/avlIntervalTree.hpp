@@ -77,6 +77,7 @@ namespace avl {
 		 *
 		 */
 		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateLeftRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild);
+		[[nodiscard]] static avl::AvlIntervalTreeNode::ptr findInorderSuccessorOfNode(const AvlIntervalTreeNode::ptr& node);
 		static void replaceNodeInAvlTreeStructure(const AvlIntervalTreeNode::ptr& nodeToReplace, const AvlIntervalTreeNode::ptr& replacementNode);
 	};
 }

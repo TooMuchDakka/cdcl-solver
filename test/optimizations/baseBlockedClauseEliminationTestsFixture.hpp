@@ -1,8 +1,8 @@
 #ifndef BASE_BLOCKED_CLAUSE_ELIMINATION_TESTS_FIXTURE_HPP
 #define BASE_BLOCKED_CLAUSE_ELIMINATION_TESTS_FIXTURE_HPP
 
-#include <optimizations/blockedClauseElimination.hpp>
 #include <gtest/gtest.h>
+#include "optimizations/baseBlockedClauseEliminator.hpp"
 
 class BaseBlockedClauseEliminationTestsFixture : public ::testing::Test
 {

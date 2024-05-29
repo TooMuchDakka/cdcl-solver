@@ -100,17 +100,20 @@ void AvlIntervalTreeNode::insertUpperBound(const LiteralBoundsAndClausePair& upp
 	upperBoundsSortedDescending.insert(std::next(upperBoundsSortedDescending.cbegin(), currLargestUpperBoundIdx + 1), upperBoundsAndReferencedClauseData);
 }
 
-bool AvlIntervalTreeNode::removeIntersectedClause(std::size_t clauseIdx)
+bool AvlIntervalTreeNode::removeIntersectedClause(std::size_t clauseIdx, const dimacs::ProblemDefinition::Clause::LiteralBounds& expectedLiteralBoundsOfClause)
 {
 	const auto& matchingLowerBoundForClause = findLowerBoundOfClause(clauseIdx);
-	bool couldRemoveClauseBound = matchingLowerBoundForClause != lowerBoundsSortedAscending.cend();
-	lowerBoundsSortedAscending.erase(matchingLowerBoundForClause);
-
 	const auto& matchingUpperBoundForClause = findUpperBoundOfClause(clauseIdx);
-	couldRemoveClauseBound &= matchingUpperBoundForClause != upperBoundsSortedDescending.cend();
-	upperBoundsSortedDescending.erase(matchingUpperBoundForClause);
 
-	return couldRemoveClauseBound;
+	if (matchingLowerBoundForClause == lowerBoundsSortedAscending.cend() || matchingUpperBoundForClause == upperBoundsSortedDescending.cend())
+		return false;
+
+	if (matchingLowerBoundForClause->literalBound != expectedLiteralBoundsOfClause.smallestLiteral || matchingUpperBoundForClause->literalBound != expectedLiteralBoundsOfClause.largestLiteral)
+		return false;
+
+	lowerBoundsSortedAscending.erase(matchingLowerBoundForClause);
+	upperBoundsSortedDescending.erase(matchingUpperBoundForClause);
+	return true;
 }
 
 std::vector<std::size_t> AvlIntervalTreeNode::getIntersectedClauseIndicesMovingFromSmallestLowerBoundToMidPoint(long intersectingLiteral) const
@@ -174,6 +177,25 @@ long AvlIntervalTreeNode::determineLiteralBoundsMidPoint(const dimacs::ProblemDe
 	}
 	return 0;
 }
+
+void AvlIntervalTreeNode::substituteNodeButKeepKey(const AvlIntervalTreeNode& toBeReplacedNode, const AvlIntervalTreeNode::ptr& substituteForNode)
+{
+	if (!substituteForNode)
+		return;
+
+	substituteForNode->parent = toBeReplacedNode.parent;
+
+	substituteForNode->left = toBeReplacedNode.left;
+	if (toBeReplacedNode.left)
+		toBeReplacedNode.left->parent = substituteForNode;
+
+	substituteForNode->right = toBeReplacedNode.right;
+	if (toBeReplacedNode.right)
+		toBeReplacedNode.right->parent = substituteForNode;
+
+	substituteForNode->internalAvlBalancingFactor = toBeReplacedNode.internalAvlBalancingFactor;
+}
+
 
 std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator AvlIntervalTreeNode::findLowerBoundOfClause(std::size_t idxOfClause) const
 {

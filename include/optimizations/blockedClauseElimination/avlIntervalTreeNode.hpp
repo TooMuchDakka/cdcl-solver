@@ -42,7 +42,7 @@ namespace avl {
 
 		void insertLowerBound(const LiteralBoundsAndClausePair& lowerBoundsAndReferencedClauseData);
 		void insertUpperBound(const LiteralBoundsAndClausePair& upperBoundsAndReferencedClauseData);
-		[[maybe_unused]] bool removeIntersectedClause(std::size_t clauseIdx);
+		[[maybe_unused]] bool removeIntersectedClause(std::size_t clauseIdx, const dimacs::ProblemDefinition::Clause::LiteralBounds& expectedLiteralBoundsOfClause);
 
 
 		[[nodiscard]] std::vector<std::size_t> getIntersectedClauseIndicesMovingFromSmallestLowerBoundToMidPoint(long intersectingLiteral) const;
@@ -53,6 +53,7 @@ namespace avl {
 		[[nodiscard]] bool doesClauseIntersect(const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const;
 		[[nodiscard]] bool doesNodeStoreAnyInterval() const;
 		[[nodiscard]] static long determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds);
+		static void substituteNodeButKeepKey(const AvlIntervalTreeNode& toBeReplacedNode, const AvlIntervalTreeNode::ptr& substituteForNode);
 
 	protected:
 		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findLowerBoundOfClause(std::size_t idxOfClause) const;
