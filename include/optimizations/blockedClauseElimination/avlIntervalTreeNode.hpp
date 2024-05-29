@@ -56,9 +56,9 @@ namespace avl {
 		static void substituteNodeButKeepKey(const AvlIntervalTreeNode& toBeReplacedNode, const AvlIntervalTreeNode::ptr& substituteForNode);
 
 	protected:
-		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findLowerBoundOfClause(std::size_t idxOfClause) const;
-		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findUpperBoundOfClause(std::size_t idxOfClause) const;
-		[[nodiscard]] static std::vector<LiteralBoundsAndClausePair>::const_iterator findBoundOfClause(std::size_t idxOfClause, const std::vector<LiteralBoundsAndClausePair>& vectorToSearchThrough);
+		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findLowerBoundOfClause(std::size_t idxOfClause, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const;
+		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findUpperBoundOfClause(std::size_t idxOfClause, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const;
+		[[nodiscard]] static std::vector<LiteralBoundsAndClausePair>::const_iterator findBoundOfClause(std::size_t idxOfClause, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds, const std::vector<LiteralBoundsAndClausePair>& vectorToSearchThrough);
 	};
 }
 
