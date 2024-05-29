@@ -53,7 +53,7 @@ void AvlIntervalTreeNode::insertLowerBound(const LiteralBoundsAndClausePair& low
 
 	while (currSmallestLowerBoundIdx <= currLargestLowerBoundIdx)
 	{
-		const std::size_t midPointIdx = (currLargestLowerBoundIdx - currSmallestLowerBoundIdx) / 2;
+		const std::size_t midPointIdx = (currLargestLowerBoundIdx + currSmallestLowerBoundIdx) / 2;
 		const long midPointLowerBound = lowerBoundsSortedAscending.at(midPointIdx).literalBound;
 		if (lowerBoundsAndReferencedClauseData.literalBound < midPointLowerBound)
 		{
@@ -86,7 +86,7 @@ void AvlIntervalTreeNode::insertUpperBound(const LiteralBoundsAndClausePair& upp
 
 	while (currLargestUpperBoundIdx >= currSmallestUpperBoundIdx)
 	{
-		const std::size_t midPointIdx = (currSmallestUpperBoundIdx - currLargestUpperBoundIdx) / 2;
+		const std::size_t midPointIdx = (currSmallestUpperBoundIdx + currLargestUpperBoundIdx) / 2;
 		const long midPointLowerBound = upperBoundsSortedDescending.at(midPointIdx).literalBound;
 		if (upperBoundsAndReferencedClauseData.literalBound < midPointLowerBound)
 		{
