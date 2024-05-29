@@ -42,7 +42,7 @@ namespace dimacs
 
 					[[nodiscard]] bool operator<(const LiteralBounds& other) const
 					{
-						return smallestLiteral < other.smallestLiteral&& largestLiteral <= other.largestLiteral;
+						return smallestLiteral < other.smallestLiteral;
 					}
 
 					[[nodiscard]] bool operator>(const LiteralBounds& other) const
