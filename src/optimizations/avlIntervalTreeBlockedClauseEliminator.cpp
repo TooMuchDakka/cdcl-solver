@@ -7,9 +7,9 @@ bool AvlIntervalTreeBlockedClauseEliminator::initializeInternalHelperStructures(
 	if (!avlIntervalTree)
 		return false;
 
-	for (std::size_t i = 0; i < problemDefinition->getNumClauses(); ++i)
+	for (const std::size_t clauseIndexInFormula : determineSequenceOfClauseIndicesOrderedByToLiteralBounds())
 	{
-		if (!includeClauseInSearchSpace(i))
+		if (!includeClauseInSearchSpace(clauseIndexInFormula))
 			return false;
 	}
 	return true;
@@ -61,6 +61,27 @@ bool AvlIntervalTreeBlockedClauseEliminator::includeClauseInSearchSpace(std::siz
 	const std::optional<dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToIncludeInFurtherSearch);
 	return optionalMatchingClauseForIdx.has_value() && avlIntervalTree->insertClause(idxOfClauseToIncludeInFurtherSearch, optionalMatchingClauseForIdx.value()->getLiteralBounds());
 }
+
+std::vector<std::size_t> AvlIntervalTreeBlockedClauseEliminator::determineSequenceOfClauseIndicesOrderedByToLiteralBounds() const
+{
+	std::vector<std::size_t> sortedClauseIndices(problemDefinition->getNumClauses(), 0);
+	for (std::size_t i = 1; i < sortedClauseIndices.size(); ++i)
+		sortedClauseIndices.at(i) = i;
+
+	std::sort(
+		sortedClauseIndices.begin(),
+		sortedClauseIndices.end(),
+		[&](const std::size_t idxOfLhsClause, const std::size_t idxOfRhsClause)
+		{
+			const std::optional<dimacs::ProblemDefinition::Clause*>& matchingClauseForLhsOperand = problemDefinition->getClauseByIndexInFormula(idxOfLhsClause);
+			const std::optional<dimacs::ProblemDefinition::Clause*>& matchingClauseForRhsOperand = problemDefinition->getClauseByIndexInFormula(idxOfRhsClause);
+			if (!(matchingClauseForLhsOperand.has_value() && matchingClauseForRhsOperand.has_value()))
+				return false;
+			return matchingClauseForLhsOperand.value()->getLiteralBounds() < matchingClauseForRhsOperand.value()->getLiteralBounds();
+		});
+	return sortedClauseIndices;
+}
+
 
 bool AvlIntervalTreeBlockedClauseEliminator::doesResolventContainTautology(const dimacs::ProblemDefinition::Clause* resolventLeftOperand, long resolventLiteral, const dimacs::ProblemDefinition::Clause* resolventRightOperand)
 {

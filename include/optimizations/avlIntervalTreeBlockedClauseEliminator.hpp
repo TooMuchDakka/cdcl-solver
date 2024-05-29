@@ -23,6 +23,7 @@ namespace blockedClauseElimination
 		std::unique_ptr<avl::AvlIntervalTree> avlIntervalTree;
 
 		[[nodiscard]] bool includeClauseInSearchSpace(std::size_t idxOfClauseToIncludeInFurtherSearch) override;
+		[[nodiscard]] std::vector<std::size_t> determineSequenceOfClauseIndicesOrderedByToLiteralBounds() const;
 		[[nodiscard]] static bool doesResolventContainTautology(const dimacs::ProblemDefinition::Clause* resolventLeftOperand, long resolventLiteral, const dimacs::ProblemDefinition::Clause* resolventRightOperand);
 	};
 };
