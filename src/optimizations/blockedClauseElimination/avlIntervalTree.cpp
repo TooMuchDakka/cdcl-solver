@@ -11,7 +11,6 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIdxInFormula, const dimacs:
 	if (literalBounds.smallestLiteral > literalBounds.largestLiteral || !literalBounds.smallestLiteral || !literalBounds.largestLiteral)
 		return false;
 
-	const long keyOfNewNode = literalBounds.smallestLiteral;
 	AvlIntervalTreeNode::ptr newTreeNode = std::make_shared<AvlIntervalTreeNode>(AvlIntervalTreeNode::determineLiteralBoundsMidPoint(literalBounds));
 	newTreeNode->insertLowerBound(AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBounds.smallestLiteral, clauseIdxInFormula));
 	newTreeNode->insertUpperBound(AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBounds.largestLiteral, clauseIdxInFormula));
@@ -35,7 +34,7 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIdxInFormula, const dimacs:
 			return true;
 		}
 
-		if (keyOfNewNode < traversalNode->getSmallestLowerBound().value_or(0))
+		if (newTreeNode->key < traversalNode->key)
 		{
 			if (traversalNode->left)
 			{
@@ -162,29 +161,26 @@ std::vector<std::size_t> AvlIntervalTree::getOverlappingIntervalsForLiteral(long
 // see further: https://kukuruku.co/hub/cpp/avl-trees ???
 // 
 
-bool AvlIntervalTree::removeClause(std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds)
+AvlIntervalTreeNode::ClauseRemovalResult AvlIntervalTree::removeClause(std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds)
 {
-	if (!root || literalBounds.smallestLiteral > literalBounds.largestLiteral || !literalBounds.smallestLiteral || !literalBounds.largestLiteral)
-		return false;
+	if (literalBounds.smallestLiteral > literalBounds.largestLiteral || !literalBounds.smallestLiteral || !literalBounds.largestLiteral)
+		return AvlIntervalTreeNode::ClauseRemovalResult::ValidationError;
 
-	AvlIntervalTreeNode::ptr traversalNode = root;
-	while (traversalNode && !traversalNode->doesClauseIntersect(literalBounds))
-	{
-		if (literalBounds.smallestLiteral < traversalNode->getSmallestLowerBound().value_or(0))
-			traversalNode = traversalNode->left;
-		else
-			traversalNode = traversalNode->right;
-	}
+	const std::optional<avl::AvlIntervalTreeNode::ptr>& treeNodeContainingMatchingLiteralBounds = findNodeContainingLiteralBoundsOfClause(root, clauseIdxInFormula, literalBounds);
+	if (!treeNodeContainingMatchingLiteralBounds)
+		return AvlIntervalTreeNode::ClauseRemovalResult::NotFound;
 
-	if (!traversalNode)
-		return false;
-	
-	if (!traversalNode->removeIntersectedClause(clauseIdxInFormula, literalBounds))
-		return false;
+	const AvlIntervalTreeNode::ClauseRemovalResult clauseRemovalResult = treeNodeContainingMatchingLiteralBounds->get()->removeIntersectedClause(clauseIdxInFormula, literalBounds);
+	if (clauseRemovalResult == AvlIntervalTreeNode::ClauseRemovalResult::ValidationError)
+		return clauseRemovalResult;
 
-	if (traversalNode->doesNodeStoreAnyInterval())
-		return true;
+	if (clauseRemovalResult == AvlIntervalTreeNode::ClauseRemovalResult::NotFound)
+		return clauseRemovalResult;
 
+	if (treeNodeContainingMatchingLiteralBounds->get()->doesNodeStoreAnyInterval())
+		return AvlIntervalTreeNode::ClauseRemovalResult::Removed;
+
+	AvlIntervalTreeNode::ptr traversalNode = *treeNodeContainingMatchingLiteralBounds;
 	AvlIntervalTreeNode::ptr leftChildOfNodeToDelete = traversalNode->left;
 	AvlIntervalTreeNode::ptr inorderSuccessorOfNodeToDelete = findInorderSuccessorOfNode(traversalNode->right);
 
@@ -317,7 +313,19 @@ bool AvlIntervalTree::removeClause(std::size_t clauseIdxInFormula, const dimacs:
 			root = traversalNode;
 		}
 	}
-	return true;
+	return AvlIntervalTreeNode::ClauseRemovalResult::Removed;
+}
+
+AvlIntervalTreeNode::ptr AvlIntervalTree::findNodeWithKey(long key) const
+{
+	AvlIntervalTreeNode::ptr node = root;
+	while (node)
+	{
+		if (node->key == key)
+			return node;
+		node = key < node->key ? node->left : node->right;
+	}
+	return node;
 }
 
 //bool AvlIntervalTree::removeClause(std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds)
@@ -502,6 +510,24 @@ bool AvlIntervalTree::removeClause(std::size_t clauseIdxInFormula, const dimacs:
 //}
 
 // BEGIN NON-PUBLIC FUNCTIONALITY
+std::optional<AvlIntervalTreeNode::ptr> AvlIntervalTree::findNodeContainingLiteralBoundsOfClause(const avl::AvlIntervalTreeNode::ptr& searchStartingPositionInTree, std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds)
+{
+	if (!searchStartingPositionInTree)
+		return std::nullopt;
+
+	AvlIntervalTreeNode::ptr traversalNode = searchStartingPositionInTree;
+	if (traversalNode->doesClauseIntersect(literalBounds))
+	{
+		if (traversalNode->doesNodeContainMatchingLiteralBoundsForClause(clauseIdxInFormula, literalBounds))
+			return traversalNode;
+	}
+
+	if (const std::optional<AvlIntervalTreeNode::ptr>& matchingNodeInLeftSubtree = findNodeContainingLiteralBoundsOfClause(traversalNode->left, clauseIdxInFormula, literalBounds); matchingNodeInLeftSubtree.has_value())
+		return matchingNodeInLeftSubtree;
+
+	return findNodeContainingLiteralBoundsOfClause(traversalNode->right, clauseIdxInFormula, literalBounds);
+}
+
 AvlIntervalTreeNode::ptr AvlIntervalTree::rotateLeft(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& rightChild)
 {
 	parentNode->right = rightChild->left;

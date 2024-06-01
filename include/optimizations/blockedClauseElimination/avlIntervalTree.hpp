@@ -9,11 +9,14 @@ namespace avl {
 	public:
 		[[maybe_unused]] bool insertClause(std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds);
 		[[nodiscard]] std::vector<std::size_t> getOverlappingIntervalsForLiteral(long literal) const;
-		[[maybe_unused]] bool removeClause(std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds);
+
+		[[maybe_unused]] AvlIntervalTreeNode::ClauseRemovalResult removeClause(std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds);
+		[[nodiscard]] AvlIntervalTreeNode::ptr findNodeWithKey(long key) const;
 
 	protected:
 		AvlIntervalTreeNode::ptr root;
 
+		[[nodiscard]] static std::optional<AvlIntervalTreeNode::ptr> findNodeContainingLiteralBoundsOfClause(const avl::AvlIntervalTreeNode::ptr& searchStartingPositionInTree, std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds);
 		/*
 		 *			P
 		 *		X		Y
@@ -78,7 +81,6 @@ namespace avl {
 		 */
 		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateLeftRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild);
 		[[nodiscard]] static avl::AvlIntervalTreeNode::ptr findInorderSuccessorOfNode(const AvlIntervalTreeNode::ptr& node);
-		static void replaceNodeInAvlTreeStructure(const AvlIntervalTreeNode::ptr& nodeToReplace, const AvlIntervalTreeNode::ptr& replacementNode);
 	};
 }
 #endif

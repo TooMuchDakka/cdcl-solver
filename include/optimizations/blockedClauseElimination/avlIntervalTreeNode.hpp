@@ -42,8 +42,15 @@ namespace avl {
 
 		void insertLowerBound(const LiteralBoundsAndClausePair& lowerBoundsAndReferencedClauseData);
 		void insertUpperBound(const LiteralBoundsAndClausePair& upperBoundsAndReferencedClauseData);
-		[[maybe_unused]] bool removeIntersectedClause(std::size_t clauseIdx, const dimacs::ProblemDefinition::Clause::LiteralBounds& expectedLiteralBoundsOfClause);
 
+		enum ClauseRemovalResult
+		{
+			Removed,
+			NotFound,
+			ValidationError
+		};
+		[[nodiscard]] ClauseRemovalResult removeIntersectedClause(std::size_t clauseIdx, const dimacs::ProblemDefinition::Clause::LiteralBounds& expectedLiteralBoundsOfClause);
+		[[nodiscard]] bool doesNodeContainMatchingLiteralBoundsForClause(std::size_t clauseIdx, const dimacs::ProblemDefinition::Clause::LiteralBounds& expectedLiteralBoundsOfClause) const;
 
 		[[nodiscard]] std::vector<std::size_t> getIntersectedClauseIndicesMovingFromSmallestLowerBoundToMidPoint(long intersectingLiteral) const;
 		[[nodiscard]] std::vector<std::size_t> getIntersectedClauseIndicesMovingLargestUpperBoundToMidPoint(long intersectingLiteral) const;
@@ -56,9 +63,12 @@ namespace avl {
 		static void substituteNodeButKeepKey(const AvlIntervalTreeNode& toBeReplacedNode, const AvlIntervalTreeNode::ptr& substituteForNode);
 
 	protected:
-		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findLowerBoundOfClause(std::size_t idxOfClause, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const;
-		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findUpperBoundOfClause(std::size_t idxOfClause, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const;
-		[[nodiscard]] static std::vector<LiteralBoundsAndClausePair>::const_iterator findBoundOfClause(std::size_t idxOfClause, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds, const std::vector<LiteralBoundsAndClausePair>& vectorToSearchThrough);
+		[[nodiscard]] bool doesContainLowerBound(long lowerBound) const;
+		[[nodiscard]] bool doesContainUpperBound(long upperBound) const;
+
+		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findLowerBoundOfClause(std::size_t idxOfClause, long lowerBoundOfClause) const;
+		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findUpperBoundOfClause(std::size_t idxOfClause, long upperBoundOfClause) const;
+		[[nodiscard]] static std::vector<LiteralBoundsAndClausePair>::const_iterator findBoundOfClause(std::size_t idxOfClause, long literalBound, const std::vector<LiteralBoundsAndClausePair>& vectorToSearchThrough);
 	};
 }
 

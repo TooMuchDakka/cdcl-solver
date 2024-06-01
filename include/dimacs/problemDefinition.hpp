@@ -164,7 +164,7 @@ namespace dimacs
 				if (idxOfClauseInFormula >= clauses->size())
 					return std::nullopt;
 
-				return clauses->data() + idxOfClauseInFormula;
+				return &clauses->at(idxOfClauseInFormula);
 			}
 
 			[[nodiscard]] std::optional<Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula)
@@ -172,7 +172,7 @@ namespace dimacs
 				if (idxOfClauseInFormula >= clauses->size())
 					return std::nullopt;
 
-				return clauses->data() + idxOfClauseInFormula;
+				return &clauses->at(idxOfClauseInFormula);
 			}
 
 			[[maybe_unused]] bool fixVariableAssignment(long literal)

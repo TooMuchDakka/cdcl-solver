@@ -48,8 +48,9 @@ bool AvlIntervalTreeBlockedClauseEliminator::excludeClauseFromSearchSpace(std::s
 	if (!avlIntervalTree)
 		return true;
 
-	const std::optional<dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToIgnoreInFurtherSearch);
-	return optionalMatchingClauseForIdx.has_value() && avlIntervalTree->removeClause(idxOfClauseToIgnoreInFurtherSearch, optionalMatchingClauseForIdx.value()->getLiteralBounds());
+	if (const std::optional<const dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToIgnoreInFurtherSearch); optionalMatchingClauseForIdx.has_value())
+		return avlIntervalTree->removeClause(idxOfClauseToIgnoreInFurtherSearch, optionalMatchingClauseForIdx.value()->getLiteralBounds()) == avl::AvlIntervalTreeNode::Removed;
+	return false;
 }
 
 // BEGIN NON_PUBLIC FUNCTIONALITY
@@ -58,15 +59,19 @@ bool AvlIntervalTreeBlockedClauseEliminator::includeClauseInSearchSpace(std::siz
 	if (!avlIntervalTree)
 		return true;
 
-	const std::optional<dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToIncludeInFurtherSearch);
-	return optionalMatchingClauseForIdx.has_value() && avlIntervalTree->insertClause(idxOfClauseToIncludeInFurtherSearch, optionalMatchingClauseForIdx.value()->getLiteralBounds());
+	if (const std::optional<dimacs::ProblemDefinition::Clause*> optionalMatchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(idxOfClauseToIncludeInFurtherSearch); optionalMatchingClauseForIdx.has_value())
+		return avlIntervalTree->insertClause(idxOfClauseToIncludeInFurtherSearch, optionalMatchingClauseForIdx.value()->getLiteralBounds());
+	return false;
 }
 
 std::vector<std::size_t> AvlIntervalTreeBlockedClauseEliminator::determineSequenceOfClauseIndicesOrderedByToLiteralBounds() const
 {
 	std::vector<std::size_t> sortedClauseIndices(problemDefinition->getNumClauses(), 0);
-	for (std::size_t i = 1; i < sortedClauseIndices.size(); ++i)
-		sortedClauseIndices.at(i) = i;
+	for (std::size_t i = 0; i < sortedClauseIndices.size(); ++i)
+	{
+		if (const std::optional<dimacs::ProblemDefinition::Clause*> matchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(i); matchingClauseForIdx.has_value() && !matchingClauseForIdx.value()->literals.empty())
+			sortedClauseIndices.at(i) = i;
+	}
 
 	std::sort(
 		sortedClauseIndices.begin(),

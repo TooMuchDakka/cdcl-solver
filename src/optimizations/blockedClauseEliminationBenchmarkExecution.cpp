@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 	std::vector<std::string> foundErrorsDuringSatFormulaParsingFromFile;
 
 	auto optimizationsConfig = dimacs::DimacsParser::PreprocessingOptimizationsConfig();
-	optimizationsConfig.singleLiteralClauseRemovalEnabled = true;
+	optimizationsConfig.singleLiteralClauseRemovalEnabled = false;
 	optimizationsConfig.localClauseLiteralRemovalEnabled = false;
 
 	using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
