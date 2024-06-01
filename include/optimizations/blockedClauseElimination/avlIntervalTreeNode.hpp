@@ -63,12 +63,9 @@ namespace avl {
 		static void substituteNodeButKeepKey(const AvlIntervalTreeNode& toBeReplacedNode, const AvlIntervalTreeNode::ptr& substituteForNode);
 
 	protected:
-		[[nodiscard]] bool doesContainLowerBound(long lowerBound) const;
-		[[nodiscard]] bool doesContainUpperBound(long upperBound) const;
-
 		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findLowerBoundOfClause(std::size_t idxOfClause, long lowerBoundOfClause) const;
 		[[nodiscard]] std::vector<LiteralBoundsAndClausePair>::const_iterator findUpperBoundOfClause(std::size_t idxOfClause, long upperBoundOfClause) const;
-		[[nodiscard]] static std::vector<LiteralBoundsAndClausePair>::const_iterator findBoundOfClause(std::size_t idxOfClause, long literalBound, const std::vector<LiteralBoundsAndClausePair>& vectorToSearchThrough);
+		[[nodiscard]] static std::vector<LiteralBoundsAndClausePair>::const_iterator findPositionOfClauseInMatchingBounds(std::size_t idxOfClause, const std::vector<LiteralBoundsAndClausePair>::const_iterator& startPositionWithMatchingBound, const std::vector<LiteralBoundsAndClausePair>::const_iterator& lowerBoundOfSearchSpace, const std::vector<LiteralBoundsAndClausePair>::const_iterator& upperBoundOfSearchSpace);
 	};
 }
 

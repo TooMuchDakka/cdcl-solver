@@ -211,83 +211,126 @@ void AvlIntervalTreeNode::substituteNodeButKeepKey(const AvlIntervalTreeNode& to
 	substituteForNode->internalAvlBalancingFactor = toBeReplacedNode.internalAvlBalancingFactor;
 }
 
-bool AvlIntervalTreeNode::doesContainLowerBound(long lowerBound) const
+std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator AvlIntervalTreeNode::findLowerBoundOfClause(std::size_t idxOfClause, long lowerBoundOfClause) const
 {
+	const std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator lowerBoundNotFoundResult = lowerBoundsSortedAscending.cend();
 	if (lowerBoundsSortedAscending.empty())
-		return false;
+		return lowerBoundNotFoundResult;
 
 	if (lowerBoundsSortedAscending.size() == 1)
-		return lowerBoundsSortedAscending.front().literalBound == lowerBound;
+	{
+		if (lowerBoundsSortedAscending.front().literalBound == lowerBoundOfClause && lowerBoundsSortedAscending.front().idxOfReferencedClauseInFormula == idxOfClause)
+			return lowerBoundsSortedAscending.cbegin();
+
+		return lowerBoundNotFoundResult;
+	}
 
 	std::size_t smallestLowerBoundIdx = 0;
 	std::size_t largestLowerBoundIdx = lowerBoundsSortedAscending.size() - 1;
+	std::optional<std::size_t> firstMatchingIntervalForBound;
 
 	while (smallestLowerBoundIdx <= largestLowerBoundIdx)
 	{
 		std::size_t midPointIdx = (largestLowerBoundIdx + smallestLowerBoundIdx) / 2;
 		const long lowerBoundAtMidPoint = lowerBoundsSortedAscending.at(midPointIdx).literalBound;
-		if (lowerBound == lowerBoundAtMidPoint)
-			return true;
+		if (lowerBoundOfClause == lowerBoundAtMidPoint)
+		{
+			firstMatchingIntervalForBound = midPointIdx;
+			break;
+		}
 
-		if (!midPointIdx)
-			return false;
+		if (lowerBoundOfClause < lowerBoundAtMidPoint)
+		{
+			if (!midPointIdx)
+				return lowerBoundNotFoundResult;
 
-		if (lowerBound < lowerBoundAtMidPoint)
 			largestLowerBoundIdx = midPointIdx - 1;
+		}
 		else
+		{
+			if (midPointIdx == SIZE_MAX)
+				return lowerBoundNotFoundResult;
+
 			smallestLowerBoundIdx = midPointIdx + 1;
+		}
 	}
-	return false;
-}
 
-bool AvlIntervalTreeNode::doesContainUpperBound(long upperBound) const
-{
-	if (upperBoundsSortedDescending.empty())
-		return false;
+	if (!firstMatchingIntervalForBound.has_value())
+		return lowerBoundNotFoundResult;
 
-	if (upperBoundsSortedDescending.size() == 1)
-		return upperBoundsSortedDescending.front().literalBound == upperBound;
-
-	std::size_t largestUpperBoundIdx = 0;
-	std::size_t smallestUpperBoundIdx = upperBoundsSortedDescending.size() - 1;
-	while (largestUpperBoundIdx <= smallestUpperBoundIdx)
-	{
-		std::size_t midPointIdx = (largestUpperBoundIdx + smallestUpperBoundIdx) / 2;
-		const long upperBoundAtMidPoint = upperBoundsSortedDescending.at(midPointIdx).literalBound;
-		if (upperBound == upperBoundAtMidPoint)
-			return true;
-
-		if (!midPointIdx)
-			return false;
-
-		if (upperBound > upperBoundAtMidPoint)
-			smallestUpperBoundIdx = midPointIdx - 1;
-		else
-			largestUpperBoundIdx = midPointIdx + 1;
-	}
-	return false;
-}
-
-
-std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator AvlIntervalTreeNode::findLowerBoundOfClause(std::size_t idxOfClause, long lowerBoundOfClause) const
-{
-	return findBoundOfClause(idxOfClause, lowerBoundOfClause, lowerBoundsSortedAscending);
+	return findPositionOfClauseInMatchingBounds(idxOfClause, std::next(lowerBoundsSortedAscending.cbegin(), *firstMatchingIntervalForBound), lowerBoundsSortedAscending.cbegin(), lowerBoundsSortedAscending.cend());
 }
 
 std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator AvlIntervalTreeNode::findUpperBoundOfClause(std::size_t idxOfClause, long upperBoundOfClause) const
 {
-	return findBoundOfClause(idxOfClause, upperBoundOfClause, upperBoundsSortedDescending);
+	const std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator upperBoundNotFoundResult = upperBoundsSortedDescending.cend();
+	if (upperBoundsSortedDescending.empty())
+		return upperBoundNotFoundResult;
+
+	if (upperBoundsSortedDescending.size() == 1)
+	{
+		if (upperBoundsSortedDescending.front().literalBound == upperBoundOfClause && upperBoundsSortedDescending.front().idxOfReferencedClauseInFormula == idxOfClause)
+			return upperBoundsSortedDescending.cbegin();
+
+		return upperBoundNotFoundResult;
+	}
+
+	std::size_t largestUpperBoundIdx = 0;
+	std::size_t smallestUpperBoundIdx = upperBoundsSortedDescending.size() - 1;
+	std::optional<std::size_t> firstMatchingIntervalForBound;
+
+	while (largestUpperBoundIdx <= smallestUpperBoundIdx)
+	{
+		std::size_t midPointIdx = (largestUpperBoundIdx + smallestUpperBoundIdx) / 2;
+		const long upperBoundAtMidPoint = upperBoundsSortedDescending.at(midPointIdx).literalBound;
+		if (upperBoundOfClause == upperBoundAtMidPoint)
+		{
+			firstMatchingIntervalForBound = midPointIdx;
+			break;
+		}
+
+		if (upperBoundOfClause > upperBoundAtMidPoint)
+		{
+			if (!midPointIdx)
+				return upperBoundNotFoundResult;
+
+			smallestUpperBoundIdx = midPointIdx - 1;
+		}
+		else
+		{
+			if (midPointIdx == SIZE_MAX)
+				return upperBoundNotFoundResult;
+
+			largestUpperBoundIdx = midPointIdx + 1;
+		}
+	}
+
+	if (!firstMatchingIntervalForBound.has_value())
+		return upperBoundNotFoundResult;
+
+	return findPositionOfClauseInMatchingBounds(idxOfClause, std::next(upperBoundsSortedDescending.cbegin(), *firstMatchingIntervalForBound), upperBoundsSortedDescending.cbegin(), upperBoundsSortedDescending.cend());
 }
 
-// TODO: Perform binary search for matching element
-std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator AvlIntervalTreeNode::findBoundOfClause(std::size_t idxOfClause, const long literalBound, const std::vector<LiteralBoundsAndClausePair>& vectorToSearchThrough)
+std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator AvlIntervalTreeNode::findPositionOfClauseInMatchingBounds(std::size_t idxOfClause, const std::vector<LiteralBoundsAndClausePair>::const_iterator& startPositionWithMatchingBound, const std::vector<LiteralBoundsAndClausePair>::const_iterator& lowerBoundOfSearchSpace, const std::vector<LiteralBoundsAndClausePair>::const_iterator& upperBoundOfSearchSpace)
 {
-	return std::find_if(
-		vectorToSearchThrough.cbegin(), 
-		vectorToSearchThrough.cend(), 
-		[idxOfClause, literalBound](const LiteralBoundsAndClausePair& storedLiteralBoundAndClauseData)
-		{
-			return storedLiteralBoundAndClauseData.idxOfReferencedClauseInFormula == idxOfClause && storedLiteralBoundAndClauseData.literalBound == literalBound;
-		}
-	);
+	for (auto searchSpaceBackwardIterator = startPositionWithMatchingBound; searchSpaceBackwardIterator >= lowerBoundOfSearchSpace && searchSpaceBackwardIterator->literalBound == startPositionWithMatchingBound->literalBound;)
+	{
+		if (searchSpaceBackwardIterator->idxOfReferencedClauseInFormula == idxOfClause)
+			return searchSpaceBackwardIterator;
+
+		if (searchSpaceBackwardIterator != lowerBoundOfSearchSpace)
+			--searchSpaceBackwardIterator;
+		else
+			break;
+	}
+
+	if (startPositionWithMatchingBound == upperBoundOfSearchSpace)
+		return upperBoundOfSearchSpace;
+
+	for (auto searchSpaceForwardIterator = std::next(startPositionWithMatchingBound); searchSpaceForwardIterator < upperBoundOfSearchSpace && searchSpaceForwardIterator->literalBound == startPositionWithMatchingBound->literalBound; ++searchSpaceForwardIterator)
+	{
+		if (searchSpaceForwardIterator->idxOfReferencedClauseInFormula == idxOfClause)
+			return searchSpaceForwardIterator;
+	}
+	return upperBoundOfSearchSpace;
 }
