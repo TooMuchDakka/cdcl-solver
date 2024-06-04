@@ -1816,30 +1816,803 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionRequiringRotationsAtMultipleLevels)
 
 TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryForIntervalNotOverlappingAnyNode)
 {
-	GTEST_SKIP();
+	auto avlIntervalTree = std::make_unique<avl::OpaqueAvlIntervalTree>();
+	ASSERT_TRUE(avlIntervalTree);
+
+	constexpr long expectedKeyOfRoot = 0;
+	constexpr std::size_t idxOfClauseFormingRoot = 0;
+	const auto literalBoundsOfClauseFormingRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-10, 10);
+	constexpr std::size_t idxOfSecondClauseInRoot = 1;
+	const auto literalBoundsOfSecondClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 5);
+	constexpr std::size_t idxOfThirdClauseInRoot = 2;
+	const auto literalBoundsOfThirdClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-3, 2);
+	constexpr std::size_t idxOfFourthClauseInRoot = 3;
+	const auto literalBoundsOFourthClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 7);
+
+	constexpr long expectedKeyOfLeftChildOfRoot = -13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRoot = 4;
+	const auto literalBoundsOfClauseFormingLeftChildOFRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-15, -10);
+	constexpr std::size_t idxOfSecondClauseInLeftChildOfRoot = 5;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-17, -13);
+	constexpr std::size_t idxOfThirdClauseInLeftChildOfRoot = 6;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-13, -11);
+
+	constexpr long expectedKeyOfRightChildOfRoot = 24;
+	constexpr std::size_t idxOfClauseFormingRightChildOfRoot = 7;
+	const auto literalBoundsOfClauseFormingRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(20, 28);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfRoot = 8;
+	const auto literalBoundsOfSecondClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(22, 24);
+	constexpr std::size_t idxOfThirdClauseInRightChildOfRoot = 9;
+	const auto literalBoundsOfThirdClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(21, 25);
+
+	constexpr long expectedKeyOfRightChildOfLeftChildOfRoot = -9;
+	constexpr std::size_t idxOfClauseFormingRightChildOfLeftChildOfRoot = 10;
+	const auto literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-10, -8);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfLeftChildOfRoot = 11;
+	const auto literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, -9);
+
+	constexpr long expectedKeyOfLeftChildOfRightChildOfRoot = 13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRightChildOfRoot = 12;
+	const auto literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(12, 14);
+	constexpr std::size_t idxOfSecondClauseFormingLeftChildOfRightChildOfRoot = 13;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(11, 16);
+	constexpr std::size_t idxOfThirdClauseFormingLeftChildOfRightChildOfRoot = 14;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(10, 13);
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRoot, literalBoundsOfSecondClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRoot, literalBoundsOfThirdClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfFourthClauseInRoot, literalBoundsOFourthClauseInRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOFRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInLeftChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInLeftChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfRoot, literalBoundsOfSecondClauseInRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRightChildOfRoot, literalBoundsOfThirdClauseInRightChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfLeftChildOfRoot, literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfLeftChildOfRoot, literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot));
+
+
+	auto expectedRootNode = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRoot);
+	ASSERT_TRUE(expectedRootNode);
+	expectedRootNode->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedRootNode->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.smallestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.smallestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.smallestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.smallestLiteral, idxOfThirdClauseInRoot)
+	};
+	expectedRootNode->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.largestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.largestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.largestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.largestLiteral, idxOfThirdClauseInRoot)
+	};
+
+	auto expectedNodeOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRoot);
+	expectedNodeOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::RIGHT_HEAVY;
+	expectedNodeOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.smallestLiteral, idxOfThirdClauseInLeftChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.largestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.largestLiteral, idxOfThirdClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.largestLiteral, idxOfSecondClauseInLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfLeftChildOfRoot);
+	expectedNodeOfRightChildOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfRightChildOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+	expectedNodeOfRightChildOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfRoot);
+	expectedNodeOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::LEFT_HEAVY;
+	expectedNodeOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.smallestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+	expectedNodeOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.largestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+
+
+	auto expectedNodeOfLeftChildOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRightChildOfRoot);
+	expectedNodeOfLeftChildOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfLeftChildOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot)
+	};
+
+	expectedRootNode->left = expectedNodeOfLeftChildOfRoot;
+	expectedNodeOfLeftChildOfRoot->parent = expectedRootNode;
+	expectedRootNode->right = expectedNodeOfRightChildOfRoot;
+	expectedNodeOfRightChildOfRoot->parent = expectedRootNode;
+
+	expectedNodeOfLeftChildOfRoot->right = expectedNodeOfRightChildOfLeftChildOfRoot;
+	expectedNodeOfRightChildOfLeftChildOfRoot->parent = expectedNodeOfLeftChildOfRoot;
+
+	expectedNodeOfRightChildOfRoot->left = expectedNodeOfLeftChildOfRightChildOfRoot;
+	expectedNodeOfLeftChildOfRightChildOfRoot->parent = expectedNodeOfRightChildOfRoot;
+
+	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
+
+
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralSmallerThanAnyFoundInWholeTree = avlIntervalTree->getOverlappingIntervalsForLiteral(-200);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(EMPTY_CLAUSE_INDICES_RESULT, actualOverlappingClauseIndicesForLiteralSmallerThanAnyFoundInWholeTree));
+
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralNotFoundInAnyNodeInWholeTree = avlIntervalTree->getOverlappingIntervalsForLiteral(17);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(EMPTY_CLAUSE_INDICES_RESULT, actualOverlappingClauseIndicesForLiteralNotFoundInAnyNodeInWholeTree));
+
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralLargerThanAnyFoundInWholeTree = avlIntervalTree->getOverlappingIntervalsForLiteral(200);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(EMPTY_CLAUSE_INDICES_RESULT, actualOverlappingClauseIndicesForLiteralLargerThanAnyFoundInWholeTree));
 }
 
 TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryForIntervalOverlappingOnlyOneNode)
 {
-	GTEST_SKIP();
+	auto avlIntervalTree = std::make_unique<avl::OpaqueAvlIntervalTree>();
+	ASSERT_TRUE(avlIntervalTree);
+
+	constexpr long expectedKeyOfRoot = 1;
+	constexpr std::size_t idxOfClauseFormingRoot = 0;
+	const auto literalBoundsOfClauseFormingRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, 10);
+	constexpr std::size_t idxOfSecondClauseInRoot = 1;
+	const auto literalBoundsOfSecondClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 5);
+	constexpr std::size_t idxOfThirdClauseInRoot = 2;
+	const auto literalBoundsOfThirdClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-3, 2);
+	constexpr std::size_t idxOfFourthClauseInRoot = 3;
+	const auto literalBoundsOFourthClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 7);
+
+	constexpr long expectedKeyOfLeftChildOfRoot = -13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRoot = 4;
+	const auto literalBoundsOfClauseFormingLeftChildOFRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-15, -11);
+	constexpr std::size_t idxOfSecondClauseInLeftChildOfRoot = 5;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-17, -13);
+	constexpr std::size_t idxOfThirdClauseInLeftChildOfRoot = 6;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-13, -11);
+
+	constexpr long expectedKeyOfRightChildOfRoot = 24;
+	constexpr std::size_t idxOfClauseFormingRightChildOfRoot = 7;
+	const auto literalBoundsOfClauseFormingRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(20, 28);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfRoot = 8;
+	const auto literalBoundsOfSecondClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(22, 24);
+	constexpr std::size_t idxOfThirdClauseInRightChildOfRoot = 9;
+	const auto literalBoundsOfThirdClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(21, 25);
+
+	constexpr long expectedKeyOfRightChildOfLeftChildOfRoot = -9;
+	constexpr std::size_t idxOfClauseFormingRightChildOfLeftChildOfRoot = 10;
+	const auto literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-10, -8);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfLeftChildOfRoot = 11;
+	const auto literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, -9);
+
+	constexpr long expectedKeyOfLeftChildOfRightChildOfRoot = 13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRightChildOfRoot = 12;
+	const auto literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(12, 14);
+	constexpr std::size_t idxOfSecondClauseFormingLeftChildOfRightChildOfRoot = 13;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(11, 16);
+	constexpr std::size_t idxOfThirdClauseFormingLeftChildOfRightChildOfRoot = 14;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(10, 13);
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRoot, literalBoundsOfSecondClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRoot, literalBoundsOfThirdClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfFourthClauseInRoot, literalBoundsOFourthClauseInRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOFRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInLeftChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInLeftChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfRoot, literalBoundsOfSecondClauseInRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRightChildOfRoot, literalBoundsOfThirdClauseInRightChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfLeftChildOfRoot, literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfLeftChildOfRoot, literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot));
+
+
+	auto expectedRootNode = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRoot);
+	ASSERT_TRUE(expectedRootNode);
+	expectedRootNode->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedRootNode->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.smallestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.smallestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.smallestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.smallestLiteral, idxOfThirdClauseInRoot)
+	};
+	expectedRootNode->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.largestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.largestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.largestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.largestLiteral, idxOfThirdClauseInRoot)
+	};
+
+	auto expectedNodeOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRoot);
+	expectedNodeOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::RIGHT_HEAVY;
+	expectedNodeOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.smallestLiteral, idxOfThirdClauseInLeftChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.largestLiteral, idxOfThirdClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.largestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.largestLiteral, idxOfSecondClauseInLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfLeftChildOfRoot);
+	expectedNodeOfRightChildOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfRightChildOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+	expectedNodeOfRightChildOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfRoot);
+	expectedNodeOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::LEFT_HEAVY;
+	expectedNodeOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.smallestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+	expectedNodeOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.largestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+
+
+	auto expectedNodeOfLeftChildOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRightChildOfRoot);
+	expectedNodeOfLeftChildOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfLeftChildOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot)
+	};
+
+	expectedRootNode->left = expectedNodeOfLeftChildOfRoot;
+	expectedNodeOfLeftChildOfRoot->parent = expectedRootNode;
+	expectedRootNode->right = expectedNodeOfRightChildOfRoot;
+	expectedNodeOfRightChildOfRoot->parent = expectedRootNode;
+
+	expectedNodeOfLeftChildOfRoot->right = expectedNodeOfRightChildOfLeftChildOfRoot;
+	expectedNodeOfRightChildOfLeftChildOfRoot->parent = expectedNodeOfLeftChildOfRoot;
+
+	expectedNodeOfRightChildOfRoot->left = expectedNodeOfLeftChildOfRightChildOfRoot;
+	expectedNodeOfLeftChildOfRightChildOfRoot->parent = expectedNodeOfRightChildOfRoot;
+
+	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
+
+	const std::vector<std::size_t> expectedOverlappingClauseIndicesForLiteralOnlyFoundInRightChildOfLeftChildOfRoot = { idxOfClauseFormingRightChildOfLeftChildOfRoot };
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralOnlyFoundInRightChildOfLeftChildOfRoot = avlIntervalTree->getOverlappingIntervalsForLiteral(-10);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedOverlappingClauseIndicesForLiteralOnlyFoundInRightChildOfLeftChildOfRoot, actualOverlappingClauseIndicesForLiteralOnlyFoundInRightChildOfLeftChildOfRoot));
+
+	const std::vector<std::size_t> expectedOverlappingClauseIndicesForLiteralOnlyFoundInLeftChildOfRightChildOfRoot = { idxOfSecondClauseFormingLeftChildOfRightChildOfRoot, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot };
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralOnlyFoundInLeftChildOfRightChildOfRoot = avlIntervalTree->getOverlappingIntervalsForLiteral(11);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedOverlappingClauseIndicesForLiteralOnlyFoundInLeftChildOfRightChildOfRoot, actualOverlappingClauseIndicesForLiteralOnlyFoundInLeftChildOfRightChildOfRoot));
+
+	const std::vector<std::size_t> expectedOverlappingClauseIndicesForLiteralOnlyFoundInRoot = { idxOfClauseFormingRoot, idxOfFourthClauseInRoot, idxOfSecondClauseInRoot, idxOfThirdClauseInRoot };
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralOnlyFoundInRoot = avlIntervalTree->getOverlappingIntervalsForLiteral(2);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedOverlappingClauseIndicesForLiteralOnlyFoundInRoot, actualOverlappingClauseIndicesForLiteralOnlyFoundInRoot));
+
 }
 
-TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryForIntervalOverlappingNodeAndItsRightChild)
+TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryForIntervalOverlappingNodeAndOneOfItsRightChildren)
 {
-	GTEST_SKIP();
+	auto avlIntervalTree = std::make_unique<avl::OpaqueAvlIntervalTree>();
+	ASSERT_TRUE(avlIntervalTree);
+
+	constexpr long expectedKeyOfRoot = 3;
+	constexpr std::size_t idxOfClauseFormingRoot = 0;
+	const auto literalBoundsOfClauseFormingRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, 15);
+	constexpr std::size_t idxOfSecondClauseInRoot = 1;
+	const auto literalBoundsOfSecondClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 5);
+	constexpr std::size_t idxOfThirdClauseInRoot = 2;
+	const auto literalBoundsOfThirdClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-3, 3);
+	constexpr std::size_t idxOfFourthClauseInRoot = 3;
+	const auto literalBoundsOFourthClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 7);
+
+	constexpr long expectedKeyOfLeftChildOfRoot = -13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRoot = 4;
+	const auto literalBoundsOfClauseFormingLeftChildOFRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-15, -11);
+	constexpr std::size_t idxOfSecondClauseInLeftChildOfRoot = 5;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-17, -13);
+	constexpr std::size_t idxOfThirdClauseInLeftChildOfRoot = 6;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-13, -11);
+
+	constexpr long expectedKeyOfRightChildOfRoot = 24;
+	constexpr std::size_t idxOfClauseFormingRightChildOfRoot = 7;
+	const auto literalBoundsOfClauseFormingRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(20, 28);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfRoot = 8;
+	const auto literalBoundsOfSecondClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(22, 24);
+	constexpr std::size_t idxOfThirdClauseInRightChildOfRoot = 9;
+	const auto literalBoundsOfThirdClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(21, 25);
+
+	constexpr long expectedKeyOfRightChildOfLeftChildOfRoot = -9;
+	constexpr std::size_t idxOfClauseFormingRightChildOfLeftChildOfRoot = 10;
+	const auto literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-10, -8);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfLeftChildOfRoot = 11;
+	const auto literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, -9);
+
+	constexpr long expectedKeyOfLeftChildOfRightChildOfRoot = 13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRightChildOfRoot = 12;
+	const auto literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(12, 14);
+	constexpr std::size_t idxOfSecondClauseFormingLeftChildOfRightChildOfRoot = 13;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(11, 16);
+	constexpr std::size_t idxOfThirdClauseFormingLeftChildOfRightChildOfRoot = 14;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(10, 13);
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRoot, literalBoundsOfSecondClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRoot, literalBoundsOfThirdClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfFourthClauseInRoot, literalBoundsOFourthClauseInRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOFRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInLeftChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInLeftChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfRoot, literalBoundsOfSecondClauseInRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRightChildOfRoot, literalBoundsOfThirdClauseInRightChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfLeftChildOfRoot, literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfLeftChildOfRoot, literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot));
+
+
+	auto expectedRootNode = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRoot);
+	ASSERT_TRUE(expectedRootNode);
+	expectedRootNode->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedRootNode->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.smallestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.smallestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.smallestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.smallestLiteral, idxOfThirdClauseInRoot)
+	};
+	expectedRootNode->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.largestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.largestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.largestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.largestLiteral, idxOfThirdClauseInRoot)
+	};
+
+	auto expectedNodeOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRoot);
+	expectedNodeOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::RIGHT_HEAVY;
+	expectedNodeOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.smallestLiteral, idxOfThirdClauseInLeftChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.largestLiteral, idxOfThirdClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.largestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.largestLiteral, idxOfSecondClauseInLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfLeftChildOfRoot);
+	expectedNodeOfRightChildOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfRightChildOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+	expectedNodeOfRightChildOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfRoot);
+	expectedNodeOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::LEFT_HEAVY;
+	expectedNodeOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.smallestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+	expectedNodeOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.largestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+
+
+	auto expectedNodeOfLeftChildOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRightChildOfRoot);
+	expectedNodeOfLeftChildOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfLeftChildOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot)
+	};
+
+	expectedRootNode->left = expectedNodeOfLeftChildOfRoot;
+	expectedNodeOfLeftChildOfRoot->parent = expectedRootNode;
+	expectedRootNode->right = expectedNodeOfRightChildOfRoot;
+	expectedNodeOfRightChildOfRoot->parent = expectedRootNode;
+
+	expectedNodeOfLeftChildOfRoot->right = expectedNodeOfRightChildOfLeftChildOfRoot;
+	expectedNodeOfRightChildOfLeftChildOfRoot->parent = expectedNodeOfLeftChildOfRoot;
+
+	expectedNodeOfRightChildOfRoot->left = expectedNodeOfLeftChildOfRightChildOfRoot;
+	expectedNodeOfLeftChildOfRightChildOfRoot->parent = expectedNodeOfRightChildOfRoot;
+
+	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
+
+	const std::vector<std::size_t> expectedOverlappingClauseIndicesForLiteralOnlyInRootAndLeftChildOfRightChildOfRoot = { idxOfClauseFormingRoot, idxOfClauseFormingLeftChildOfRightChildOfRoot, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot };
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralOnlyInRootAndLeftChildOfRightChildOfRoot = avlIntervalTree->getOverlappingIntervalsForLiteral(14);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedOverlappingClauseIndicesForLiteralOnlyInRootAndLeftChildOfRightChildOfRoot, actualOverlappingClauseIndicesForLiteralOnlyInRootAndLeftChildOfRightChildOfRoot));
 }
 
-TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryForIntervalOverlappingNodeAndItsLeftChild)
+TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryForIntervalOverlappingNodeAndOneOfItsLeftChildren)
 {
-	GTEST_SKIP();
+	auto avlIntervalTree = std::make_unique<avl::OpaqueAvlIntervalTree>();
+	ASSERT_TRUE(avlIntervalTree);
+
+	constexpr long expectedKeyOfRoot = 1;
+	constexpr std::size_t idxOfClauseFormingRoot = 0;
+	const auto literalBoundsOfClauseFormingRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, 10);
+	constexpr std::size_t idxOfSecondClauseInRoot = 1;
+	const auto literalBoundsOfSecondClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 5);
+	constexpr std::size_t idxOfThirdClauseInRoot = 2;
+	const auto literalBoundsOfThirdClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-3, 2);
+	constexpr std::size_t idxOfFourthClauseInRoot = 3;
+	const auto literalBoundsOFourthClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 7);
+
+	constexpr long expectedKeyOfLeftChildOfRoot = -13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRoot = 4;
+	const auto literalBoundsOfClauseFormingLeftChildOFRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-15, -11);
+	constexpr std::size_t idxOfSecondClauseInLeftChildOfRoot = 5;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-17, -13);
+	constexpr std::size_t idxOfThirdClauseInLeftChildOfRoot = 6;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-13, -11);
+
+	constexpr long expectedKeyOfRightChildOfRoot = 24;
+	constexpr std::size_t idxOfClauseFormingRightChildOfRoot = 7;
+	const auto literalBoundsOfClauseFormingRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(20, 28);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfRoot = 8;
+	const auto literalBoundsOfSecondClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(22, 24);
+	constexpr std::size_t idxOfThirdClauseInRightChildOfRoot = 9;
+	const auto literalBoundsOfThirdClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(21, 25);
+
+	constexpr long expectedKeyOfRightChildOfLeftChildOfRoot = -9;
+	constexpr std::size_t idxOfClauseFormingRightChildOfLeftChildOfRoot = 10;
+	const auto literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-10, -8);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfLeftChildOfRoot = 11;
+	const auto literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, -9);
+
+	constexpr long expectedKeyOfLeftChildOfRightChildOfRoot = 13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRightChildOfRoot = 12;
+	const auto literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(12, 14);
+	constexpr std::size_t idxOfSecondClauseFormingLeftChildOfRightChildOfRoot = 13;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(11, 16);
+	constexpr std::size_t idxOfThirdClauseFormingLeftChildOfRightChildOfRoot = 14;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(10, 13);
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRoot, literalBoundsOfSecondClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRoot, literalBoundsOfThirdClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfFourthClauseInRoot, literalBoundsOFourthClauseInRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOFRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInLeftChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInLeftChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfRoot, literalBoundsOfSecondClauseInRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRightChildOfRoot, literalBoundsOfThirdClauseInRightChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfLeftChildOfRoot, literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfLeftChildOfRoot, literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot));
+
+
+	auto expectedRootNode = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRoot);
+	ASSERT_TRUE(expectedRootNode);
+	expectedRootNode->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedRootNode->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.smallestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.smallestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.smallestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.smallestLiteral, idxOfThirdClauseInRoot)
+	};
+	expectedRootNode->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.largestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.largestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.largestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.largestLiteral, idxOfThirdClauseInRoot)
+	};
+
+	auto expectedNodeOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRoot);
+	expectedNodeOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::RIGHT_HEAVY;
+	expectedNodeOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.smallestLiteral, idxOfThirdClauseInLeftChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.largestLiteral, idxOfThirdClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.largestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.largestLiteral, idxOfSecondClauseInLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfLeftChildOfRoot);
+	expectedNodeOfRightChildOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfRightChildOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+	expectedNodeOfRightChildOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfRoot);
+	expectedNodeOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::LEFT_HEAVY;
+	expectedNodeOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.smallestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+	expectedNodeOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.largestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+
+
+	auto expectedNodeOfLeftChildOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRightChildOfRoot);
+	expectedNodeOfLeftChildOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfLeftChildOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot)
+	};
+
+	expectedRootNode->left = expectedNodeOfLeftChildOfRoot;
+	expectedNodeOfLeftChildOfRoot->parent = expectedRootNode;
+	expectedRootNode->right = expectedNodeOfRightChildOfRoot;
+	expectedNodeOfRightChildOfRoot->parent = expectedRootNode;
+
+	expectedNodeOfLeftChildOfRoot->right = expectedNodeOfRightChildOfLeftChildOfRoot;
+	expectedNodeOfRightChildOfLeftChildOfRoot->parent = expectedNodeOfLeftChildOfRoot;
+
+	expectedNodeOfRightChildOfRoot->left = expectedNodeOfLeftChildOfRightChildOfRoot;
+	expectedNodeOfLeftChildOfRightChildOfRoot->parent = expectedNodeOfRightChildOfRoot;
+
+	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
+
+	const std::vector<std::size_t> expectedOverlappingClauseIndicesForLiteralFoundInRootAndRightChildOfLeftChildOfRoot = { idxOfClauseFormingRoot, idxOfClauseFormingRightChildOfLeftChildOfRoot, idxOfSecondClauseInRightChildOfLeftChildOfRoot };
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralFoundInRootAndRightChildOfLeftChildOfRoot = avlIntervalTree->getOverlappingIntervalsForLiteral(-9);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedOverlappingClauseIndicesForLiteralFoundInRootAndRightChildOfLeftChildOfRoot, actualOverlappingClauseIndicesForLiteralFoundInRootAndRightChildOfLeftChildOfRoot));
+
 }
 
 TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryInEmptyTree)
 {
-	GTEST_SKIP();
+	auto avlIntervalTree = std::make_unique<avl::OpaqueAvlIntervalTree>();
+	ASSERT_TRUE(avlIntervalTree);
+	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(nullptr, avlIntervalTree->getRootNode()));
+
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralsNotFoundInWholeTree = avlIntervalTree->getOverlappingIntervalsForLiteral(-9);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(EMPTY_CLAUSE_INDICES_RESULT, actualOverlappingClauseIndicesForLiteralsNotFoundInWholeTree));
+
 }
 
 TEST_F(AvlIntervalTreeTestsFixture, PerformStabbingQueryForIntervalMatchingMultipleNodeConnectedViaMultipleLevels)
 {
-	GTEST_SKIP();
+	auto avlIntervalTree = std::make_unique<avl::OpaqueAvlIntervalTree>();
+	ASSERT_TRUE(avlIntervalTree);
+
+	constexpr long expectedKeyOfRoot = 0;
+	constexpr std::size_t idxOfClauseFormingRoot = 0;
+	const auto literalBoundsOfClauseFormingRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-10, 10);
+	constexpr std::size_t idxOfSecondClauseInRoot = 1;
+	const auto literalBoundsOfSecondClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 5);
+	constexpr std::size_t idxOfThirdClauseInRoot = 2;
+	const auto literalBoundsOfThirdClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-3, 2);
+	constexpr std::size_t idxOfFourthClauseInRoot = 3;
+	const auto literalBoundsOFourthClauseInRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-8, 7);
+
+	constexpr long expectedKeyOfLeftChildOfRoot = -13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRoot = 4;
+	const auto literalBoundsOfClauseFormingLeftChildOFRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-15, -10);
+	constexpr std::size_t idxOfSecondClauseInLeftChildOfRoot = 5;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-17, -13);
+	constexpr std::size_t idxOfThirdClauseInLeftChildOfRoot = 6;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-13, -11);
+
+	constexpr long expectedKeyOfRightChildOfRoot = 24;
+	constexpr std::size_t idxOfClauseFormingRightChildOfRoot = 7;
+	const auto literalBoundsOfClauseFormingRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(20, 28);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfRoot = 8;
+	const auto literalBoundsOfSecondClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(22, 24);
+	constexpr std::size_t idxOfThirdClauseInRightChildOfRoot = 9;
+	const auto literalBoundsOfThirdClauseInRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(21, 25);
+
+	constexpr long expectedKeyOfRightChildOfLeftChildOfRoot = -9;
+	constexpr std::size_t idxOfClauseFormingRightChildOfLeftChildOfRoot = 10;
+	const auto literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-10, -8);
+	constexpr std::size_t idxOfSecondClauseInRightChildOfLeftChildOfRoot = 11;
+	const auto literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(-9, -9);
+
+	constexpr long expectedKeyOfLeftChildOfRightChildOfRoot = 13;
+	constexpr std::size_t idxOfClauseFormingLeftChildOfRightChildOfRoot = 12;
+	const auto literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(12, 14);
+	constexpr std::size_t idxOfSecondClauseFormingLeftChildOfRightChildOfRoot = 13;
+	const auto literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(11, 16);
+	constexpr std::size_t idxOfThirdClauseFormingLeftChildOfRightChildOfRoot = 14;
+	const auto literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot = dimacs::ProblemDefinition::Clause::LiteralBounds(10, 13);
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRoot, literalBoundsOfSecondClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRoot, literalBoundsOfThirdClauseInRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfFourthClauseInRoot, literalBoundsOFourthClauseInRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOFRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInLeftChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInLeftChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfRoot, literalBoundsOfSecondClauseInRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseInRightChildOfRoot, literalBoundsOfThirdClauseInRightChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingRightChildOfLeftChildOfRoot, literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseInRightChildOfLeftChildOfRoot, literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot));
+
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfSecondClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot));
+	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfThirdClauseFormingLeftChildOfRightChildOfRoot, literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot));
+
+
+	auto expectedRootNode = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRoot);
+	ASSERT_TRUE(expectedRootNode);
+	expectedRootNode->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedRootNode->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.smallestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.smallestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.smallestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.smallestLiteral, idxOfThirdClauseInRoot)
+	};
+	expectedRootNode->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRoot.largestLiteral, idxOfClauseFormingRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOFourthClauseInRoot.largestLiteral, idxOfFourthClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRoot.largestLiteral, idxOfSecondClauseInRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRoot.largestLiteral, idxOfThirdClauseInRoot)
+	};
+
+	auto expectedNodeOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRoot);
+	expectedNodeOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::RIGHT_HEAVY;
+	expectedNodeOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.smallestLiteral, idxOfThirdClauseInLeftChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOFRoot.largestLiteral, idxOfClauseFormingLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRoot.largestLiteral, idxOfThirdClauseInLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRoot.largestLiteral, idxOfSecondClauseInLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfLeftChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfLeftChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfLeftChildOfRoot);
+	expectedNodeOfRightChildOfLeftChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfRightChildOfLeftChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+	expectedNodeOfRightChildOfLeftChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfLeftChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfLeftChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfLeftChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfLeftChildOfRoot)
+	};
+
+	auto expectedNodeOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfRightChildOfRoot);
+	expectedNodeOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::LEFT_HEAVY;
+	expectedNodeOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.smallestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.smallestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.smallestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+	expectedNodeOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingRightChildOfRoot.largestLiteral, idxOfClauseFormingRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseInRightChildOfRoot.largestLiteral, idxOfThirdClauseInRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseInRightChildOfRoot.largestLiteral, idxOfSecondClauseInRightChildOfRoot)
+	};
+
+
+	auto expectedNodeOfLeftChildOfRightChildOfRoot = std::make_shared<avl::AvlIntervalTreeNode>(expectedKeyOfLeftChildOfRightChildOfRoot);
+	ASSERT_TRUE(expectedNodeOfLeftChildOfRightChildOfRoot);
+	expectedNodeOfLeftChildOfRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
+	expectedNodeOfLeftChildOfRightChildOfRoot->lowerBoundsSortedAscending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot)
+	};
+	expectedNodeOfLeftChildOfRightChildOfRoot->upperBoundsSortedDescending = {
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfSecondClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfClauseFormingLeftChildOfRightChildOfRoot),
+		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseFormingLeftChildOfRightChildOfRoot.largestLiteral, idxOfThirdClauseFormingLeftChildOfRightChildOfRoot)
+	};
+
+	expectedRootNode->left = expectedNodeOfLeftChildOfRoot;
+	expectedNodeOfLeftChildOfRoot->parent = expectedRootNode;
+	expectedRootNode->right = expectedNodeOfRightChildOfRoot;
+	expectedNodeOfRightChildOfRoot->parent = expectedRootNode;
+
+	expectedNodeOfLeftChildOfRoot->right = expectedNodeOfRightChildOfLeftChildOfRoot;
+	expectedNodeOfRightChildOfLeftChildOfRoot->parent = expectedNodeOfLeftChildOfRoot;
+
+	expectedNodeOfRightChildOfRoot->left = expectedNodeOfLeftChildOfRightChildOfRoot;
+	expectedNodeOfLeftChildOfRightChildOfRoot->parent = expectedNodeOfRightChildOfRoot;
+
+	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
+
+	const std::vector<std::size_t> expectedOverlappingClauseIndicesForLiteralFoundInCompleteLeftSideOfTree = { idxOfClauseFormingRoot, idxOfClauseFormingLeftChildOfRoot, idxOfClauseFormingRightChildOfLeftChildOfRoot };
+	const std::vector<std::size_t> actualOverlappingClauseIndicesForLiteralFoundInCompleteLeftSideOfTree = avlIntervalTree->getOverlappingIntervalsForLiteral(-10);
+	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedOverlappingClauseIndicesForLiteralFoundInCompleteLeftSideOfTree, actualOverlappingClauseIndicesForLiteralFoundInCompleteLeftSideOfTree));
+
 }
