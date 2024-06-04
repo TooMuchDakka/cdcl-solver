@@ -170,10 +170,12 @@ std::optional<long> AvlIntervalTreeNode::getSmallestLowerBound() const
 
 bool AvlIntervalTreeNode::doesClauseIntersect(const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const
 {
-	const bool doLiteralBoundsLieInCoveredRangeOfNode = !(literalBounds.largestLiteral < getSmallestLowerBound().value_or(key) || literalBounds.smallestLiteral > getLargestUpperBound().value_or(key));
-	if (literalBounds.smallestLiteral != literalBounds.largestLiteral)
-		return doLiteralBoundsLieInCoveredRangeOfNode && literalBounds.smallestLiteral <= key && key <= literalBounds.largestLiteral;
-	return doLiteralBoundsLieInCoveredRangeOfNode;
+	return !(literalBounds.largestLiteral < getSmallestLowerBound().value_or(key) || literalBounds.smallestLiteral > getLargestUpperBound().value_or(key));
+}
+
+bool AvlIntervalTreeNode::isKeyContainedInInterval(const dimacs::ProblemDefinition::Clause::LiteralBounds& intervalBounds) const
+{
+	return intervalBounds.smallestLiteral <= key && key <= intervalBounds.largestLiteral;
 }
 
 bool AvlIntervalTreeNode::doesNodeStoreAnyInterval() const
@@ -187,9 +189,8 @@ bool AvlIntervalTreeNode::doesNodeStoreAnyInterval() const
 long AvlIntervalTreeNode::determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds)
 {
 	if (const long literalBoundsSum = literalBounds.largestLiteral + literalBounds.smallestLiteral)
-	{
 		return static_cast<long>(std::round(literalBoundsSum / static_cast<double>(2)));
-	}
+
 	return 0;
 }
 

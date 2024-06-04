@@ -27,14 +27,14 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIdxInFormula, const dimacs:
 	AvlIntervalTreeNode::ptr traversalNode = root;
 	while (traversalNode)
 	{
-		if (traversalNode->doesClauseIntersect(literalBounds))
+		if (traversalNode->doesClauseIntersect(literalBounds) && traversalNode->isKeyContainedInInterval(literalBounds))
 		{
 			traversalNode->insertLowerBound(AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBounds.smallestLiteral, clauseIdxInFormula));
 			traversalNode->insertUpperBound(AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBounds.largestLiteral, clauseIdxInFormula));
 			return true;
 		}
 
-		if (newTreeNode->key < traversalNode->key)
+		if (literalBounds.largestLiteral < traversalNode->key)
 		{
 			if (traversalNode->left)
 			{
@@ -510,22 +510,21 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::findNodeWithKey(long key) const
 //}
 
 // BEGIN NON-PUBLIC FUNCTIONALITY
-std::optional<AvlIntervalTreeNode::ptr> AvlIntervalTree::findNodeContainingLiteralBoundsOfClause(const avl::AvlIntervalTreeNode::ptr& searchStartingPositionInTree, std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds)
+std::optional<AvlIntervalTreeNode::ptr> AvlIntervalTree::findNodeContainingLiteralBoundsOfClause(const AvlIntervalTreeNode::ptr& searchStartingPositionInTree, std::size_t clauseIdxInFormula, const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds)
 {
 	if (!searchStartingPositionInTree)
 		return std::nullopt;
 
-	AvlIntervalTreeNode::ptr traversalNode = searchStartingPositionInTree;
-	if (traversalNode->doesClauseIntersect(literalBounds))
-	{
-		if (traversalNode->doesNodeContainMatchingLiteralBoundsForClause(clauseIdxInFormula, literalBounds))
-			return traversalNode;
-	}
+	const AvlIntervalTreeNode::ptr& traversalNode = searchStartingPositionInTree;
+	std::optional<AvlIntervalTreeNode::ptr> matchingNodeForLiteralBounds = traversalNode->doesClauseIntersect(literalBounds) && traversalNode->doesNodeContainMatchingLiteralBoundsForClause(clauseIdxInFormula, literalBounds) ? std::make_optional(traversalNode) : std::nullopt;
 
-	if (const std::optional<AvlIntervalTreeNode::ptr>& matchingNodeInLeftSubtree = findNodeContainingLiteralBoundsOfClause(traversalNode->left, clauseIdxInFormula, literalBounds); matchingNodeInLeftSubtree.has_value())
-		return matchingNodeInLeftSubtree;
+	if (!matchingNodeForLiteralBounds.has_value() && literalBounds.smallestLiteral < traversalNode->key)
+		matchingNodeForLiteralBounds = findNodeContainingLiteralBoundsOfClause(traversalNode->left, clauseIdxInFormula, literalBounds);
 
-	return findNodeContainingLiteralBoundsOfClause(traversalNode->right, clauseIdxInFormula, literalBounds);
+	if (!matchingNodeForLiteralBounds.has_value() && literalBounds.largestLiteral > traversalNode->key)
+		matchingNodeForLiteralBounds = findNodeContainingLiteralBoundsOfClause(traversalNode->right, clauseIdxInFormula, literalBounds);
+
+	return matchingNodeForLiteralBounds;
 }
 
 AvlIntervalTreeNode::ptr AvlIntervalTree::rotateLeft(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& rightChild)

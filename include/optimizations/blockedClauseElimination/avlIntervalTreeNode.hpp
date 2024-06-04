@@ -58,6 +58,7 @@ namespace avl {
 		[[nodiscard]] std::optional<long> getLargestUpperBound() const;
 		[[nodiscard]] std::optional<long> getSmallestLowerBound() const;
 		[[nodiscard]] bool doesClauseIntersect(const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const;
+		[[nodiscard]] bool isKeyContainedInInterval(const dimacs::ProblemDefinition::Clause::LiteralBounds& intervalBounds) const;
 		[[nodiscard]] bool doesNodeStoreAnyInterval() const;
 		[[nodiscard]] static long determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds);
 		static void substituteNodeButKeepKey(const AvlIntervalTreeNode& toBeReplacedNode, const AvlIntervalTreeNode::ptr& substituteForNode);
