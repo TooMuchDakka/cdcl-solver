@@ -68,7 +68,7 @@ void AvlIntervalTreeNode::insertLowerBound(const LiteralBoundsAndClausePair& low
 	if (currLargestLowerBoundIdx == lowerBoundsSortedAscending.size())
 		lowerBoundsSortedAscending.push_back(lowerBoundsAndReferencedClauseData);
 	else
-		lowerBoundsSortedAscending.insert(std::next(lowerBoundsSortedAscending.cbegin(), currLargestLowerBoundIdx), lowerBoundsAndReferencedClauseData);
+		lowerBoundsSortedAscending.insert(std::next(lowerBoundsSortedAscending.cbegin(), currLargestLowerBoundIdx + 1), lowerBoundsAndReferencedClauseData);
 }
 
 void AvlIntervalTreeNode::insertUpperBound(const LiteralBoundsAndClausePair& upperBoundsAndReferencedClauseData)
@@ -102,8 +102,10 @@ void AvlIntervalTreeNode::insertUpperBound(const LiteralBoundsAndClausePair& upp
 		}
 	}
 
-	const std::size_t insertPosition = currLargestUpperBoundIdx ? currLargestUpperBoundIdx - 1 : 0;
+	/*const std::size_t insertPosition = currLargestUpperBoundIdx ? currLargestUpperBoundIdx - 1 : 0;
 	if (insertPosition == upperBoundsSortedDescending.size())
+		upperBoundsSortedDescending.push_back(upperBoundsAndReferencedClauseData);*/
+	if (currLargestUpperBoundIdx == upperBoundsSortedDescending.size())
 		upperBoundsSortedDescending.push_back(upperBoundsAndReferencedClauseData);
 	else
 		upperBoundsSortedDescending.insert(std::next(upperBoundsSortedDescending.cbegin(), currLargestUpperBoundIdx), upperBoundsAndReferencedClauseData);
