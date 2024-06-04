@@ -565,17 +565,17 @@ TEST_F(AvlIntervalTreeTestsFixture, MultipleRotations)
 	ASSERT_TRUE(avlIntervalTree);
 
 	// Insertion order: m, n, o, l, k , q, p , h , i, a
-	constexpr long aNodeKey = -1;
+	constexpr long aNodeKey = -3;
 	constexpr std::size_t idxOfClauseForANode = 9;
-	const auto aNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(-2, 1);
+	const auto aNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(-4, -2);
 
-	constexpr long hNodeKey = 4;
+	constexpr long hNodeKey = 0;
 	constexpr std::size_t idxOfClauseForHNode = 7;
-	const auto hNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(3, 4);
+	const auto hNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(-1, 1);
 
-	constexpr long iNodeKey = 5;
+	constexpr long iNodeKey = 2;
 	constexpr std::size_t idxOfClauseForINode = 8;
-	const auto iNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(4, 5);
+	const auto iNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(1, 2);
 
 	constexpr long lNodeKey = 7;
 	constexpr std::size_t idxOfClauseForLNode = 3;
@@ -593,17 +593,17 @@ TEST_F(AvlIntervalTreeTestsFixture, MultipleRotations)
 	constexpr std::size_t idxOfClauseForNNode = 1;
 	const auto nNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(12, 14);
 
-	constexpr long oNodeKey = 15;
+	constexpr long oNodeKey = 16;
 	constexpr std::size_t idxOfClauseForONode = 2;
-	const auto oNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(14, 15);
+	const auto oNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(14, 17);
 
-	constexpr long pNodeKey = 16;
+	constexpr long pNodeKey = 18;
 	constexpr std::size_t idxOfClauseForPNode = 6;
-	const auto pNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(15, 16);
+	const auto pNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(17, 18);
 
-	constexpr long qNodeKey = 19;
+	constexpr long qNodeKey = 20;
 	constexpr std::size_t idxOfClauseForQNode = 5;
-	const auto qNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(18, 20);
+	const auto qNodeLiteralBounds = dimacs::ProblemDefinition::Clause::LiteralBounds(19, 20);
 
 	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseForMNode, mNodeLiteralBounds));
 	ASSERT_TRUE(avlIntervalTree->insertClause(idxOfClauseForNNode, nNodeLiteralBounds));
@@ -669,8 +669,8 @@ TEST_F(AvlIntervalTreeTestsFixture, MultipleRotations)
 	ASSERT_TRUE(expectedONode);
 	expectedONode->key = oNodeKey;
 	expectedONode->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
-	expectedONode->lowerBoundsSortedAscending = { avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(mNodeLiteralBounds.smallestLiteral, idxOfClauseForONode) };
-	expectedONode->upperBoundsSortedDescending = { avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(mNodeLiteralBounds.largestLiteral, idxOfClauseForONode) };
+	expectedONode->lowerBoundsSortedAscending = { avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(oNodeLiteralBounds.smallestLiteral, idxOfClauseForONode) };
+	expectedONode->upperBoundsSortedDescending = { avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(oNodeLiteralBounds.largestLiteral, idxOfClauseForONode) };
 
 	auto expectedPNode = std::make_shared<avl::AvlIntervalTreeNode>(pNodeKey);
 	ASSERT_TRUE(expectedPNode);
@@ -707,19 +707,19 @@ TEST_F(AvlIntervalTreeTestsFixture, MultipleRotations)
 
 	expectedPNode->left = expectedONode;
 	expectedPNode->right = expectedQNode;
-	expectedPNode->parent = expectedINode;
+	expectedPNode->parent = expectedNNode;
 
 	expectedONode->parent = expectedPNode;
 	expectedQNode->parent = expectedPNode;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedNNode, avlIntervalTree->getRootNode()));
 
-	constexpr long literalOverlappingIAndLAndKNode = 5;
-	const std::vector<std::size_t> expectedIndicesClausesOfLiteralOverlappingMultipleNodes = { idxOfClauseForINode, idxOfClauseForKNode, idxOfClauseForLNode };
-	const std::vector<std::size_t> actualIndicesOfClausesOfLiteralOverlappingMultipleNodes = avlIntervalTree->getOverlappingIntervalsForLiteral(literalOverlappingIAndLAndKNode);
+	constexpr long literalOverlappingLAndKNode = 5;
+	const std::vector<std::size_t> expectedIndicesClausesOfLiteralOverlappingMultipleNodes = { idxOfClauseForKNode, idxOfClauseForLNode };
+	const std::vector<std::size_t> actualIndicesOfClausesOfLiteralOverlappingMultipleNodes = avlIntervalTree->getOverlappingIntervalsForLiteral(literalOverlappingLAndKNode);
 	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedIndicesClausesOfLiteralOverlappingMultipleNodes, actualIndicesOfClausesOfLiteralOverlappingMultipleNodes));
 
-	constexpr long literalOverlappingOnlyANode = 1;
+	constexpr long literalOverlappingOnlyANode = -3;
 	const std::vector<std::size_t> expectedIndicesOfClausesOfLiteralOverlappingOnlyLeftmostNodeAfterRotation = { idxOfClauseForANode };
 	const std::vector<std::size_t>  actualIndicesOfClausesOfLiteralOverlappingOnlyLeftmostNodeAfterRotation = avlIntervalTree->getOverlappingIntervalsForLiteral(literalOverlappingOnlyANode);
 	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedIndicesOfClausesOfLiteralOverlappingOnlyLeftmostNodeAfterRotation, actualIndicesOfClausesOfLiteralOverlappingOnlyLeftmostNodeAfterRotation));
@@ -728,7 +728,7 @@ TEST_F(AvlIntervalTreeTestsFixture, MultipleRotations)
 	const std::vector<std::size_t> actualIndicesOfClausesForLiteralOverlappingNoNodes = avlIntervalTree->getOverlappingIntervalsForLiteral(literalOverlappingNoNode);
 	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(EMPTY_CLAUSE_INDICES_RESULT, actualIndicesOfClausesForLiteralOverlappingNoNodes));
 
-	constexpr long literalOverlappingPAndONode = 15;
+	constexpr long literalOverlappingPAndONode = 17;
 	const std::vector<std::size_t> expectedIndicesOfClausesOfLiteralOverlappingMultipleNodesInRightSubtreeAfterRotation = { idxOfClauseForONode, idxOfClauseForPNode };
 	const std::vector<std::size_t> actualIndicesOfClausesOfLiteralOverlappingMultipleNodesInRightSubtreeAfterRotation = avlIntervalTree->getOverlappingIntervalsForLiteral(literalOverlappingPAndONode);
 	ASSERT_NO_FATAL_FAILURE(assertThatClauseIndicesOfOverlappingIntervalsMatch(expectedIndicesOfClausesOfLiteralOverlappingMultipleNodesInRightSubtreeAfterRotation, actualIndicesOfClausesOfLiteralOverlappingMultipleNodesInRightSubtreeAfterRotation));
@@ -767,7 +767,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeleteIntervalInNodeWithMultipleIntervalsDoe
 	};
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
 
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfFirstClauseToInsert, literalBoundsOfFirstClauseToInsert));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfFirstClauseToInsert, literalBoundsOfFirstClauseToInsert));
 	expectedRootNode->lowerBoundsSortedAscending = {
 		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfSecondClauseToInsert.smallestLiteral, idxOfSecondClauseToInsert),
 		avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfThirdClauseToInsert.smallestLiteral, idxOfThirdClauseToInsert)
@@ -817,17 +817,17 @@ TEST_F(AvlIntervalTreeTestsFixture, DeleteLastIntervalInNodeCausesDeletionOfNode
 	expectedRootNode->left = expectedLeftNodeOfRoot;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseOverlappingLeftChildOfRoot, literalBoundsOfClauseOverlappingLeftChildOfRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseOverlappingLeftChildOfRoot, literalBoundsOfClauseOverlappingLeftChildOfRoot));
 	expectedLeftNodeOfRoot->lowerBoundsSortedAscending = { avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRoot.smallestLiteral, idxOfClauseFormingLeftChildOfRoot) };
 	expectedLeftNodeOfRoot->upperBoundsSortedDescending = { avl::AvlIntervalTreeNode::LiteralBoundsAndClausePair(literalBoundsOfClauseFormingLeftChildOfRoot.largestLiteral, idxOfClauseFormingLeftChildOfRoot) };
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
 
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRoot));
 	expectedRootNode->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
 	expectedRootNode->left = nullptr;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
 	expectedRootNode = nullptr;
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
 }
@@ -892,7 +892,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionOfRootNode)
 	expectedRightChildOfRoot->right = expectedRightGrandChildOfRoot;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRoot, literalBoundsOfClauseFormingRoot));
 
 	expectedInorderSuccessorOfRoot->parent = nullptr;
 	expectedInorderSuccessorOfRoot->left = expectedLeftChildOfRoot;
@@ -935,9 +935,9 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionOfNotExistingInterval)
 
 	const long missmatchingIntervalLowerBound = literalBoundsOfClauseFormingRoot.smallestLiteral - 1;
 	const long missmatchingIntervalUpperBound = literalBoundsOfClauseFormingRoot.largestLiteral - 1;
-	ASSERT_FALSE(avlIntervalTree->removeClause(idxOfClauseFormingRoot, dimacs::ProblemDefinition::Clause::LiteralBounds(missmatchingIntervalLowerBound, missmatchingIntervalLowerBound)));
-	ASSERT_FALSE(avlIntervalTree->removeClause(idxOfClauseFormingRoot, dimacs::ProblemDefinition::Clause::LiteralBounds(missmatchingIntervalUpperBound, missmatchingIntervalUpperBound)));
-	ASSERT_FALSE(avlIntervalTree->removeClause(idxOfClauseOverlappingRoot, literalBoundsOfClauseFormingRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::NotFound, avlIntervalTree->removeClause(idxOfClauseFormingRoot, dimacs::ProblemDefinition::Clause::LiteralBounds(missmatchingIntervalLowerBound, missmatchingIntervalLowerBound)));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::NotFound, avlIntervalTree->removeClause(idxOfClauseFormingRoot, dimacs::ProblemDefinition::Clause::LiteralBounds(missmatchingIntervalUpperBound, missmatchingIntervalUpperBound)));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::NotFound, avlIntervalTree->removeClause(idxOfClauseOverlappingRoot, literalBoundsOfClauseFormingRoot));
 }
 
 TEST_F(AvlIntervalTreeTestsFixture, DeletionInEmptyTreeHasNoEffect)
@@ -945,7 +945,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionInEmptyTreeHasNoEffect)
 	auto avlIntervalTree = std::make_unique<avl::OpaqueAvlIntervalTree>();
 	ASSERT_TRUE(avlIntervalTree);
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(nullptr, avlIntervalTree->getRootNode()));
-	ASSERT_FALSE(avlIntervalTree->removeClause(0, dimacs::ProblemDefinition::Clause::LiteralBounds(-1, 1)));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::NotFound, avlIntervalTree->removeClause(0, dimacs::ProblemDefinition::Clause::LiteralBounds(-1, 1)));
 }
 
 TEST_F(AvlIntervalTreeTestsFixture, DeletionOfNodeWithNoChildrenRequiringNoRebalancing)
@@ -1001,7 +1001,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionOfNodeWithNoChildrenRequiringNoRebal
 	expectedRightChildOfRoot->right = expectedRightSubNodeOfRightChildOfRoot;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRightSubNodeOfRightChildOfRoot, literalBoundsOfClauseFormingRightSubNodeOfRightChildOfRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRightSubNodeOfRightChildOfRoot, literalBoundsOfClauseFormingRightSubNodeOfRightChildOfRoot));
 
 	expectedRightChildOfRoot->right = nullptr;
 	expectedRightChildOfRoot->internalAvlBalancingFactor = avl::AvlIntervalTreeNode::BalancingFactor::BALANCED;
@@ -1062,7 +1062,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionOfNodeWithOneChildBeingLeftNodeRequi
 	expectedRightChildOfRoot->left = expectedLeftSubNodeOfRightChildOfRoot;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
 
 	expectedLeftSubNodeOfRightChildOfRoot->parent = expectedRootNode;
 	expectedRootNode->right = expectedLeftSubNodeOfRightChildOfRoot;
@@ -1127,7 +1127,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionOfNodeWithOneChildBeingRightNodeRequ
 	expectedRightChildOfRoot->right = expectedRightSubNodeOfRightChildOfRoot;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNode, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
 
 	expectedRightSubNodeOfRightChildOfRoot->parent = expectedRootNode;
 	expectedRootNode->right = expectedRightSubNodeOfRightChildOfRoot;
@@ -1195,7 +1195,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionRequiringRotateLeftOperationForRebal
 	expectedRightNodeOfRootPriorToDeletion->right = expectedRightNodeOfRightChildOfRootPriorToDeletion;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNodePriorToDeletion, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingLeftChildOfRoot, literalBoundsOfClauseFormingLeftChildOfRoot));
 
 	avl::AvlIntervalTreeNode::ptr expectedRootNodeAfterDeletion = expectedRightNodeOfRootPriorToDeletion;
 	avl::AvlIntervalTreeNode::ptr expectedLeftNodeOfRootAfterDeletion = expectedRootNodePriorToDeletion;
@@ -1270,7 +1270,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionRequiringRotateRightOperationForReba
 	expectedRootNodePriorToDeletion->right = expectedRightNodeOfRootPriorToDeletion;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNodePriorToDeletion, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRightChildOfRoot, literalBoundsOfClauseFormingRightChildOfRoot));
 
 	avl::AvlIntervalTreeNode::ptr expectedRootNodeAfterDeletion = expectedLeftNodeOfRootPriorToDeletion;
 	avl::AvlIntervalTreeNode::ptr expectedLeftNodeOfRootAfterDeletion = expectedLeftNodeOfLeftChildOfRootPriorToDeletion;
@@ -1392,7 +1392,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionRequiringRotateRightLeftOperationFor
 	expectedLeftSubtreeRootOfRightChildOfRootPriorToDeletion->right = expectedRightNodeOfRightSubtreeOfRightChildOfRootPriorToDeletion;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNodePriorToDeletion, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRightNodeOfLeftChildOfRootPriorToDeletion, literalBoundsOfClauseFormingRightNodeOfLeftChildOfRootPriorToDeletion));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRightNodeOfLeftChildOfRootPriorToDeletion, literalBoundsOfClauseFormingRightNodeOfLeftChildOfRootPriorToDeletion));
 
 	avl::AvlIntervalTreeNode::ptr expectedRootNodeAfterDeletion = expectedLeftSubtreeRootOfRightChildOfRootPriorToDeletion;
 	avl::AvlIntervalTreeNode::ptr expectedLeftChildOfRootAfterDeletion = expectedRootNodePriorToDeletion;
@@ -1542,7 +1542,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionRequiringRotateLeftRightOperationFor
 	expectedRightSubtreeRootOfLeftChildOfRootPriorToDeletion->right = expectedRightNodeOfRightSubtreeOfLeftChildOfRootPriorToDeletion;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootNodePriorToDeletion, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingLeftNodeOfRightChildOfRootPriorToDeletion, literalBoundsOfClauseFormingLeftNodeOfRightChildOfRootPriorToDeletion));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingLeftNodeOfRightChildOfRootPriorToDeletion, literalBoundsOfClauseFormingLeftNodeOfRightChildOfRootPriorToDeletion));
 
 	avl::AvlIntervalTreeNode::ptr expectedRootNodeAfterDeletion = expectedRightSubtreeRootOfLeftChildOfRootPriorToDeletion;
 	avl::AvlIntervalTreeNode::ptr expectedLeftChildOfRootAfterDeletion = expectedLeftChildOfRootPriorToDeletion;
@@ -1749,7 +1749,7 @@ TEST_F(AvlIntervalTreeTestsFixture, DeletionRequiringRotationsAtMultipleLevels)
 	expectedLeftGrandChildNodeOfLeftChildOfRootPriorToDeletion->left = expectedLeftmostNodeOfTreePriorToDeletion;
 
 	ASSERT_NO_FATAL_FAILURE(assertThatNodesAreEqual(expectedRootPriorToDeletion, avlIntervalTree->getRootNode()));
-	ASSERT_TRUE(avlIntervalTree->removeClause(idxOfClauseFormingRightNodeOfRightChildOfRootPriorToDeletion, literalBoundsOfClauseFormingRightNodeOfRightChildOfRootPriorToDeletion));
+	ASSERT_EQ(avl::AvlIntervalTreeNode::ClauseRemovalResult::Removed, avlIntervalTree->removeClause(idxOfClauseFormingRightNodeOfRightChildOfRootPriorToDeletion, literalBoundsOfClauseFormingRightNodeOfRightChildOfRootPriorToDeletion));
 
 	// Level 0
 	avl::AvlIntervalTreeNode::ptr expectedRootAfterDeletion = expectedLeftNodeOfRootPriorToDeletion;
