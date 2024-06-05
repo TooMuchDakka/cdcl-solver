@@ -123,8 +123,11 @@ AvlIntervalTreeNode::ClauseRemovalResult AvlIntervalTreeNode::removeIntersectedC
 	if (matchingLowerBoundForClause->literalBound != expectedLiteralBoundsOfClause.smallestLiteral || matchingUpperBoundForClause->literalBound != expectedLiteralBoundsOfClause.largestLiteral)
 		return ClauseRemovalResult::ValidationError;
 
-	lowerBoundsSortedAscending.erase(matchingLowerBoundForClause);
-	upperBoundsSortedDescending.erase(matchingUpperBoundForClause);
+	//lowerBoundsSortedAscending.erase(matchingLowerBoundForClause);
+	//upperBoundsSortedDescending.erase(matchingUpperBoundForClause);
+
+	lowerBoundsSortedAscending.at(std::distance(lowerBoundsSortedAscending.cbegin(), matchingLowerBoundForClause)).markedAsDeleted = true;
+	upperBoundsSortedDescending.at(std::distance(upperBoundsSortedDescending.cbegin(), matchingUpperBoundForClause)).markedAsDeleted = true;
 	return ClauseRemovalResult::Removed;
 }
 
@@ -139,7 +142,8 @@ std::vector<std::size_t> AvlIntervalTreeNode::getIntersectedClauseIndicesMovingF
 	std::vector<std::size_t> intersectedClauses;
 	for (auto reverseLowerBoundIterator = lowerBoundsSortedAscending.begin(); reverseLowerBoundIterator != lowerBoundsSortedAscending.end() && intersectingLiteral >= reverseLowerBoundIterator->literalBound; ++reverseLowerBoundIterator)
 	{
-		intersectedClauses.emplace_back(reverseLowerBoundIterator->idxOfReferencedClauseInFormula);
+		if (!reverseLowerBoundIterator->markedAsDeleted)
+			intersectedClauses.emplace_back(reverseLowerBoundIterator->idxOfReferencedClauseInFormula);
 	}
 	return intersectedClauses;
 }
@@ -149,7 +153,8 @@ std::vector<std::size_t> AvlIntervalTreeNode::getIntersectedClauseIndicesMovingL
 	std::vector<std::size_t> intersectedClauses;
 	for (auto reverseUpperBoundIterator = upperBoundsSortedDescending.begin(); reverseUpperBoundIterator != upperBoundsSortedDescending.end() && intersectingLiteral <= reverseUpperBoundIterator->literalBound; ++reverseUpperBoundIterator)
 	{
-		intersectedClauses.emplace_back(reverseUpperBoundIterator->idxOfReferencedClauseInFormula);
+		if (!reverseUpperBoundIterator->markedAsDeleted)
+			intersectedClauses.emplace_back(reverseUpperBoundIterator->idxOfReferencedClauseInFormula);
 	}
 	return intersectedClauses;
 }
@@ -159,7 +164,13 @@ std::optional<long> AvlIntervalTreeNode::getLargestUpperBound() const
 	if (upperBoundsSortedDescending.empty())
 		return std::nullopt;
 
-	return  upperBoundsSortedDescending.front().literalBound;
+	for (const LiteralBoundsAndClausePair& upperBound : upperBoundsSortedDescending)
+	{
+		if (!upperBound.markedAsDeleted)
+			return  upperBound.literalBound;
+	}
+	return std::nullopt;
+	//return  upperBoundsSortedDescending.front().literalBound;
 }
 
 std::optional<long> AvlIntervalTreeNode::getSmallestLowerBound() const
@@ -167,7 +178,13 @@ std::optional<long> AvlIntervalTreeNode::getSmallestLowerBound() const
 	if (lowerBoundsSortedAscending.empty())
 		return std::nullopt;
 
-	return lowerBoundsSortedAscending.front().literalBound;
+	for (const LiteralBoundsAndClausePair& lowerBound : lowerBoundsSortedAscending)
+	{
+		if (!lowerBound.markedAsDeleted)
+			return lowerBound.literalBound;
+	}
+	return std::nullopt;
+	//return lowerBoundsSortedAscending.front().literalBound;
 }
 
 bool AvlIntervalTreeNode::doesClauseIntersect(const dimacs::ProblemDefinition::Clause::LiteralBounds& literalBounds) const
@@ -318,7 +335,7 @@ std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator Avl
 {
 	for (auto searchSpaceBackwardIterator = startPositionWithMatchingBound; searchSpaceBackwardIterator >= lowerBoundOfSearchSpace && searchSpaceBackwardIterator->literalBound == startPositionWithMatchingBound->literalBound;)
 	{
-		if (searchSpaceBackwardIterator->idxOfReferencedClauseInFormula == idxOfClause)
+		if (searchSpaceBackwardIterator->idxOfReferencedClauseInFormula == idxOfClause && !searchSpaceBackwardIterator->markedAsDeleted)
 			return searchSpaceBackwardIterator;
 
 		if (searchSpaceBackwardIterator != lowerBoundOfSearchSpace)
@@ -332,7 +349,7 @@ std::vector<AvlIntervalTreeNode::LiteralBoundsAndClausePair>::const_iterator Avl
 
 	for (auto searchSpaceForwardIterator = std::next(startPositionWithMatchingBound); searchSpaceForwardIterator < upperBoundOfSearchSpace && searchSpaceForwardIterator->literalBound == startPositionWithMatchingBound->literalBound; ++searchSpaceForwardIterator)
 	{
-		if (searchSpaceForwardIterator->idxOfReferencedClauseInFormula == idxOfClause)
+		if (searchSpaceForwardIterator->idxOfReferencedClauseInFormula == idxOfClause && !searchSpaceForwardIterator->markedAsDeleted)
 			return searchSpaceForwardIterator;
 	}
 	return upperBoundOfSearchSpace;

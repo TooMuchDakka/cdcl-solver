@@ -23,9 +23,10 @@ namespace avl {
 		{
 			long literalBound;
 			std::size_t idxOfReferencedClauseInFormula;
+			bool markedAsDeleted;
 
 			explicit LiteralBoundsAndClausePair(long literalBound, std::size_t idxOfReferencedClauseInFormula)
-				: literalBound(literalBound), idxOfReferencedClauseInFormula(idxOfReferencedClauseInFormula) {}
+				: literalBound(literalBound), idxOfReferencedClauseInFormula(idxOfReferencedClauseInFormula), markedAsDeleted(false) {}
 		};
 		std::vector<LiteralBoundsAndClausePair> lowerBoundsSortedAscending;
 		std::vector<LiteralBoundsAndClausePair> upperBoundsSortedDescending;
