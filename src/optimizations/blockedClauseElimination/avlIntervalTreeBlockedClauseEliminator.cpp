@@ -1,4 +1,4 @@
-#include "optimizations/avlIntervalTreeBlockedClauseEliminator.hpp"
+#include "optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.hpp"
 #include <algorithm>
 
 using namespace blockedClauseElimination;

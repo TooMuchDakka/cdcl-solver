@@ -1,6 +1,6 @@
 #include "avlIntervalTreeTestsFixture.hpp"
 #include "opaqueAvlIntervalTree.hpp"
-#include "optimizations/blockedClauseElimination/avlIntervalTree.hpp"
+#include "optimizations/blockedClauseElimination/intervalTree/avlIntervalTree.hpp"
 
 using namespace avlIntervalTreeTests;
 

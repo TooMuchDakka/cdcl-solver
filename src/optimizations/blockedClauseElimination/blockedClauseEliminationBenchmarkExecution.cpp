@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "dimacs/dimacsParser.hpp"
-#include "optimizations/avlIntervalTreeBlockedClauseEliminator.hpp"
+#include "optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.hpp"
 
 int main(int argc, char* argv[])
 {

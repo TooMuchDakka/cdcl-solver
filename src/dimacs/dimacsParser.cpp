@@ -149,7 +149,7 @@ void DimacsParser::recordError(std::size_t line, std::size_t column, const std::
 }
 
 
-inline std::vector<std::string_view> DimacsParser::splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter)
+inline std::vector<std::string_view> DimacsParser::splitStringAtDelimiter(const std::string_view& stringToSplit, const char delimiter)
 {
 	std::size_t lastFoundDelimiterPosition = 0;
 	std::vector<std::string_view> splitStringParts;

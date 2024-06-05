@@ -1,7 +1,7 @@
 #ifndef AVL_TREE_BLOCKED_CLAUSE_ELIMINATOR_HPP
 #define AVL_TREE_BLOCKED_CLAUSE_ELIMINATOR_HPP
 
-#include <optimizations/blockedClauseElimination/avlIntervalTree.hpp>
+#include <optimizations/blockedClauseElimination/intervalTree/avlIntervalTree.hpp>
 #include "baseBlockedClauseEliminator.hpp"
 
 namespace blockedClauseElimination

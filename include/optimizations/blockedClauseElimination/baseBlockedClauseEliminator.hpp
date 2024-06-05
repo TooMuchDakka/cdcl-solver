@@ -1,6 +1,7 @@
 #ifndef BASE_BLOCKED_CLAUSE_ELIMINATOR_HPP
 #define BASE_BLOCKED_CLAUSE_ELIMINATOR_HPP
 
+#include <any>
 #include <optional>
 #include <vector>
 
@@ -22,12 +23,10 @@ namespace blockedClauseElimination
 			const std::size_t numCandidatesToChoseFrom = problemDefinition->getClauses()->size();
 			for (std::size_t i = 0; i < numCandidatesToChoseFrom; ++i)
 			{
-				if (canCandidateBeSelectedBasedOnHeuristic(i))
-					chooseableCandidateIndices.emplace_back(i);
+				chooseableCandidateIndices.emplace_back(i);
 			}
 			return chooseableCandidateIndices;
 		}
-		[[nodiscard]] virtual bool canCandidateBeSelectedBasedOnHeuristic(std::size_t potentialCandidateClauseIdxInFormula) const { return true; }
 
 		struct BlockedClauseSearchResult
 		{

@@ -1,4 +1,4 @@
-#include "optimizations/blockedClauseElimination/avlIntervalTreeNode.hpp"
+#include "optimizations/blockedClauseElimination/intervalTree/avlIntervalTreeNode.hpp"
 
 using namespace avl;
 

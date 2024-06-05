@@ -1,4 +1,4 @@
-#include "optimizations/blockedClauseElimination/avlIntervalTree.hpp"
+#include "optimizations/blockedClauseElimination/intervalTree/avlIntervalTree.hpp"
 
 #include <ios>
 

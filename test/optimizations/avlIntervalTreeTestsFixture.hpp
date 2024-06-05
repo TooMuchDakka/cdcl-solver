@@ -1,7 +1,7 @@
 #ifndef AVL_INTERVAL_TREE_TESTS_FIXTURE_HPP
 #define AVL_INTERVAL_TREE_TESTS_FIXTURE_HPP
 #include "gtest/gtest.h"
-#include "optimizations/blockedClauseElimination/avlIntervalTreeNode.hpp"
+#include "optimizations/blockedClauseElimination/intervalTree/avlIntervalTreeNode.hpp"
 
 namespace avlIntervalTreeTests {
 	class AvlIntervalTreeTestsFixture : public ::testing::Test
