@@ -28,6 +28,7 @@ target_sources(BlockedClauseElimination
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/intervalTree/avlIntervalTreeNode.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/baseCandidateSelector.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/baseBlockedClauseEliminator.hpp
 
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/intervalTree/avlIntervalTree.hpp

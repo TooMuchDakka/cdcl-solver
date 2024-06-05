@@ -86,7 +86,11 @@ int main(int argc, char* argv[])
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(durationForProcessingOfDimacsFormula) + "ms\n";
 	std::cout << "=== END - PROCESSING OF DIMACS FORMULA ===\n";
 
-	const std::unique_ptr<blockedClauseElimination::BaseBlockedClauseEliminator> blockedClauseEliminator = std::make_unique<blockedClauseElimination::AvlIntervalTreeBlockedClauseEliminator>(*parsedSatFormula);
+	const auto& blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::BaseCandidateSelector>(*parsedSatFormula);
+	if (!blockedClauseCandidateSelector)
+		return EXIT_FAILURE;
+
+	const auto& blockedClauseEliminator = std::make_unique<blockedClauseElimination::AvlIntervalTreeBlockedClauseEliminator>(*parsedSatFormula, blockedClauseCandidateSelector);
 	if (!blockedClauseEliminator)
 		return EXIT_FAILURE;
 
@@ -123,7 +127,6 @@ int main(int argc, char* argv[])
 
 		const TimePoint startTimeForSearchForBlockingLiteralOfClause = std::chrono::steady_clock::now();
 		const std::optional<blockedClauseElimination::BaseBlockedClauseEliminator::BlockedClauseSearchResult> searchResult = blockedClauseEliminator->isClauseBlocked(i);
-		const TimePoint endTimeForSearchForBlockingLiteralOfClause = std::chrono::steady_clock::now();
 
 		if (!searchResult.has_value())
 		{
@@ -140,6 +143,7 @@ int main(int argc, char* argv[])
 			}
 		}
 
+		const TimePoint endTimeForSearchForBlockingLiteralOfClause = std::chrono::steady_clock::now();
 		const auto durationForSearchOfBlockingLiteralForClause = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeForSearchForBlockingLiteralOfClause - startTimeForSearchForBlockingLiteralOfClause);
 		//std::cout << "C: " + std::to_string(i) + " | B: " + std::to_string(searchResult.isBlocked) + "| BY: " + std::to_string(searchResult.idxOfClauseDefiningBlockingLiteral) + "| Duration: " + std::to_string(durationForSearchOfBlockingLiteralForClause.count()) + "ms" << std::endl;
 		benchmarkExecutionTime += durationForSearchOfBlockingLiteralForClause.count();

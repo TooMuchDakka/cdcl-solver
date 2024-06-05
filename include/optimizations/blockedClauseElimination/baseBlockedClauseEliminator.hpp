@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "dimacs/problemDefinition.hpp"
+#include "candidateSelection/baseCandidateSelector.hpp"
 
 namespace blockedClauseElimination
 {
@@ -13,20 +14,11 @@ namespace blockedClauseElimination
 	{
 	public:
 		virtual ~BaseBlockedClauseEliminator() = default;
-		BaseBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
-			: problemDefinition(std::move(problemDefinition)) {}
+		BaseBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition, BaseCandidateSelector::ptr candidateSelector)
+			: problemDefinition(std::move(problemDefinition)), candidateSelector(std::move(candidateSelector)) {}
 
 		[[nodiscard]] virtual bool initializeInternalHelperStructures() = 0;
-		[[nodiscard]] virtual std::vector<std::size_t> determineCandidatesBasedOnHeuristic() const
-		{
-			std::vector<std::size_t> chooseableCandidateIndices;
-			const std::size_t numCandidatesToChoseFrom = problemDefinition->getClauses()->size();
-			for (std::size_t i = 0; i < numCandidatesToChoseFrom; ++i)
-			{
-				chooseableCandidateIndices.emplace_back(i);
-			}
-			return chooseableCandidateIndices;
-		}
+		[[nodiscard]] virtual std::vector<std::size_t> determineCandidatesBasedOnHeuristic() const { return candidateSelector->determineCandidates(); }
 
 		struct BlockedClauseSearchResult
 		{
@@ -38,6 +30,7 @@ namespace blockedClauseElimination
 		[[nodiscard]] virtual bool includeClauseInSearchSpace(std::size_t idxOfClauseToIncludeInFurtherSearch) = 0;
 	protected:
 		dimacs::ProblemDefinition::ptr problemDefinition;
+		BaseCandidateSelector::ptr candidateSelector;
 	};
 };
 #endif

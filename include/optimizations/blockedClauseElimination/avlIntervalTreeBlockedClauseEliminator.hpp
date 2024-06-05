@@ -10,8 +10,8 @@ namespace blockedClauseElimination
 	{
 	public:
 		AvlIntervalTreeBlockedClauseEliminator() = delete;
-		explicit AvlIntervalTreeBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
-			: BaseBlockedClauseEliminator(std::move(problemDefinition))
+		explicit AvlIntervalTreeBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition, BaseCandidateSelector::ptr candidateSelector)
+			: BaseBlockedClauseEliminator(std::move(problemDefinition), std::move(candidateSelector))
 		{
 			avlIntervalTree = std::make_unique<avl::AvlIntervalTree>();
 		}
