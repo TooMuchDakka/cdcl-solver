@@ -4,27 +4,32 @@
 #include <memory>
 #include <vector>
 
+#include "dimacs/problemDefinition.hpp"
+
 namespace blockedClauseElimination {
 	class BaseCandidateSelector {
 	public:
 		using ptr = std::shared_ptr<BaseCandidateSelector>;
 
 		virtual ~BaseCandidateSelector() = default;
-		BaseCandidateSelector(dimacs::ProblemDefinition::ptr problemDefinition)
-			: problemDefinition(std::move(problemDefinition)) {}
+		BaseCandidateSelector(dimacs::ProblemDefinition::ptr problemDefinition, std::optional<std::size_t> optionalMaximumNumberOfCandidates = std::nullopt)
+			: problemDefinition(std::move(problemDefinition)), optionalMaximumNumberOfCandidates(optionalMaximumNumberOfCandidates) {}
 
 		[[nodiscard]] virtual std::vector<std::size_t> determineCandidates()
 		{
-			std::vector<std::size_t> chooseableCandidateIndices;
-			const std::size_t numCandidatesToChoseFrom = problemDefinition->getClauses()->size();
+			const std::size_t numCandidatesToChoseFrom = std::min(optionalMaximumNumberOfCandidates.value_or(problemDefinition->getNumClauses()), problemDefinition->getNumClauses());
+			std::vector<std::size_t> chooseableCandidateIndices = std::vector(numCandidatesToChoseFrom, static_cast<std::size_t>(0));
 			for (std::size_t i = 0; i < numCandidatesToChoseFrom; ++i)
 			{
-				chooseableCandidateIndices.emplace_back(i);
+				if (const std::optional<dimacs::ProblemDefinition::Clause*> matchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(i); matchingClauseForIdx.has_value() && matchingClauseForIdx.value()->literals.size() > 1)
+					chooseableCandidateIndices.at(i) = i;
 			}
+			chooseableCandidateIndices.shrink_to_fit();
 			return chooseableCandidateIndices;
 		}
 	protected:
 		dimacs::ProblemDefinition::ptr problemDefinition;
+		std::optional<std::size_t> optionalMaximumNumberOfCandidates;
 	};
 }
 #endif

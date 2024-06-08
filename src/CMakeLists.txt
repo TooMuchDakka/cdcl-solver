@@ -23,12 +23,16 @@ add_library(BlockedClauseElimination "")
 target_sources(BlockedClauseElimination
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.cpp
-
+		
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/candidateSelection/minimumClauseLengthCandidateSelector.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/candidateSelection/overlapBasedCandidateSelector.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/intervalTree/avlIntervalTree.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/intervalTree/avlIntervalTreeNode.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/baseCandidateSelector.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/minimumClauseLengthCandidateSelector.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/overlapBasedCandidateSelector.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/baseBlockedClauseEliminator.hpp
 
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/intervalTree/avlIntervalTree.hpp
@@ -40,9 +44,21 @@ target_include_directories(BlockedClauseElimination
 )
 target_link_libraries(BlockedClauseElimination PRIVATE DimacsAbstractions)
 
+add_library(CommandLineParser "")
+target_sources(CommandLineParser
+	PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/utils/commandLine/commandLineParser.cpp
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include/utils/commandLine/commandLineParser.hpp
+)
+target_include_directories(CommandLineParser
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include
+)
+
 if (BUILD_BLOCKED_CLAUSE_ELIMINATION_BENCHMARK_EXECUTABLE)
 	add_executable(BlockedClauseEliminationBenchmarking ${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/blockedClauseEliminationBenchmarkExecution.cpp)
-	target_link_libraries(BlockedClauseEliminationBenchmarking PRIVATE BlockedClauseElimination DimacsParser)
+	target_link_libraries(BlockedClauseEliminationBenchmarking PRIVATE BlockedClauseElimination DimacsParser CommandLineParser)
 elseif(BUILD_SOLVER_EXECUTABLE)
 	add_library(Solver "")
 	target_sources(Solver
