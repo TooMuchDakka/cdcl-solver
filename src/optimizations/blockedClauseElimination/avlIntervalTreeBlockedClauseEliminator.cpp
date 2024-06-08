@@ -25,18 +25,26 @@ std::optional<BaseBlockedClauseEliminator::BlockedClauseSearchResult> AvlInterva
 		return std::nullopt;
 
 	const dimacs::ProblemDefinition::Clause* matchingClauseForIdx = *optionalMatchingClauseForIdx;
+	// Clauses with only one literal can never be blocked since the resolvent formed with any other clause can never contain a tautology (under the assumption that a clause cannot a tautology itself)
+	if (matchingClauseForIdx->literals.size() == 1)
+		return BlockedClauseSearchResult({ false, std::nullopt });
+
 	for (const long clauseLiteral : matchingClauseForIdx->literals)
 	{
 		// Get all potentially overlapping clauses (based on the clause literal bounds)
 		for (const std::size_t indexOfClauseWithOverlappingLiteral : avlIntervalTree->getOverlappingIntervalsForLiteral(-clauseLiteral))
 		{
 			const std::optional<dimacs::ProblemDefinition::Clause*> optionalPotentiallyOverlappingClause = problemDefinition->getClauseByIndexInFormula(indexOfClauseWithOverlappingLiteral);
-			if (!optionalPotentiallyOverlappingClause.has_value() || indexOfClauseWithOverlappingLiteral == idxOfClauseToCheckInFormula || !optionalPotentiallyOverlappingClause.value()->containsLiteral(-clauseLiteral))
+			if (!optionalPotentiallyOverlappingClause.has_value() || indexOfClauseWithOverlappingLiteral == idxOfClauseToCheckInFormula)
 				continue;
+
+			// We can reuse our invariant that a clause with one literal cannot be blocked in a similar way to "short-circuit" our check whether a clause is literal blocked if the clause with one literal is overlapped.
+			if (optionalPotentiallyOverlappingClause.value()->literals.size() == 1)
+				return BlockedClauseSearchResult({ false, std::nullopt });
 
 			// Check if the resolvent of the clause for which we would like to determine whether it is literal blocked and the clause, for which we have determine that it contains the literal to be looked for with negative polarity, form a tautology
 			const dimacs::ProblemDefinition::Clause* clauseOverlappingLiteral = *optionalPotentiallyOverlappingClause;
-			if (doesResolventContainTautology(matchingClauseForIdx, clauseLiteral, clauseOverlappingLiteral))
+			if (clauseOverlappingLiteral->containsLiteral(-clauseLiteral) && doesResolventContainTautology(matchingClauseForIdx, clauseLiteral, clauseOverlappingLiteral))
 				return BlockedClauseSearchResult({ true, indexOfClauseWithOverlappingLiteral });
 		}
 	}
