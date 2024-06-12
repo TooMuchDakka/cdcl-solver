@@ -19,10 +19,11 @@ namespace blockedClauseElimination {
 		{
 			const std::size_t numCandidatesToChoseFrom = std::min(optionalMaximumNumberOfCandidates.value_or(problemDefinition->getNumClauses()), problemDefinition->getNumClauses());
 			std::vector<std::size_t> chooseableCandidateIndices = std::vector(numCandidatesToChoseFrom, static_cast<std::size_t>(0));
+			std::size_t nextContainerPositionIdx = 0;
 			for (std::size_t i = 0; i < numCandidatesToChoseFrom; ++i)
 			{
 				if (const std::optional<dimacs::ProblemDefinition::Clause*> matchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(i); matchingClauseForIdx.has_value() && matchingClauseForIdx.value()->literals.size() > 1)
-					chooseableCandidateIndices.at(i) = i;
+					chooseableCandidateIndices.at(nextContainerPositionIdx++) = i;
 			}
 			chooseableCandidateIndices.shrink_to_fit();
 			return chooseableCandidateIndices;

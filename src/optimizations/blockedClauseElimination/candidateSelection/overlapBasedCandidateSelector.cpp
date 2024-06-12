@@ -6,7 +6,15 @@ std::vector<std::size_t> OverlapBasedCandidateSelector::determineCandidates()
 {
 	std::vector<std::size_t> perClauseIdxInFormulaContainer = BaseCandidateSelector::determineCandidates();
 	// Do not consider candidates that overlap no other clause
-	perClauseIdxInFormulaContainer.erase(std::remove_if(perClauseIdxInFormulaContainer.begin(), perClauseIdxInFormulaContainer.end(), [&](const std::size_t clauseIdx) { return !determineOverlapCountOfClauseInFormula(clauseIdx); }), perClauseIdxInFormulaContainer.end());
+	perClauseIdxInFormulaContainer.erase(
+		std::remove_if(
+			perClauseIdxInFormulaContainer.begin(), 
+			perClauseIdxInFormulaContainer.end(), 
+			[&](const std::size_t clauseIdx)
+			{
+				return !determineOverlapCountOfClauseInFormula(clauseIdx);
+			}),
+		perClauseIdxInFormulaContainer.end());
 
 	std::sort(perClauseIdxInFormulaContainer.begin(),
 		perClauseIdxInFormulaContainer.end(),
