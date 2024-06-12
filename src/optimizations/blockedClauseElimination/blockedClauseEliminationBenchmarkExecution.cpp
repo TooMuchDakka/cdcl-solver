@@ -11,7 +11,7 @@
 
 enum CandidateSelector
 {
-	ConsiderAll,
+	InDefinitionOrder,
 	MinimumClauseLength,
 	MinimumNumberOfClauseLiteralOverlaps,
 	MaximumNumberOfClauseLiteralOverlaps,
@@ -22,8 +22,8 @@ inline std::string stringifyCandidateSelectorType(CandidateSelector candidateSel
 {
 	switch (candidateSelector)
 	{
-	case CandidateSelector::ConsiderAll:
-		return "All clauses in formula will be considered as candidate";
+	case CandidateSelector::InDefinitionOrder:
+		return "All clauses of formula in order of definition will be considered as candidate";
 	case CandidateSelector::MinimumClauseLength:
 		return "Chose candidates based on clause length sorted in ascending order";
 	case CandidateSelector::MinimumNumberOfClauseLiteralOverlaps:
@@ -122,14 +122,14 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	CandidateSelector bceCandidateSelectorType = CandidateSelector::ConsiderAll;
+	CandidateSelector bceCandidateSelectorType = CandidateSelector::InDefinitionOrder;
 	std::optional<std::string> optionalStringifiedCandidateSelectorType;
 	if (commandLineParser->tryGetStringValue("--candidateSelector", optionalStringifiedCandidateSelectorType))
 	{
 		const std::string minClauseLengthBceCandidateSelectorIdentifier = "minClauseLength";
 		const std::string minClauseOverlapBceCandidateSelectorIdentifier = "minClauseOverlap";
 		const std::string maxClauseOverlapBceCandidateSelectorIdentifier = "maxClauseOverlap";
-		const std::string considerAllClausesCandidateSelectorIdentifier = "all";
+		const std::string considerAllClausesCandidateSelectorIdentifier = "inDefOrder";
 		if (optionalStringifiedCandidateSelectorType == minClauseLengthBceCandidateSelectorIdentifier)
 			bceCandidateSelectorType = CandidateSelector::MinimumClauseLength;
 		if (optionalStringifiedCandidateSelectorType == minClauseOverlapBceCandidateSelectorIdentifier)
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
 		if (optionalStringifiedCandidateSelectorType == maxClauseOverlapBceCandidateSelectorIdentifier)
 			bceCandidateSelectorType = CandidateSelector::MinimumNumberOfClauseLiteralOverlaps;
 		if (optionalStringifiedCandidateSelectorType == considerAllClausesCandidateSelectorIdentifier)
-			bceCandidateSelectorType = CandidateSelector::ConsiderAll;
+			bceCandidateSelectorType = CandidateSelector::InDefinitionOrder;
 
 		if (bceCandidateSelectorType == CandidateSelector::Unknown)
 		{
@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
 	std::shared_ptr<blockedClauseElimination::BaseCandidateSelector> blockedClauseCandidateSelector;
 	switch (bceCandidateSelectorType)
 	{
-		case CandidateSelector::ConsiderAll:
+		case CandidateSelector::InDefinitionOrder:
 			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::BaseCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination);
 			break;
 		case CandidateSelector::MinimumClauseLength:
@@ -276,9 +276,7 @@ int main(int argc, char* argv[])
 
 	std::optional<std::size_t> optionalRestrictionOnNumberOfBlockedClausesToLookFor = optionalBlockedClauseEliminationAbsoluteMaxNumBlockedClauseMatches;
 	if (!optionalRestrictionOnNumberOfBlockedClausesToLookFor.has_value() && optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches.has_value())
-	{
 		optionalRestrictionOnNumberOfBlockedClausesToLookFor = static_cast<double>(numCandidateClausesToConsiderForBlockedClauseElimination.value_or(parsedSatFormula->get()->getNumClauses())) * (1.0 / static_cast<double>(*optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches));
-	}
 
 	std::cout << "Search for blocked clauses will stop when " << (optionalRestrictionOnNumberOfBlockedClausesToLookFor.has_value() ? std::to_string(*optionalRestrictionOnNumberOfBlockedClausesToLookFor) : "-") << " blocked clauses were found\n";
 	std::vector<blockedClauseElimination::BaseBlockedClauseEliminator::BlockedClauseSearchResult> blockedClauses;
