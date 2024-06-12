@@ -28,7 +28,7 @@ std::vector<std::size_t> OverlapBasedCandidateSelector::determineCandidates()
 
 std::vector<OverlapBasedCandidateSelector::VariableCountEntry> OverlapBasedCandidateSelector::determineVariableCountsInFormula() const
 {
-	std::vector<VariableCountEntry> variableCounts = std::vector(problemDefinition->getNumVariablesInFormula(), VariableCountEntry());
+	std::vector<VariableCountEntry> variableCounts = std::vector(problemDefinition->getNumVariablesInFormula() + 1, VariableCountEntry());
 	for (std::size_t i = 0; i < problemDefinition->getNumClauses(); ++i)
 	{
 		if (const std::optional<dimacs::ProblemDefinition::Clause*> matchingClauseForIdx = problemDefinition->getClauseByIndexInFormula(i); matchingClauseForIdx.has_value())
