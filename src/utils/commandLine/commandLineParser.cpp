@@ -11,7 +11,7 @@ bool CommandLineParser::digest(int argc, char* argv[])
 		return true;
 
 	const std::size_t numArguments = argc;
-	for (std::size_t i = 0; i < numArguments; ++i)
+	for (std::size_t i = 0; i < numArguments; i += 2)
 	{
 		if (i + 1 < numArguments)
 			commandLineOptions.emplace(std::make_pair(argv[i], argv[i + 1]));

@@ -70,10 +70,55 @@ int main(int argc, char* argv[])
 	const std::string& dimacsSatFormulaFile = *cnfFormulaFilePath;
 	std::vector<std::string> foundErrorsDuringSatFormulaParsingFromFile;
 
-	std::optional<std::size_t> optionalBlockedClauseEliminationMaxNumCandidates;
-	if (commandLineParser->tryGetUnsignedNumericValue("--maxNumCandidates", optionalBlockedClauseEliminationMaxNumCandidates, nullptr) && !optionalBlockedClauseEliminationMaxNumCandidates.has_value())
+	std::optional<std::size_t> optionalBlockedClauseEliminationAbsoluteMaxNumCandidates;
+	std::optional<std::size_t> optionalBlockedClauseEliminationRelativeMaxNumCandidates;
+
+	std::optional<std::size_t> optionalBlockedClauseEliminationAbsoluteMaxNumBlockedClauseMatches;
+	std::optional<std::size_t> optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches;
+	if (commandLineParser->tryGetUnsignedNumericValue("--absMaxNumCandidates", optionalBlockedClauseEliminationAbsoluteMaxNumCandidates, nullptr) && !optionalBlockedClauseEliminationAbsoluteMaxNumCandidates.has_value())
 	{
-		std::cout << "Failed to parse maximum number of candidates to consider for blocked clause elimination";
+		std::cout << "Failed to parse absolute maximum number of candidates to consider for blocked clause elimination";
+		return EXIT_FAILURE;
+	}
+
+	if (commandLineParser->tryGetUnsignedNumericValue("--relMaxNumCandidates", optionalBlockedClauseEliminationRelativeMaxNumCandidates, nullptr) && !optionalBlockedClauseEliminationRelativeMaxNumCandidates.has_value())
+	{
+		std::cout << "Failed to parse relative maximum number of candidates to consider for blocked clause elimination";
+		return EXIT_FAILURE;
+	}
+	if (optionalBlockedClauseEliminationRelativeMaxNumCandidates.has_value() && (!*optionalBlockedClauseEliminationRelativeMaxNumCandidates || *optionalBlockedClauseEliminationRelativeMaxNumCandidates > 100))
+	{
+		std::cout << "Value for relative maximum number of candidates to consider for blocked clause elimination must lie in range [1, 100]";
+		return EXIT_FAILURE;
+	}
+
+	if (optionalBlockedClauseEliminationAbsoluteMaxNumCandidates.has_value() && optionalBlockedClauseEliminationRelativeMaxNumCandidates.has_value())
+	{
+		std::cout << "Maximum number of candidates must either be provided as a relative percentage or an absolute number...";
+		return EXIT_FAILURE;
+	}
+
+	if (commandLineParser->tryGetUnsignedNumericValue("--absMaxNumBlockedClauses", optionalBlockedClauseEliminationAbsoluteMaxNumBlockedClauseMatches, nullptr) && !optionalBlockedClauseEliminationAbsoluteMaxNumBlockedClauseMatches.has_value())
+	{
+		std::cout << "Failed to parse absolute number of blocked clauses to find in formula during blocked clause elimination";
+		return EXIT_FAILURE;
+	}
+
+	if (commandLineParser->tryGetUnsignedNumericValue("--relMaxNumBlockedClauses", optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches, nullptr) && !optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches.has_value())
+	{
+		std::cout << "Failed to parse relative number of blocked clauses to find in formula during blocked clause elimination";
+		return EXIT_FAILURE;
+	}
+
+	if (optionalBlockedClauseEliminationAbsoluteMaxNumCandidates.has_value() && optionalBlockedClauseEliminationRelativeMaxNumCandidates.has_value())
+	{
+		std::cout << "Maximum number of blocked clauses to find in formula during blocked clause elimination must either be provided as a relative percentage or an absolute number...";
+		return EXIT_FAILURE;
+	}
+
+	if (optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches.has_value() && (!*optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches || *optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches > 100))
+	{
+		std::cout << "Value for relative number of blocked clauses to find in formula during blocked clause elimination must lie in range [1, 100]";
 		return EXIT_FAILURE;
 	}
 
@@ -163,20 +208,27 @@ int main(int argc, char* argv[])
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(durationForProcessingOfDimacsFormula) + "ms\n";
 	std::cout << "=== END - PROCESSING OF DIMACS FORMULA ===\n";
 
+	std::optional<std::size_t> numCandidateClausesToConsiderForBlockedClauseElimination = optionalBlockedClauseEliminationAbsoluteMaxNumCandidates;
+	if (!numCandidateClausesToConsiderForBlockedClauseElimination.has_value() && optionalBlockedClauseEliminationRelativeMaxNumCandidates.has_value())
+	{
+		const std::size_t numClausesInFormula = parsedSatFormula->get()->getNumClauses();
+		numCandidateClausesToConsiderForBlockedClauseElimination = static_cast<double>(numClausesInFormula) * (1.0 / static_cast<double>(*optionalBlockedClauseEliminationRelativeMaxNumCandidates));
+	}
+
 	std::shared_ptr<blockedClauseElimination::BaseCandidateSelector> blockedClauseCandidateSelector;
 	switch (bceCandidateSelectorType)
 	{
 		case CandidateSelector::ConsiderAll:
-			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::BaseCandidateSelector>(*parsedSatFormula, optionalBlockedClauseEliminationMaxNumCandidates);
+			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::BaseCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination);
 			break;
 		case CandidateSelector::MinimumClauseLength:
-			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::MinimumClauseLengthCandidateSelector>(*parsedSatFormula, optionalBlockedClauseEliminationMaxNumCandidates);
+			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::MinimumClauseLengthCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination);
 			break;
 		case CandidateSelector::MinimumNumberOfClauseLiteralOverlaps:
-			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::OverlapBasedCandidateSelector>(*parsedSatFormula, optionalBlockedClauseEliminationMaxNumCandidates, blockedClauseElimination::OverlapBasedCandidateSelector::MinimumCountsFirst);
+			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::OverlapBasedCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination, blockedClauseElimination::OverlapBasedCandidateSelector::MinimumCountsFirst);
 			break;
 		case CandidateSelector::MaximumNumberOfClauseLiteralOverlaps:
-			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::OverlapBasedCandidateSelector>(*parsedSatFormula, optionalBlockedClauseEliminationMaxNumCandidates, blockedClauseElimination::OverlapBasedCandidateSelector::MaximumCountsFirst);
+			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::OverlapBasedCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination, blockedClauseElimination::OverlapBasedCandidateSelector::MaximumCountsFirst);
 			break;
 		default:
 			std::cerr << "Unhandled blocked clause candidate selector type " << std::to_string(bceCandidateSelectorType) << "\n";
@@ -222,15 +274,28 @@ int main(int argc, char* argv[])
 	std::size_t percentThresholdReachedCounter = 0;
 	std::size_t remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
 
+	std::optional<std::size_t> optionalRestrictionOnNumberOfBlockedClausesToLookFor = optionalBlockedClauseEliminationAbsoluteMaxNumBlockedClauseMatches;
+	if (!optionalRestrictionOnNumberOfBlockedClausesToLookFor.has_value() && optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches.has_value())
+	{
+		optionalRestrictionOnNumberOfBlockedClausesToLookFor = static_cast<double>(numCandidateClausesToConsiderForBlockedClauseElimination.value_or(parsedSatFormula->get()->getNumClauses())) * (1.0 / static_cast<double>(*optionalBlockedClauseEliminationRelativeMaxNumBlockedClauseMatches));
+	}
+
+	std::cout << "Search for blocked clauses will stop when " << (optionalRestrictionOnNumberOfBlockedClausesToLookFor.has_value() ? std::to_string(*optionalRestrictionOnNumberOfBlockedClausesToLookFor) : "-") << " blocked clauses were found\n";
 	std::vector<blockedClauseElimination::BaseBlockedClauseEliminator::BlockedClauseSearchResult> blockedClauses;
 	for (const std::size_t idxOfCandidateClauseInBceCheck : indicesOfCandidateClausesForBce)
 	{
+		if (blockedClauses.size() >= optionalRestrictionOnNumberOfBlockedClausesToLookFor.value_or(SIZE_MAX))
+		{
+			std::cout << "Reached required number of blocked clauses and will stop search for further ones...\n";
+			break;
+		}
+
 		--remainingNumClausesForPercentageThreshold;
 		if (!remainingNumClausesForPercentageThreshold)
 		{
 			remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
 			++percentThresholdReachedCounter;
-			std::cout << "Handled [" + std::to_string(percentThresholdReachedCounter * percentageThreshold) + "%] of all clauses, current benchmark duration: " + std::to_string(benchmarkExecutionTime) + "ms\n";
+			std::cout << "Handled [" + std::to_string(percentThresholdReachedCounter * percentageThreshold) + "%] of all candidate clauses, current benchmark duration: " + std::to_string(benchmarkExecutionTime) + "ms\n";
 		}
 
 		const TimePoint startTimeForSearchForBlockingLiteralOfClause = std::chrono::steady_clock::now();
@@ -270,7 +335,8 @@ int main(int argc, char* argv[])
 	std::cout << "Are blocked clauses removed from search space: " + std::to_string(true) + "\n";
 	std::cout << "Candidate selector: " << stringifyCandidateSelectorType(bceCandidateSelectorType) << "\n";
 	std::cout << "Number of candidates considered: " << std::to_string(indicesOfCandidateClausesForBce.size()) << " out of " << stringifiedNumClausesToCheck << "\n";
-	std::cout << std::to_string(blockedClauses.size()) + " clauses out of " + std::to_string(numClausesToCheck) + " were blocked!\n\n";
+	std::cout << std::to_string(blockedClauses.size()) + " clauses out of " + std::to_string(numClausesToCheck) + " were blocked!\n";
+	std::cout << "Search for blocked clauses will stop when " << (optionalRestrictionOnNumberOfBlockedClausesToLookFor.has_value() ? std::to_string(*optionalRestrictionOnNumberOfBlockedClausesToLookFor) : "-") << " blocked clauses were found\n\n";
 
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(durationForProcessingOfDimacsFormula) + "ms\n";
 	std::cout << "Duration for generation of candidate: " + std::to_string(durationForCandidateGeneration) + "ms\n";
