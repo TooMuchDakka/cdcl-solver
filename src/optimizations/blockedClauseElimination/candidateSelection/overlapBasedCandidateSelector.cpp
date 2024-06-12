@@ -27,9 +27,9 @@ std::vector<std::size_t> OverlapBasedCandidateSelector::determineCandidates()
 	if (numPotentialCandidates > 1)
 	{
 		if (overlapCountSortOrder == MinimumCountsFirst)
-			return { perClauseIdxInFormulaContainer.cbegin(), std::next(perClauseIdxInFormulaContainer.cbegin(), numPotentialCandidates - 1) };
+			return { perClauseIdxInFormulaContainer.cbegin(), std::next(perClauseIdxInFormulaContainer.cbegin(), numPotentialCandidates) };
 
-		return { perClauseIdxInFormulaContainer.crbegin(), std::next(perClauseIdxInFormulaContainer.crbegin(), numPotentialCandidates - 1) };
+		return { perClauseIdxInFormulaContainer.crbegin(), std::next(perClauseIdxInFormulaContainer.crbegin(), numPotentialCandidates) };
 	}
 	return { 1, perClauseIdxInFormulaContainer.front() };
 }
@@ -60,7 +60,8 @@ std::size_t OverlapBasedCandidateSelector::determineOverlapCountOfClauseInFormul
 	{
 		if (const std::size_t numOccurrencesOfLiteralInFormula = clauseLiteral < 0 ? variableCountLookup.at(std::abs(clauseLiteral)).numOccurrencesOfNegativeLiteral : variableCountLookup.at(std::abs(clauseLiteral)).numOccurrencesOfPositiveLiteral; numOccurrencesOfLiteralInFormula)
 		{
-			if (SIZE_MAX - sumOfOverlappedClauses > numOccurrencesOfLiteralInFormula - 1)
+			// Truncate sum to upper bound SIZE_MAX if overflow would happen by addition of number of occurrences of sum
+			if (numOccurrencesOfLiteralInFormula - 1 > SIZE_MAX - sumOfOverlappedClauses)
 				return SIZE_MAX;
 
 			sumOfOverlappedClauses += numOccurrencesOfLiteralInFormula - 1;
