@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
 		if (optionalStringifiedCandidateSelectorType == minClauseOverlapBceCandidateSelectorIdentifier)
 			bceCandidateSelectorType = CandidateSelector::MinimumNumberOfClauseLiteralOverlaps;
 		if (optionalStringifiedCandidateSelectorType == maxClauseOverlapBceCandidateSelectorIdentifier)
-			bceCandidateSelectorType = CandidateSelector::MinimumNumberOfClauseLiteralOverlaps;
+			bceCandidateSelectorType = CandidateSelector::MaximumNumberOfClauseLiteralOverlaps;
 		if (optionalStringifiedCandidateSelectorType == considerAllClausesCandidateSelectorIdentifier)
 			bceCandidateSelectorType = CandidateSelector::InDefinitionOrder;
 
