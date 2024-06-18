@@ -5,7 +5,7 @@
 
 #include "dimacs/dimacsParser.hpp"
 #include "optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.hpp"
-#include "optimizations/blockedClauseElimination/candidateSelection/minimumClauseLengthCandidateSelector.hpp"
+#include "optimizations/blockedClauseElimination/candidateSelection/clauseLengthBasedCandidateSelector.hpp"
 #include "optimizations/blockedClauseElimination/candidateSelection/overlapBasedCandidateSelector.hpp"
 #include "utils/commandLine/commandLineParser.hpp"
 
@@ -13,6 +13,7 @@ enum CandidateSelector
 {
 	InDefinitionOrder,
 	MinimumClauseLength,
+	MaximumClauseLength,
 	MinimumNumberOfClauseLiteralOverlaps,
 	MaximumNumberOfClauseLiteralOverlaps,
 	Unknown
@@ -26,6 +27,8 @@ inline std::string stringifyCandidateSelectorType(CandidateSelector candidateSel
 		return "All clauses of formula in order of definition will be considered as candidate";
 	case CandidateSelector::MinimumClauseLength:
 		return "Chose candidates based on clause length sorted in ascending order";
+	case CandidateSelector::MaximumClauseLength:
+		return "Chose candidates based on clause length sorted in descending order";
 	case CandidateSelector::MinimumNumberOfClauseLiteralOverlaps:
 		return "Chose candidates based on the number of overlaps with other clauses containing literal of same polarity sorted in ascending order";
 	case CandidateSelector::MaximumNumberOfClauseLiteralOverlaps:
@@ -127,11 +130,14 @@ int main(int argc, char* argv[])
 	if (commandLineParser->tryGetStringValue("--candidateSelector", optionalStringifiedCandidateSelectorType))
 	{
 		const std::string minClauseLengthBceCandidateSelectorIdentifier = "minClauseLength";
+          const std::string maxClauseLengthBceCandidateSelectorIdentifier = "maxClauseLength";
 		const std::string minClauseOverlapBceCandidateSelectorIdentifier = "minClauseOverlap";
 		const std::string maxClauseOverlapBceCandidateSelectorIdentifier = "maxClauseOverlap";
 		const std::string considerAllClausesCandidateSelectorIdentifier = "inDefOrder";
 		if (optionalStringifiedCandidateSelectorType == minClauseLengthBceCandidateSelectorIdentifier)
 			bceCandidateSelectorType = CandidateSelector::MinimumClauseLength;
+        if (optionalStringifiedCandidateSelectorType == maxClauseLengthBceCandidateSelectorIdentifier)
+            bceCandidateSelectorType = CandidateSelector::MaximumClauseLength;
 		if (optionalStringifiedCandidateSelectorType == minClauseOverlapBceCandidateSelectorIdentifier)
 			bceCandidateSelectorType = CandidateSelector::MinimumNumberOfClauseLiteralOverlaps;
 		if (optionalStringifiedCandidateSelectorType == maxClauseOverlapBceCandidateSelectorIdentifier)
@@ -222,8 +228,11 @@ int main(int argc, char* argv[])
 			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::BaseCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination);
 			break;
 		case CandidateSelector::MinimumClauseLength:
-			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::MinimumClauseLengthCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination);
+			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::ClauseLengthBasedCandidateSelector>(*parsedSatFormula, blockedClauseElimination::ClauseLengthBasedCandidateSelector::ClauseLengthSortOrder::Ascending, numCandidateClausesToConsiderForBlockedClauseElimination);
 			break;
+        case CandidateSelector::MaximumClauseLength:
+            blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::ClauseLengthBasedCandidateSelector>(*parsedSatFormula, blockedClauseElimination::ClauseLengthBasedCandidateSelector::ClauseLengthSortOrder::Descending, numCandidateClausesToConsiderForBlockedClauseElimination);
+            break;
 		case CandidateSelector::MinimumNumberOfClauseLiteralOverlaps:
 			blockedClauseCandidateSelector = std::make_shared<blockedClauseElimination::OverlapBasedCandidateSelector>(*parsedSatFormula, numCandidateClausesToConsiderForBlockedClauseElimination, blockedClauseElimination::OverlapBasedCandidateSelector::MinimumCountsFirst);
 			break;

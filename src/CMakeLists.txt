@@ -24,14 +24,14 @@ target_sources(BlockedClauseElimination
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.cpp
 		
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/candidateSelection/minimumClauseLengthCandidateSelector.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/candidateSelection/clauseLengthBasedCandidateSelector.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/candidateSelection/overlapBasedCandidateSelector.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/intervalTree/avlIntervalTree.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/intervalTree/avlIntervalTreeNode.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/baseCandidateSelector.hpp
-		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/minimumClauseLengthCandidateSelector.hpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/clauseLengthBasedCandidateSelector.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/candidateSelection/overlapBasedCandidateSelector.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/baseBlockedClauseEliminator.hpp
 
