@@ -31,21 +31,25 @@ std::optional<BaseBlockedClauseEliminator::BlockedClauseSearchResult> AvlInterva
 
 	for (const long clauseLiteral : matchingClauseForIdx->literals)
 	{
+		if (wasLiteralOfWithNegatedPolarityFoundBlockingClause(clauseLiteral))
+			continue;
+
 		// Get all potentially overlapping clauses (based on the clause literal bounds)
 		for (const std::size_t indexOfClauseWithOverlappingLiteral : avlIntervalTree->getOverlappingIntervalsForLiteral(-clauseLiteral))
 		{
 			const std::optional<dimacs::ProblemDefinition::Clause*> optionalPotentiallyOverlappingClause = problemDefinition->getClauseByIndexInFormula(indexOfClauseWithOverlappingLiteral);
-			if (!optionalPotentiallyOverlappingClause.has_value() || indexOfClauseWithOverlappingLiteral == idxOfClauseToCheckInFormula)
-				continue;
+			const dimacs::ProblemDefinition::Clause* clauseOverlappingLiteral = optionalPotentiallyOverlappingClause.value_or(nullptr);
 
 			// We can reuse our invariant that a clause with one literal cannot be blocked in a similar way to "short-circuit" our check whether a clause is literal blocked if the clause with one literal is overlapped.
-			if (optionalPotentiallyOverlappingClause.value()->literals.size() == 1)
-				return BlockedClauseSearchResult({ false, std::nullopt });
-
 			// Check if the resolvent of the clause for which we would like to determine whether it is literal blocked and the clause, for which we have determine that it contains the literal to be looked for with negative polarity, form a tautology
-			const dimacs::ProblemDefinition::Clause* clauseOverlappingLiteral = *optionalPotentiallyOverlappingClause;
-			if (clauseOverlappingLiteral->containsLiteral(-clauseLiteral) && doesResolventContainTautology(matchingClauseForIdx, clauseLiteral, clauseOverlappingLiteral))
+			const bool isLiteralBlocked = indexOfClauseWithOverlappingLiteral != idxOfClauseToCheckInFormula && clauseOverlappingLiteral && clauseOverlappingLiteral->literals.size() > 1
+				&& clauseOverlappingLiteral->containsLiteral(-clauseLiteral) && doesResolventContainTautology(matchingClauseForIdx, clauseLiteral, clauseOverlappingLiteral);
+
+			if (isLiteralBlocked)
+			{
+				recordClauseLiteralAsBlockingAnyClause(clauseLiteral);
 				return BlockedClauseSearchResult({ true, indexOfClauseWithOverlappingLiteral });
+			}
 		}
 	}
 	return BlockedClauseSearchResult({ false, std::nullopt });
@@ -95,6 +99,15 @@ std::vector<std::size_t> AvlIntervalTreeBlockedClauseEliminator::determineSequen
 	return sortedClauseIndices;
 }
 
+bool AvlIntervalTreeBlockedClauseEliminator::wasLiteralOfWithNegatedPolarityFoundBlockingClause(long candidateLiteralForWhichNoLiteralWithNegatedPolarityShouldExist) const
+{
+	return foundLiteralsBlockingAnyClause.count(-candidateLiteralForWhichNoLiteralWithNegatedPolarityShouldExist);
+}
+
+void AvlIntervalTreeBlockedClauseEliminator::recordClauseLiteralAsBlockingAnyClause(long clauseLiteral)
+{
+	foundLiteralsBlockingAnyClause.emplace(clauseLiteral);
+}
 
 bool AvlIntervalTreeBlockedClauseEliminator::doesResolventContainTautology(const dimacs::ProblemDefinition::Clause* resolventLeftOperand, long resolventLiteral, const dimacs::ProblemDefinition::Clause* resolventRightOperand)
 {

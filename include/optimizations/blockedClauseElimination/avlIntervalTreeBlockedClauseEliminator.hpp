@@ -21,9 +21,12 @@ namespace blockedClauseElimination
 		[[nodiscard]] bool excludeClauseFromSearchSpace(std::size_t idxOfClauseToIgnoreInFurtherSearch) override;
 	protected:
 		std::unique_ptr<avl::AvlIntervalTree> avlIntervalTree;
+		std::unordered_set<long> foundLiteralsBlockingAnyClause;
 
 		[[nodiscard]] bool includeClauseInSearchSpace(std::size_t idxOfClauseToIncludeInFurtherSearch) override;
 		[[nodiscard]] std::vector<std::size_t> determineSequenceOfClauseIndicesOrderedByToLiteralBounds() const;
+		[[nodiscard]] bool wasLiteralOfWithNegatedPolarityFoundBlockingClause(long candidateLiteralForWhichNoLiteralWithNegatedPolarityShouldExist) const;
+		void recordClauseLiteralAsBlockingAnyClause(long clauseLiteral);
 		[[nodiscard]] static bool doesResolventContainTautology(const dimacs::ProblemDefinition::Clause* resolventLeftOperand, long resolventLiteral, const dimacs::ProblemDefinition::Clause* resolventRightOperand);
 	};
 };
