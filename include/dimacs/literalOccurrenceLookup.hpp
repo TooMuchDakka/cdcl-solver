@@ -7,7 +7,6 @@
 namespace dimacs {
 	class LiteralOccurrenceLookup {
 	public:
-		using ptr = std::shared_ptr<LiteralOccurrenceLookup>;
 		LiteralOccurrenceLookup(const ProblemDefinition& problemDefinition) : nVariables(0) { initialize(problemDefinition); }
 
 		[[nodiscard]] std::optional<std::vector<std::size_t>> operator[](long literal) const;

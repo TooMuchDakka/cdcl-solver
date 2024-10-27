@@ -10,21 +10,23 @@ namespace setBlockedClauseElimination {
 		virtual ~BaseSetBlockedClauseEliminator() = default;
 
 		// TODO: Pure literal elimination in parser or problemDefinition class?
-		BaseSetBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition, std::unique_ptr<BaseSetBlockedClauseEliminator> blockingSetCandidateGenerator)
-			: problemDefinition(std::move(problemDefinition)), blockingSetCandidateGenerator(std::move(blockingSetCandidateGenerator)) {}
+		explicit BaseSetBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
+		{
+			if (!problemDefinition)
+				throw std::invalid_argument("Problem definition cannot be null");
 
-		[[nodiscard]] virtual std::optional<std::vector<long>> determineBlockingSet(std::size_t clauseIdxInFormula) const = 0;
-		virtual void ignoreSetBlockedClause(std::size_t clauseIdxInFormula) = 0;
+			this->problemDefinition = std::move(problemDefinition);
+		}
+
+		[[nodiscard]] virtual std::optional<std::vector<long>> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const = 0;
 
 		// TODO: Enable search for blocking set of specific size?
 
 	protected:
 		dimacs::ProblemDefinition::ptr problemDefinition;
-		std::unique_ptr<BaseSetBlockedClauseEliminator> blockingSetCandidateGenerator;
-		const dimacs::ProblemDefinition::Clause EMPTY_CLAUSE;
-
-		[[nodiscard]] virtual bool isClauseSetBlocked(std::size_t clauseIdxInFormula, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const = 0;
-		[[nodiscard]] static bool isClauseSetBlocked(const std::unordered_set<long> literalsOfDiffSetOfClauseToCheckAndBlockingSet, const dimacs::ProblemDefinition::Clause& clauseInResolutionEnvironment, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) {
+		
+		[[nodiscard]] virtual std::vector<dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const = 0;
+		[[nodiscard]] static bool isClauseSetBlocked(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const dimacs::ProblemDefinition::Clause& clauseInResolutionEnvironment, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) {
 			// A clause C is blocked by a set L in a formula F iff. forall C' \in F: C' \union L != 0: C\L \union NOT(L) \union C' is a tautology 
 			return std::any_of(
 				clauseInResolutionEnvironment.literals.cbegin(),

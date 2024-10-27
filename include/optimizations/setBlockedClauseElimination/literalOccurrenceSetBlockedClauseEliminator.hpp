@@ -6,25 +6,27 @@
 #include "baseSetBlockedClauseEliminator.hpp"
 #include <dimacs/literalOccurrenceLookup.hpp>
 
+#include "literalOccurrenceBlockingSetCandidateGenerator.hpp"
+
 namespace setBlockedClauseElimination {
 	class LiteralOccurrenceSetBlockedClauseEliminator : public BaseSetBlockedClauseEliminator {
 	public:
 		LiteralOccurrenceSetBlockedClauseEliminator() = delete;
-		explicit LiteralOccurrenceSetBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition, std::unique_ptr<BaseSetBlockedClauseEliminator> blockingSetCandidateGenerator)
-			: BaseSetBlockedClauseEliminator(std::move(problemDefinition), std::move(blockingSetCandidateGenerator))
+		explicit LiteralOccurrenceSetBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
+			: BaseSetBlockedClauseEliminator(std::move(problemDefinition)), literalOccurrenceLookup(*this->problemDefinition)
 		{
-			if (!problemDefinition)
-				throw std::invalid_argument("Problem definition cannot be null");
-
-			literalOccurrenceLookup = std::make_unique<dimacs::LiteralOccurrenceLookup>(*this->problemDefinition);
+			candidateGenerator = std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>();
+			if (!candidateGenerator)
+				throw std::exception("Failed to initialize candidate generator");
 		}
 
-		[[nodiscard]] std::optional<std::vector<long>> determineBlockingSet(std::size_t clauseIdxInFormula) const override;
-		void ignoreSetBlockedClause(std::size_t clauseIdxInFormula) override;
+		[[nodiscard]] std::optional<std::vector<long>> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const override;
 		
 	protected:
-		std::unique_ptr<dimacs::LiteralOccurrenceLookup> literalOccurrenceLookup;
+		LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateGenerator;
+		dimacs::LiteralOccurrenceLookup literalOccurrenceLookup;
 
+		[[nodiscard]] std::vector<dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const override;
 	};
 }
 #endif

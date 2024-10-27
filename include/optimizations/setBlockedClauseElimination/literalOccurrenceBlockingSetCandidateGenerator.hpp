@@ -2,6 +2,7 @@
 #define LITERAL_OCCURRENCE_BLOCKING_SET_CANDIDATE_GENERATOR_HPP
 
 #include <random>
+#include <string>
 
 #include "dimacs/literalOccurrenceLookup.hpp"
 #include "dimacs/problemDefinition.hpp"
@@ -10,64 +11,71 @@
 namespace setBlockedClauseElimination {
 	class LiteralOccurrenceBlockingSetCandidateGenerator : public BaseBlockingSetCandidateGenerator {
 	public:
+		enum LiteralClauseOverlapCountSortOrder
+		{
+			Ascending,
+			Descending
+		};
+
+		explicit LiteralOccurrenceBlockingSetCandidateGenerator()
+			: literalSelectionHeuristic(LiteralSelectionHeuristic::Sequential), optionalRng(std::nullopt), optionalSortOrder(std::nullopt) {}
+
+		explicit LiteralOccurrenceBlockingSetCandidateGenerator(const unsigned int rngSeed)
+			: LiteralOccurrenceBlockingSetCandidateGenerator()
+		{
+			literalSelectionHeuristic = LiteralSelectionHeuristic::Random;
+			optionalRng = std::default_random_engine{};
+			optionalRng->seed(rngSeed);
+		}
+
+		explicit LiteralOccurrenceBlockingSetCandidateGenerator(const LiteralClauseOverlapCountSortOrder literalClauseOverlapCountSortOrder)
+			: LiteralOccurrenceBlockingSetCandidateGenerator()
+		{
+			literalSelectionHeuristic = literalClauseOverlapCountSortOrder == LiteralClauseOverlapCountSortOrder::Ascending ? LiteralSelectionHeuristic::MinimalClauseOverlap : LiteralSelectionHeuristic::MaximumClauseOverlap;
+			optionalSortOrder = literalClauseOverlapCountSortOrder;
+		}
+
 		using ptr = std::unique_ptr<LiteralOccurrenceBlockingSetCandidateGenerator>;
 
-		explicit LiteralOccurrenceBlockingSetCandidateGenerator(std::vector<long> clauseLiterals)
-			: BaseBlockingSetCandidateGenerator(std::move(clauseLiterals))
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingRandomLiteralSelectionHeuristic(unsigned int rngSeed)
 		{
-			if (!this->clauseLiterals.empty())
-			{
-				candidateLiteralIndices = { 0, 0 };
-				lastGeneratedCandidate = { getClauseLiteral(0) };
-				requiredWrapAroundBeforeCandidateResize = { determineRequiredNumberOfWrapAroundsForIndex(0) };
-			}
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(rngSeed);
 		}
 
-		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingSequentialLiteralSelection(std::vector<long> clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingSequentialLiteralSelectionHeuristic()
 		{
-			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
-			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>();
 		}
 
-		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingRandomLiteralSelection(std::vector<long> clauseLiterals, unsigned int rngSeed, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingMinimumClauseOverlapForLiteralSelection()
 		{
-			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
-			if (!clauseLiterals.empty())
-			{
-				auto rng = std::default_random_engine{};
-				rng.seed(rngSeed);
-
-				std::shuffle(clauseLiterals.begin(), clauseLiterals.end(), rng);
-			}
-			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(LiteralClauseOverlapCountSortOrder::Ascending);
 		}
 
-		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingMinimumClauseOverlapForLiteralSelection(std::vector<long> clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingMaximumClauseOverlapForLiteralSelection()
 		{
-			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
-			if (!clauseLiterals.empty())
-				orderLiteralsAccordingToHeuristic(clauseLiterals, literalOccurrenceLookup, true);
-
-			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
-		}
-
-		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingMaximumClauseOverlapForLiteralSelection(std::vector<long> clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
-		{
-			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
-			if (!clauseLiterals.empty())
-				orderLiteralsAccordingToHeuristic(clauseLiterals, literalOccurrenceLookup, false);
-
-			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(LiteralClauseOverlapCountSortOrder::Descending);
 		}
 
 		[[nodiscard]] std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generateNextCandidate() override;
+		void init(std::vector<long> candidateClauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup) override;
 
 	protected:
+		enum LiteralSelectionHeuristic
+		{
+			Sequential,
+			Random,
+			MinimalClauseOverlap,
+			MaximumClauseOverlap
+		};
+
+		LiteralSelectionHeuristic literalSelectionHeuristic;
+		std::optional<std::default_random_engine> optionalRng;
+		std::optional<LiteralClauseOverlapCountSortOrder> optionalSortOrder;
+
 		BaseBlockingSetCandidateGenerator::BlockingSetCandidate lastGeneratedCandidate;
 		std::vector<std::size_t> candidateLiteralIndices;
 		std::vector<std::size_t> requiredWrapAroundBeforeCandidateResize;
-
-		static void orderLiteralsAccordingToHeuristic(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, bool orderAscendingly);
 
 		[[nodiscard]] std::size_t getLastIncrementableIndexForPosition(std::size_t indexInCandidateVector) const noexcept
 		{
@@ -89,18 +97,9 @@ namespace setBlockedClauseElimination {
 			return candidateLiteralIndices.size() <= clauseLiterals.size();
 		}
 
-		static void filterNoneOverlappingLiteralsFromClause(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
-		{
-			clauseLiterals.erase(
-				std::remove_if(
-					clauseLiterals.begin(),
-					clauseLiterals.end(),
-					[&literalOccurrenceLookup](const long literal) { return literalOccurrenceLookup.getNumberOfOccurrencesOfLiteral(-literal) == 0; }),
-				clauseLiterals.end()
-			);
-		}
-
 		void incrementCandidateSize();
+		static void filterNoneOverlappingLiteralsFromClause(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup);
+		static void orderLiteralsAccordingToHeuristic(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, bool orderAscendingly);
 	};
 }
 
