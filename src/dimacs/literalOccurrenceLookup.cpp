@@ -65,7 +65,7 @@ std::size_t LiteralOccurrenceLookup::getLiteralIndexInLookup(long literal) const
 		return 0;
 
 	if (literal < 0)
-		return literal;
+		return -literal;
 
 	return nVariables + static_cast<std::size_t>(literal);
 }
