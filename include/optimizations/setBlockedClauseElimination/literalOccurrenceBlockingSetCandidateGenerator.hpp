@@ -1,6 +1,8 @@
 #ifndef LITERAL_OCCURRENCE_BLOCKING_SET_CANDIDATE_GENERATOR_HPP
 #define LITERAL_OCCURRENCE_BLOCKING_SET_CANDIDATE_GENERATOR_HPP
 
+#include <random>
+
 #include "dimacs/literalOccurrenceLookup.hpp"
 #include "dimacs/problemDefinition.hpp"
 #include "optimizations/setBlockedClauseElimination/baseBlockingSetCandidateGenerator.hpp"
@@ -8,58 +10,94 @@
 namespace setBlockedClauseElimination {
 	class LiteralOccurrenceBlockingSetCandidateGenerator : public BaseBlockingSetCandidateGenerator {
 	public:
-		enum CandidateSelectionHeuristic
-		{
-			MinClauseOverlap,
-			MaxClauseOverlap,
-			RandomSelection,
-			Sequential
-		};
+		using ptr = std::unique_ptr<LiteralOccurrenceBlockingSetCandidateGenerator>;
 
-		explicit LiteralOccurrenceBlockingSetCandidateGenerator(std::vector<long> clauseLiterals, const CandidateSelectionHeuristic candidateSelectionHeuristic, const dimacs::LiteralOccurrenceLookup* literalOccurrenceLookup)
-			: BaseBlockingSetCandidateGenerator(std::move(clauseLiterals)), candidateSelectionHeuristic(candidateSelectionHeuristic)
+		explicit LiteralOccurrenceBlockingSetCandidateGenerator(std::vector<long> clauseLiterals)
+			: BaseBlockingSetCandidateGenerator(std::move(clauseLiterals))
 		{
-			if (!literalOccurrenceLookup && (candidateSelectionHeuristic != CandidateSelectionHeuristic::RandomSelection && candidateSelectionHeuristic != CandidateSelectionHeuristic::Sequential))
-				throw std::invalid_argument("None random candidate selection heuristic requires literal occurrence lookup to operate correctly!");
-
-			orderLiteralsAccordingToHeuristic(*literalOccurrenceLookup);
-			candidateLiteralIndices = { 0, 0 };
-			lastGeneratedCandidate = { getClauseLiteral(0) };
-			requiredWrapAroundBeforeCandidateResize = { determineRequiredNumberOfWrapAroundsForIndex(0) };
+			if (!this->clauseLiterals.empty())
+			{
+				candidateLiteralIndices = { 0, 0 };
+				lastGeneratedCandidate = { getClauseLiteral(0) };
+				requiredWrapAroundBeforeCandidateResize = { determineRequiredNumberOfWrapAroundsForIndex(0) };
+			}
 		}
 
-		[[nodiscard]] std::optional<BlockingSetCandidate> generateNextCandidate() override;
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingSequentialLiteralSelection(std::vector<long> clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		{
+			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
+		}
+
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingRandomLiteralSelection(std::vector<long> clauseLiterals, unsigned int rngSeed, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		{
+			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
+			if (!clauseLiterals.empty())
+			{
+				auto rng = std::default_random_engine{};
+				rng.seed(rngSeed);
+
+				std::shuffle(clauseLiterals.begin(), clauseLiterals.end(), rng);
+			}
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
+		}
+
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingMinimumClauseOverlapForLiteralSelection(std::vector<long> clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		{
+			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
+			if (!clauseLiterals.empty())
+				orderLiteralsAccordingToHeuristic(clauseLiterals, literalOccurrenceLookup, true);
+
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
+		}
+
+		[[nodiscard]] static LiteralOccurrenceBlockingSetCandidateGenerator::ptr usingMaximumClauseOverlapForLiteralSelection(std::vector<long> clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		{
+			filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
+			if (!clauseLiterals.empty())
+				orderLiteralsAccordingToHeuristic(clauseLiterals, literalOccurrenceLookup, false);
+
+			return std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(clauseLiterals);
+		}
+
+		[[nodiscard]] std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generateNextCandidate() override;
+
 	protected:
-		CandidateSelectionHeuristic candidateSelectionHeuristic;
 		BaseBlockingSetCandidateGenerator::BlockingSetCandidate lastGeneratedCandidate;
 		std::vector<std::size_t> candidateLiteralIndices;
 		std::vector<std::size_t> requiredWrapAroundBeforeCandidateResize;
 
-		void orderLiteralsAccordingToHeuristic(const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup);
-
+		static void orderLiteralsAccordingToHeuristic(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, bool orderAscendingly);
 
 		[[nodiscard]] std::size_t getLastIncrementableIndexForPosition(std::size_t indexInCandidateVector) const noexcept
 		{
 			return (clauseLiterals.size() - candidateLiteralIndices.size()) + indexInCandidateVector;
 		}
 
-		[[nodiscard]] long getClauseLiteral(std::size_t clauseLiteralIdx) const
+		[[nodiscard]] long getClauseLiteral(const std::size_t clauseLiteralIdx) const
 		{
 			return clauseLiterals[candidateLiteralIndices[clauseLiteralIdx]];
 		}
 
-		[[nodiscard]] std::size_t determineRequiredNumberOfWrapAroundsForIndex(std::size_t clauseLiteralIdx) const noexcept
+		[[nodiscard]] std::size_t determineRequiredNumberOfWrapAroundsForIndex(const std::size_t clauseLiteralIdx) const noexcept
 		{
-			/*if (clauseLiteralIdx + candidateLiteralIndices.size() < clauseLiterals.size())
-				return (clauseLiterals.size() - clauseLiteralIdx) - candidateLiteralIndices.size();
-			return 0;*/
-
 			return (clauseLiterals.size() - (candidateLiteralIndices.size() + clauseLiteralIdx)) + 1;
 		}
 
 		[[nodiscard]] bool canGenerateMoreCandidates() const noexcept
 		{
 			return candidateLiteralIndices.size() <= clauseLiterals.size();
+		}
+
+		static void filterNoneOverlappingLiteralsFromClause(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+		{
+			clauseLiterals.erase(
+				std::remove_if(
+					clauseLiterals.begin(),
+					clauseLiterals.end(),
+					[&literalOccurrenceLookup](const long literal) { return literalOccurrenceLookup.getNumberOfOccurrencesOfLiteral(-literal) == 0; }),
+				clauseLiterals.end()
+			);
 		}
 
 		void incrementCandidateSize();

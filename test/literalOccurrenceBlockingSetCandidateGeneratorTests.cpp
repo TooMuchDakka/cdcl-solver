@@ -8,17 +8,7 @@ using namespace setBlockedClauseElimination;
 class LiteralOccurrenceBlockingSetCandidateGeneratorTests : public testing::Test {
 public:
 	using BlockingSetCandidateCollection = std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate>;
-	std::unique_ptr<LiteralOccurrenceBlockingSetCandidateGenerator> candidateSelector;
-
-	void initializeCandidateSelector(
-		std::vector<long> clauseLiterals, 
-		LiteralOccurrenceBlockingSetCandidateGenerator::CandidateSelectionHeuristic candidateSelectionHeuristic,
-		const dimacs::LiteralOccurrenceLookup* literalOccurrenceLookup)
-	{
-		candidateSelector = std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>(std::move(clauseLiterals), candidateSelectionHeuristic, literalOccurrenceLookup);
-		EXPECT_TRUE(candidateSelector);
-	}
-
+	
 	[[nodiscard]] static BlockingSetCandidateCollection buildExpectedCandidateLookup(const std::initializer_list<std::initializer_list<long>>& expectedCandidates)
 	{
 		BlockingSetCandidateCollection candidateContainer;
@@ -68,71 +58,363 @@ public:
 			EXPECT_TRUE(areBlockingSetsEqual(expectedCandidates.at(i), actualCandidates.at(i))) << "Expected candidate: " << stringifyBlockingSet(expectedCandidates.at(i)) << " but was actually: " << stringifyBlockingSet(actualCandidates.at(i));
 	}
 
-	[[nodiscard]] BlockingSetCandidateCollection determineActualCandidatesOrThrow(const std::size_t numExpectedCandidates) const
+	[[nodiscard]] static BlockingSetCandidateCollection determineActualCandidatesOrThrow(BaseBlockingSetCandidateGenerator& candidateGenerator, const std::size_t numExpectedCandidates)
 	{
 		BlockingSetCandidateCollection actualCandidates;
 		actualCandidates.reserve(numExpectedCandidates);
 
 		for (std::size_t i = 0; i < numExpectedCandidates; ++i)
 		{
-			const std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generatedCandidate = candidateSelector->generateNextCandidate();
+			const std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generatedCandidate = candidateGenerator.generateNextCandidate();
 			EXPECT_TRUE(generatedCandidate.has_value());
 			actualCandidates.emplace_back(*generatedCandidate);
 		}
-		EXPECT_FALSE(candidateSelector->generateNextCandidate());
+		EXPECT_FALSE(candidateGenerator.generateNextCandidate());
 		return actualCandidates;
+	}
+
+	[[nodiscard]] static dimacs::ProblemDefinition::ptr generateCnfFormula(const std::size_t numVariables, const std::initializer_list<std::initializer_list<long>>& formulaClauses)
+	{
+		auto problemDefinition = std::make_shared<dimacs::ProblemDefinition>(numVariables, formulaClauses.size());
+		EXPECT_TRUE(problemDefinition);
+
+		std::size_t clauseIdxInFormula = 0;
+		for (const auto& clauseLiterals : formulaClauses)
+			problemDefinition->addClause(clauseIdxInFormula++, dimacs::ProblemDefinition::Clause(clauseLiterals));
+
+		return problemDefinition;
 	}
 };
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicOnlyOneCandidatePossible)
 {
 	const std::vector<long> candidateClauseLiterals = { 1,2 };
-	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
+	const auto formula = generateCnfFormula(candidateClauseLiterals.size(), { {-1,-2} });
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({{ 1,2 } });
-	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicNoGapsInSearchSpace)
 {
 	const std::vector<long> candidateClauseLiterals = { 1,2,3 };
-	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
+	const auto formula = generateCnfFormula(candidateClauseLiterals.size(), { {-1,-2,-3} });
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 1,2 }, { 1,3 }, { 2,3 },
 		{ 1,2,3 }
 	});
-	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicWithGapsInSearchSpace)
 {
 	const std::vector<long> candidateClauseLiterals = { 1,2,3,4 };
-	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
+	const auto formula = generateCnfFormula(candidateClauseLiterals.size(), { {-1,-2,-3,-4} });
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 1,2 }, { 1,3 }, { 1,4 }, { 2,3 }, { 2,4 }, { 3,4 },
 		{ 1,2,3 }, { 1,2,4 }, { 1,3,4 }, { 2,3,4 },
 		{ 1,2,3,4 }
 	});
-	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicsWithLargerGapsInSearchSpace)
 {
 	const std::vector<long> candidateClauseLiterals = { 1,2,3,4,5 };
-	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
+	const auto formula = generateCnfFormula(candidateClauseLiterals.size(), { {-1,-2,-3,-4,-5} });
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 1,2 }, { 1,3 }, { 1,4 }, {1,5 }, { 2,3 }, { 2,4 }, { 2,5 }, { 3,4 }, { 3,5 }, { 4,5 },
 		{ 1,2,3 }, { 1,2,4 }, {1,2,5 }, { 1,3,4 }, { 1,3,5 }, { 1,4,5 }, { 2,3,4 }, { 2,3,5 }, { 2,4,5 }, { 3,4,5 },
 		{ 1,2,3,4 }, { 1,2,3,5 }, { 1,2,4,5 }, { 1,3,4,5 }, { 2,3,4,5 },
 		{ 1,2,3,4,5 }
+	});
+
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeuristicWithOnlyOneCandidatePossible)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2 };
+	constexpr std::size_t numVariablesInFormula = 3;
+	// Ordering of variables according to overlap count: 2: 3 > 1: 2 > 3: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{-1,-2,-3}, {-1,-2}, {-2,-3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({ { 1,2 } });
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeuristicWithNoGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3 };
+	constexpr std::size_t numVariablesInFormula = 3;
+	// Ordering of variables according to overlap count: 3: 3 > 2: 2 > 1: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{ -1,-2,-3 }, { -2,-3 }, { 2,-3 }
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({ { 1,2 }, {1,3}, {2,3}, { 1,2,3 } });
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeuristicWithGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3,4 };
+	constexpr std::size_t numVariablesInFormula = 4;
+	// Ordering of variables according to overlap count: 3: 4 > 2: 3 > 1: 2 > 4: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{ -1,-2,-3 }, { -2,-3 }, { -2,-3 }, { -3,-1,-4 }
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({ 
+		{ 4,1 }, { 4,2 }, { 4,3 }, { 1,2 }, { 1,3 }, { 2,3 },
+		{ 4,1,2 }, { 4,1,3 }, { 4,2,3 }, { 1,2,3 },
+		{ 4,1,2,3 }
+	});
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeuristicWithLargerGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3,4,5 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 3: 5 > 2: 4 > 1: 3 > 4: 2 > 5: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{ -1,-2,-3 }, { -2,-3 }, { -2,-3 }, { -3,-1,-4 }, { -3,-2 }, { -1,-4,-5 }
 		});
 
-	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{5, 4}, {5, 1}, {5, 2}, {5, 3}, {4, 1}, {4, 2}, {4, 3}, {1, 2}, {1, 3}, {2, 3},
+		{5, 4, 1}, {5, 4, 2}, {5, 4, 3}, {5, 1, 2}, {5, 1, 3}, {5, 2, 3}, {4, 1, 2}, {4, 1, 3}, {4, 2, 3}, { 1, 2, 3 },
+		{5, 4, 1, 2}, {5, 4, 1, 3}, {5, 4, 3, 2}, {5, 1, 2, 3},  { 4, 1, 2, 3 },
+		{5, 4, 1, 2, 3}
+	});
+
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeuristicWithOnlyOneCandidatePossible)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2 };
+	constexpr std::size_t numVariablesInFormula = 3;
+	// Ordering of variables according to overlap count: 2: 3 > 1: 2 > 3: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{-1,-2,-3}, {-1,-2}, {-2,-3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({ { 2,1 } });
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeuristicWithNoGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3 };
+	constexpr std::size_t numVariablesInFormula = 3;
+	// Ordering of variables according to overlap count: 2: 3 > 1: 2 > 3: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{-1,-2,-3}, {-1,-2}, {-2,-3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({ { 2,1 }, { 2,3 }, { 1,3 }, { 2,1,3 } });
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeuristicWithGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3,-4 };
+	constexpr std::size_t numVariablesInFormula = 4;
+	// Ordering of variables according to overlap count: 2: 4 > -4: 3 > 1: 2 > 3: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{-1,-2,-3, 4}, {-1,-2, 4}, {-2,-3}, { -2, 4}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{ 2,-4 }, { 2, 1}, { 2,3 }, { -4,1 }, { -4,3 }, { 1,3},
+		{ 2,-4,1 }, { 2,-4,3}, { 2,1,3 }, { -4,1,3 },
+		{ 2,-4,1,3 }
+	});
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeuristicWithLargerGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3,4,5 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 3: 5 > 2: 4 > 1: 3 > 4: 2 > 5: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{ -1,-2,-3 }, { -2,-3 }, { -2,-3 }, { -3,-1,-4 }, { -3,-2 }, { -1,-4,-5 }
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{ 3,2 }, { 3,1 }, { 3,4 }, { 3,5 }, { 2,1 }, { 2,4 }, { 2,5 }, { 1,4 }, { 1,5 }, { 4,5 },
+		{ 3,2,1 }, { 3,2,4 }, { 3,2,5 }, { 3,1,4 }, { 3,1,5 }, { 3,4,5 }, { 2,1,4 }, { 2,1,5 }, { 2,4,5 }, { 1,4,5 },
+		{ 3,2,1,4 }, { 3,2,1,5 }, { 3,2,4,5 }, { 3,1,4,5 }, { 2,1,4,5 },
+		{ 3,2,1,4,5 }
+	});
+
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeuristicIgnoresLiteralsWithoutOverlap)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,-5, 3,-4 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{2, 3}, {2, 1}, {3, 1},
+		{2, 3, 1}
+	});
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeuristicIgnoresLiteralsWithoutOverlap)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,-5, 3,-4 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{1, 3}, {1, 2}, {3, 2},
+		{1, 3, 2}
+	});
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicIgnoresLiteralsWithoutOverlap)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,-5, 3,-4 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup);
+	ASSERT_TRUE(candidateSelector);
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{1, 2}, {1, 3}, {2, 3},
+		{1, 2, 3}
+	});
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeurisiticOnlyApplicableForClauseWithAtleastTwoLiterals)
+{
+	const std::vector<long> candidateClauseLiterals = { 1 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	ASSERT_THROW(auto _ = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup), std::invalid_argument);
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeuristicOnlyApplicableForClauseWithAtleastTwoLiterals)
+{
+	const std::vector<long> candidateClauseLiterals = { 1 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	ASSERT_THROW(auto _ = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup), std::invalid_argument);
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeuristicOnlyApplicableForClauseWithAtleastTwoLiterals)
+{
+	const std::vector<long> candidateClauseLiterals = { 1 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	const auto formula = generateCnfFormula(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
+	});
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	ASSERT_THROW(auto _ = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection(candidateClauseLiterals, literalOccurrenceLookup), std::invalid_argument);
 }

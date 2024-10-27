@@ -8,7 +8,7 @@ using namespace setBlockedClauseElimination;
 
 std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOccurrenceBlockingSetCandidateGenerator::generateNextCandidate()
 {
-	if (!canGenerateMoreCandidates())
+	if (clauseLiterals.empty() || !canGenerateMoreCandidates())
 		return std::nullopt;
 
 	bool backTrack = true;
@@ -34,6 +34,7 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 		}
 		else
 		{
+			// Update literal for last index in candidate
 			if (lastGeneratedCandidate.size() > 1)
 				lastGeneratedCandidate.erase(getClauseLiteral(lastModifiedIdx));
 
@@ -43,6 +44,7 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 		}
 	} while (backTrack);
 
+	// Perform reset of candidate literal indices after backtracking was performed
 	for (std::size_t i = lastModifiedIdx + 1; i < candidateLiteralIndices.size() && !resizedCandidate; ++i)
 	{
 		lastGeneratedCandidate.erase(getClauseLiteral(i));
@@ -59,33 +61,19 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 }
 
 // NON PUBLIC FUNCTIONALITY
-void LiteralOccurrenceBlockingSetCandidateGenerator::orderLiteralsAccordingToHeuristic(const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+void LiteralOccurrenceBlockingSetCandidateGenerator::orderLiteralsAccordingToHeuristic(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, bool orderAscendingly)
 {
-
-	if (candidateSelectionHeuristic == CandidateSelectionHeuristic::Sequential)
-		return;
-
-	if (candidateSelectionHeuristic == CandidateSelectionHeuristic::RandomSelection)
-	{
-		auto rng = std::default_random_engine{};
-		std::shuffle( clauseLiterals.begin(), clauseLiterals.end(), rng);
-		return;
-	}
-
-	if (candidateSelectionHeuristic != CandidateSelectionHeuristic::MaxClauseOverlap && candidateSelectionHeuristic != CandidateSelectionHeuristic::MinClauseOverlap)
-		throw std::invalid_argument("Cannot determine order of clause literals for candidate selection heuristic " + std::to_string(candidateSelectionHeuristic));
-
 	std::unordered_map<long, std::size_t> overlapCountPerLiteral;
 	for (const long literal : clauseLiterals)
 	{
-		const std::optional<std::size_t>& occurrenceCount = literalOccurrenceLookup.getNumberOfOccurrencesOfLiteral(literal);
+		const std::optional<std::size_t>& occurrenceCount = literalOccurrenceLookup.getNumberOfOccurrencesOfLiteral(-literal);
 		if (!occurrenceCount.has_value())
 			throw std::invalid_argument("Could not determine number of overlapping clauses for literal " + std::to_string(literal));
 
 		overlapCountPerLiteral.emplace(literal, *occurrenceCount);
 	}
 
-	if (candidateSelectionHeuristic == CandidateSelectionHeuristic::MinClauseOverlap)
+	if (orderAscendingly)
 	{
 		std::sort(
 			clauseLiterals.begin(),
@@ -104,7 +92,7 @@ void LiteralOccurrenceBlockingSetCandidateGenerator::orderLiteralsAccordingToHeu
 			{
 				return overlapCountPerLiteral[lLiteral] > overlapCountPerLiteral[rLiteral];
 			});
-	}	
+	}
 }
 
 void LiteralOccurrenceBlockingSetCandidateGenerator::incrementCandidateSize()
