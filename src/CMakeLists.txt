@@ -32,6 +32,8 @@ target_sources(SetBlockedClauseElimination
 		${CMAKE_SOURCE_DIR}/include/optimizations/setBlockedClauseElimination/baseBlockingSetCandidateGenerator.hpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/setBlockedClauseElimination/literalOccurrenceBlockingSetCandidateGenerator.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/setBlockedClauseElimination/literalOccurrenceBlockingSetCandidateGenerator.cpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/utils/clauseCandidateSelector.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/clauseCandidateSelector.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/setBlockedClauseElimination/baseSetBlockedClauseEliminator.hpp
 )
