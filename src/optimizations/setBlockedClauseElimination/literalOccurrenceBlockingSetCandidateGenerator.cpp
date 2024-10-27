@@ -8,50 +8,63 @@ using namespace setBlockedClauseElimination;
 
 std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOccurrenceBlockingSetCandidateGenerator::generateNextCandidate()
 {
-	if (lastGeneratedCandidate.size() > clauseLiterals.size())
+	if (!canGenerateMoreCandidates())
 		return std::nullopt;
 
 	bool backTrack = true;
+	bool resizedCandidate = false;
 	std::size_t lastModifiedIdx = candidateLiteralIndices.size() - 1;
 	do
 	{
-		++candidateLiteralIndices[lastModifiedIdx];
-		lastGeneratedCandidate.erase(getClauseLiteral(lastModifiedIdx));
-		if (candidateLiteralIndices[lastModifiedIdx] > getLastIncrementableIndexForPosition(lastModifiedIdx))
+		if (candidateLiteralIndices[lastModifiedIdx] + 1 > getLastIncrementableIndexForPosition(lastModifiedIdx))
 		{
 			if (lastModifiedIdx)
 			{
 				--lastModifiedIdx;
-				--requiredWrapAroundBeforeCandidateResize[lastModifiedIdx];
+				if (requiredWrapAroundBeforeCandidateResize[lastModifiedIdx])
+					--requiredWrapAroundBeforeCandidateResize[lastModifiedIdx];
 			}
 
 			if (!requiredWrapAroundBeforeCandidateResize[lastModifiedIdx] && !lastModifiedIdx)
 			{
 				incrementCandidateSize();
 				backTrack = false;
+				resizedCandidate = true;
 			}
 		}
 		else
 		{
+			if (lastGeneratedCandidate.size() > 1)
+				lastGeneratedCandidate.erase(getClauseLiteral(lastModifiedIdx));
+
+			++candidateLiteralIndices[lastModifiedIdx];
 			lastGeneratedCandidate.emplace(getClauseLiteral(lastModifiedIdx));
 			backTrack = false;
 		}
 	} while (backTrack);
 
-	for (std::size_t i = lastModifiedIdx + 1; i < clauseLiterals.size(); ++i)
+	for (std::size_t i = lastModifiedIdx + 1; i < candidateLiteralIndices.size() && !resizedCandidate; ++i)
 	{
+		lastGeneratedCandidate.erase(getClauseLiteral(i));
 		candidateLiteralIndices[i] = candidateLiteralIndices[i - 1] + 1;
 		lastGeneratedCandidate.emplace(getClauseLiteral(i));
 
-		if (i < clauseLiterals.size() - 1)
-			requiredWrapAroundBeforeCandidateResize[i] = determineRequiredNumberOfWrapAroundsForIndex(i);
+		requiredWrapAroundBeforeCandidateResize[i - 1] = determineRequiredNumberOfWrapAroundsForIndex(candidateLiteralIndices[i - 1]);
 	}
+
+	if (!canGenerateMoreCandidates())
+		return std::nullopt;
+
 	return lastGeneratedCandidate;
 }
 
 // NON PUBLIC FUNCTIONALITY
 void LiteralOccurrenceBlockingSetCandidateGenerator::orderLiteralsAccordingToHeuristic(const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
 {
+
+	if (candidateSelectionHeuristic == CandidateSelectionHeuristic::Sequential)
+		return;
+
 	if (candidateSelectionHeuristic == CandidateSelectionHeuristic::RandomSelection)
 	{
 		auto rng = std::default_random_engine{};
@@ -97,9 +110,18 @@ void LiteralOccurrenceBlockingSetCandidateGenerator::orderLiteralsAccordingToHeu
 void LiteralOccurrenceBlockingSetCandidateGenerator::incrementCandidateSize()
 {
 	candidateLiteralIndices.emplace_back(0);
-	++candidateLiteralIndices[0];
+	if (candidateLiteralIndices.size() > clauseLiterals.size())
+		return;
+
+	requiredWrapAroundBeforeCandidateResize.emplace_back(0);
+	candidateLiteralIndices[0] = 0;
 
 	lastGeneratedCandidate.clear();
-	lastGeneratedCandidate.emplace(getClauseLiteral(candidateLiteralIndices[0]));
-	requiredWrapAroundBeforeCandidateResize[0] = determineRequiredNumberOfWrapAroundsForIndex(0);
+	lastGeneratedCandidate.emplace(getClauseLiteral(0));
+	for (std::size_t i = 1; i < candidateLiteralIndices.size(); ++i)
+	{
+		candidateLiteralIndices[i] = candidateLiteralIndices[i - 1] + 1;
+		lastGeneratedCandidate.emplace(getClauseLiteral(i));
+		requiredWrapAroundBeforeCandidateResize[i-1] = determineRequiredNumberOfWrapAroundsForIndex(candidateLiteralIndices[i - 1]);
+	}
 }

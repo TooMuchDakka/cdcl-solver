@@ -7,6 +7,7 @@ using namespace setBlockedClauseElimination;
 
 class LiteralOccurrenceBlockingSetCandidateGeneratorTests : public testing::Test {
 public:
+	using BlockingSetCandidateCollection = std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate>;
 	std::unique_ptr<LiteralOccurrenceBlockingSetCandidateGenerator> candidateSelector;
 
 	void initializeCandidateSelector(
@@ -18,9 +19,9 @@ public:
 		EXPECT_TRUE(candidateSelector);
 	}
 
-	[[nodiscard]] static std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> buildExpectedCandidateLookup(const std::initializer_list<std::initializer_list<long>>& expectedCandidates)
+	[[nodiscard]] static BlockingSetCandidateCollection buildExpectedCandidateLookup(const std::initializer_list<std::initializer_list<long>>& expectedCandidates)
 	{
-		std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> candidateContainer;
+		BlockingSetCandidateCollection candidateContainer;
 		candidateContainer.reserve(expectedCandidates.size());
 
 		for (const std::initializer_list<long>& candidateData : expectedCandidates)
@@ -60,32 +61,78 @@ public:
 			});
 	}
 
-	static void assertGeneratedCandidatesAreEqual(const std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate>& expectedCandidates, const std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate>& actualCandidates)
+	static void assertGeneratedCandidatesAreEqual(const BlockingSetCandidateCollection& expectedCandidates, const BlockingSetCandidateCollection& actualCandidates)
 	{
 		EXPECT_EQ(expectedCandidates.size(), actualCandidates.size());
 		for (std::size_t i = 0; i < expectedCandidates.size(); ++i)
 			EXPECT_TRUE(areBlockingSetsEqual(expectedCandidates.at(i), actualCandidates.at(i))) << "Expected candidate: " << stringifyBlockingSet(expectedCandidates.at(i)) << " but was actually: " << stringifyBlockingSet(actualCandidates.at(i));
 	}
+
+	[[nodiscard]] BlockingSetCandidateCollection determineActualCandidatesOrThrow(const std::size_t numExpectedCandidates) const
+	{
+		BlockingSetCandidateCollection actualCandidates;
+		actualCandidates.reserve(numExpectedCandidates);
+
+		for (std::size_t i = 0; i < numExpectedCandidates; ++i)
+		{
+			const std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generatedCandidate = candidateSelector->generateNextCandidate();
+			EXPECT_TRUE(generatedCandidate.has_value());
+			actualCandidates.emplace_back(*generatedCandidate);
+		}
+		EXPECT_FALSE(candidateSelector->generateNextCandidate());
+		return actualCandidates;
+	}
 };
 
-TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, TestOne)
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicOnlyOneCandidatePossible)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2 };
+	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({{ 1,2 } });
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicNoGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3 };
+	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{ 1,2 }, { 1,3 }, { 2,3 },
+		{ 1,2,3 }
+	});
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicWithGapsInSearchSpace)
 {
 	const std::vector<long> candidateClauseLiterals = { 1,2,3,4 };
-	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::RandomSelection, nullptr));
+	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
 
-	const std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> expectedCandidates = buildExpectedCandidateLookup({
-		{ 1,2 }, { 1,3 }, { 1,4 }, { 2,3 }, { 2,4 }, { 1,2,3 }, { 1,2,4 }, { 1,3,4 }, { 1,2,3,4 }
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{ 1,2 }, { 1,3 }, { 1,4 }, { 2,3 }, { 2,4 }, { 3,4 },
+		{ 1,2,3 }, { 1,2,4 }, { 1,3,4 }, { 2,3,4 },
+		{ 1,2,3,4 }
 	});
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
 
-	std::vector<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> actualCandidates;
-	actualCandidates.reserve(expectedCandidates.size());
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicsWithLargerGapsInSearchSpace)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,3,4,5 };
+	ASSERT_NO_FATAL_FAILURE(initializeCandidateSelector(candidateClauseLiterals, LiteralOccurrenceBlockingSetCandidateGenerator::Sequential, nullptr));
 
-	for (std::size_t i = 0; i < expectedCandidates.size(); ++i)
-	{
-		const std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generatedCandidate = candidateSelector->generateNextCandidate();
-		EXPECT_TRUE(generatedCandidate.has_value());
-		actualCandidates.emplace_back(*generatedCandidate);
-	}
-	EXPECT_FALSE(candidateSelector->generateNextCandidate());
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{ 1,2 }, { 1,3 }, { 1,4 }, {1,5 }, { 2,3 }, { 2,4 }, { 2,5 }, { 3,4 }, { 3,5 }, { 4,5 },
+		{ 1,2,3 }, { 1,2,4 }, {1,2,5 }, { 1,3,4 }, { 1,3,5 }, { 1,4,5 }, { 2,3,4 }, { 2,3,5 }, { 2,4,5 }, { 3,4,5 },
+		{ 1,2,3,4 }, { 1,2,3,5 }, { 1,2,4,5 }, { 1,3,4,5 }, { 2,3,4,5 },
+		{ 1,2,3,4,5 }
+		});
+
+	const BlockingSetCandidateCollection& actualCandidates = determineActualCandidatesOrThrow(expectedCandidates.size());
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
 }

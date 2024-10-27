@@ -12,17 +12,19 @@ namespace setBlockedClauseElimination {
 		{
 			MinClauseOverlap,
 			MaxClauseOverlap,
-			RandomSelection
+			RandomSelection,
+			Sequential
 		};
 
 		explicit LiteralOccurrenceBlockingSetCandidateGenerator(std::vector<long> clauseLiterals, const CandidateSelectionHeuristic candidateSelectionHeuristic, const dimacs::LiteralOccurrenceLookup* literalOccurrenceLookup)
 			: BaseBlockingSetCandidateGenerator(std::move(clauseLiterals)), candidateSelectionHeuristic(candidateSelectionHeuristic)
 		{
-			if (!literalOccurrenceLookup && candidateSelectionHeuristic != CandidateSelectionHeuristic::RandomSelection)
+			if (!literalOccurrenceLookup && (candidateSelectionHeuristic != CandidateSelectionHeuristic::RandomSelection && candidateSelectionHeuristic != CandidateSelectionHeuristic::Sequential))
 				throw std::invalid_argument("None random candidate selection heuristic requires literal occurrence lookup to operate correctly!");
 
 			orderLiteralsAccordingToHeuristic(*literalOccurrenceLookup);
 			candidateLiteralIndices = { 0, 0 };
+			lastGeneratedCandidate = { getClauseLiteral(0) };
 			requiredWrapAroundBeforeCandidateResize = { determineRequiredNumberOfWrapAroundsForIndex(0) };
 		}
 
@@ -38,7 +40,7 @@ namespace setBlockedClauseElimination {
 
 		[[nodiscard]] std::size_t getLastIncrementableIndexForPosition(std::size_t indexInCandidateVector) const noexcept
 		{
-			return clauseLiterals.size() - indexInCandidateVector - 1;
+			return (clauseLiterals.size() - candidateLiteralIndices.size()) + indexInCandidateVector;
 		}
 
 		[[nodiscard]] long getClauseLiteral(std::size_t clauseLiteralIdx) const
@@ -48,7 +50,16 @@ namespace setBlockedClauseElimination {
 
 		[[nodiscard]] std::size_t determineRequiredNumberOfWrapAroundsForIndex(std::size_t clauseLiteralIdx) const noexcept
 		{
-			return this->clauseLiterals.size() - (2 + clauseLiteralIdx);
+			/*if (clauseLiteralIdx + candidateLiteralIndices.size() < clauseLiterals.size())
+				return (clauseLiterals.size() - clauseLiteralIdx) - candidateLiteralIndices.size();
+			return 0;*/
+
+			return (clauseLiterals.size() - (candidateLiteralIndices.size() + clauseLiteralIdx)) + 1;
+		}
+
+		[[nodiscard]] bool canGenerateMoreCandidates() const noexcept
+		{
+			return candidateLiteralIndices.size() <= clauseLiterals.size();
 		}
 
 		void incrementCandidateSize();
