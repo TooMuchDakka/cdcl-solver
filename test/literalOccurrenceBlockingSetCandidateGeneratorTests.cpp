@@ -1,6 +1,4 @@
 #include <gtest/gtest.h>
-
-#include <dimacs/problemDefinition.hpp>
 #include <optimizations/setBlockedClauseElimination/literalOccurrenceBlockingSetCandidateGenerator.hpp>
 
 using namespace setBlockedClauseElimination;

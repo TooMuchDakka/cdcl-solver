@@ -7,6 +7,7 @@
 namespace setBlockedClauseElimination {
 	class BaseSetBlockedClauseEliminator {
 	public:
+		using FoundBlockingSet = std::vector<long>;
 		virtual ~BaseSetBlockedClauseEliminator() = default;
 
 		// TODO: Pure literal elimination in parser or problemDefinition class?
@@ -18,7 +19,8 @@ namespace setBlockedClauseElimination {
 			this->problemDefinition = std::move(problemDefinition);
 		}
 
-		[[nodiscard]] virtual std::optional<std::vector<long>> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const = 0;
+		// TODO: Blocking set can also only contain one literal, currently we are assuming that the set always holds two elements
+		[[nodiscard]] virtual std::optional<FoundBlockingSet> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const = 0;
 
 		// TODO: Enable search for blocking set of specific size?
 

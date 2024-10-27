@@ -1,10 +1,9 @@
 #include <optimizations/setBlockedClauseElimination/literalOccurrenceSetBlockedClauseEliminator.hpp>
-
 #include "optimizations/setBlockedClauseElimination/literalOccurrenceBlockingSetCandidateGenerator.hpp"
 
 using namespace setBlockedClauseElimination;
 
-std::optional<std::vector<long>> LiteralOccurrenceSetBlockedClauseEliminator::determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const
+std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenceSetBlockedClauseEliminator::determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const
 {
 	const std::optional<dimacs::ProblemDefinition::Clause*> dataOfAccessedClause = problemDefinition->getClauseByIndexInFormula(clauseIdxInFormula);
 	if (!dataOfAccessedClause.has_value() || dataOfAccessedClause.value()->literals.size() < 2)
@@ -39,7 +38,7 @@ std::optional<std::vector<long>> LiteralOccurrenceSetBlockedClauseEliminator::de
 	}
 
 	if (candidateBlockingSet.has_value())
-		return std::vector(candidateBlockingSet->cbegin(), candidateBlockingSet->cend());
+		return BaseSetBlockedClauseEliminator::FoundBlockingSet(candidateBlockingSet->cbegin(), candidateBlockingSet->cend());
 
 	return std::nullopt;
 }
@@ -47,10 +46,11 @@ std::optional<std::vector<long>> LiteralOccurrenceSetBlockedClauseEliminator::de
 // NON-PUBLIC FUNCTIONALITY
 std::vector<dimacs::ProblemDefinition::Clause*> LiteralOccurrenceSetBlockedClauseEliminator::determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const
 {
+	// Resolution environment R for a clause C and a given blocking set L is defined as \forall C' \in R: C' \in F \wedge C' \union \neg{L} != 0
 	std::unordered_set<std::size_t> indicesOfClausesInResolutionEnvironment;
 	for (const long literal : potentialBlockingSet)
 	{
-		if (const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[literal]; clausesContainingLiteral.has_value() && !clausesContainingLiteral->empty())
+		if (const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[-literal]; clausesContainingLiteral.has_value() && !clausesContainingLiteral->empty())
 			indicesOfClausesInResolutionEnvironment.insert(clausesContainingLiteral->cbegin(), clausesContainingLiteral->cend());
 	}
 

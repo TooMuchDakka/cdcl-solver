@@ -1,4 +1,4 @@
-file(GLOB_RECURSE CDCL_TEST_SOURCES *.cpp)
+file(GLOB_RECURSE CDCL_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 # create an executable in which the tests will be stored
 add_executable(
