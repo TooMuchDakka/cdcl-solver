@@ -26,7 +26,7 @@ namespace setBlockedClauseElimination {
 		LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateGenerator;
 		dimacs::LiteralOccurrenceLookup literalOccurrenceLookup;
 
-		[[nodiscard]] std::vector<dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const override;
+		[[nodiscard]] std::vector<const dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const override;
 	};
 }
 #endif

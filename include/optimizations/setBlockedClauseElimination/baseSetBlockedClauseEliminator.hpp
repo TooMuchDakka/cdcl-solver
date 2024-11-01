@@ -27,7 +27,7 @@ namespace setBlockedClauseElimination {
 	protected:
 		dimacs::ProblemDefinition::ptr problemDefinition;
 		
-		[[nodiscard]] virtual std::vector<dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const = 0;
+		[[nodiscard]] virtual std::vector<const dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const = 0;
 		[[nodiscard]] static bool isClauseSetBlocked(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const dimacs::ProblemDefinition::Clause& clauseInResolutionEnvironment, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) {
 			// A clause C is blocked by a set L in a formula F iff. forall C' \in F: C' \union L != 0: C\L \union NOT(L) \union C' is a tautology 
 			return std::any_of(
@@ -39,7 +39,7 @@ namespace setBlockedClauseElimination {
 			);
 		}
 
-		[[nodiscard]] static inline bool canCheckForBlockingSetBePerformed(const dimacs::ProblemDefinition::Clause& clause) noexcept {
+		[[nodiscard]] static bool canCheckForBlockingSetBePerformed(const dimacs::ProblemDefinition::Clause& clause) noexcept {
 			return clause.literals.size() > 1;
 		}
 	};

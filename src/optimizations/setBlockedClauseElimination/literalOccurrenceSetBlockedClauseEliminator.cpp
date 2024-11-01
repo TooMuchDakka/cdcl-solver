@@ -24,7 +24,7 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 			std::inserter(clauseLiteralAndBlockingDiffSet, clauseLiteralAndBlockingDiffSet.begin())
 		);
 
-		const std::vector<dimacs::ProblemDefinition::Clause*> resolutionEnvironment = determineResolutionEnvironment(*candidateBlockingSet);
+		const std::vector<const dimacs::ProblemDefinition::Clause*> resolutionEnvironment = determineResolutionEnvironment(*candidateBlockingSet);
 		foundBlockingSet = !resolutionEnvironment.empty() && std::all_of(
 			resolutionEnvironment.cbegin(),
 			resolutionEnvironment.cend(),
@@ -44,7 +44,7 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 }
 
 // NON-PUBLIC FUNCTIONALITY
-std::vector<dimacs::ProblemDefinition::Clause*> LiteralOccurrenceSetBlockedClauseEliminator::determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const
+std::vector<const dimacs::ProblemDefinition::Clause*> LiteralOccurrenceSetBlockedClauseEliminator::determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const
 {
 	// Resolution environment R for a clause C and a given blocking set L is defined as \forall C' \in R: C' \in F \wedge C' \union \neg{L} != 0
 	std::unordered_set<std::size_t> indicesOfClausesInResolutionEnvironment;
@@ -54,7 +54,7 @@ std::vector<dimacs::ProblemDefinition::Clause*> LiteralOccurrenceSetBlockedClaus
 			indicesOfClausesInResolutionEnvironment.insert(clausesContainingLiteral->cbegin(), clausesContainingLiteral->cend());
 	}
 
-	std::vector<dimacs::ProblemDefinition::Clause*> resolutionEnvironment;
+	std::vector<const dimacs::ProblemDefinition::Clause*> resolutionEnvironment;
 	resolutionEnvironment.reserve(indicesOfClausesInResolutionEnvironment.size());
 	for (const std::size_t idx : indicesOfClausesInResolutionEnvironment)
 	{

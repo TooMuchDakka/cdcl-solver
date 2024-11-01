@@ -11,8 +11,27 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 	if (clauseLiterals.empty() || !canGenerateMoreCandidates())
 		return std::nullopt;
 
-	bool backTrack = true;
 	bool resizedCandidate = false;
+	if (candidateLiteralIndices.size() == 1)
+	{
+		if (candidateLiteralIndices[0] == (clauseLiterals.size() - 1))
+		{
+			incrementCandidateSize();
+			resizedCandidate = true;
+		}
+		else
+		{
+			if (!lastGeneratedCandidate.empty())
+			{
+				lastGeneratedCandidate.erase(getClauseLiteral(0));
+				++candidateLiteralIndices[0];
+			}
+			lastGeneratedCandidate.emplace(getClauseLiteral(0));
+			return lastGeneratedCandidate;
+		}
+	}
+
+	bool backTrack = true;
 	std::size_t lastModifiedIdx = candidateLiteralIndices.size() - 1;
 	do
 	{
@@ -34,11 +53,11 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 		}
 		else
 		{
-			// Update literal for last index in candidate
-			if (lastGeneratedCandidate.size() > 1)
+			if (!resizedCandidate)
+			{
 				lastGeneratedCandidate.erase(getClauseLiteral(lastModifiedIdx));
-
-			++candidateLiteralIndices[lastModifiedIdx];
+				++candidateLiteralIndices[lastModifiedIdx];
+			}
 			lastGeneratedCandidate.emplace(getClauseLiteral(lastModifiedIdx));
 			backTrack = false;
 		}
@@ -88,9 +107,7 @@ void LiteralOccurrenceBlockingSetCandidateGenerator::init(const std::vector<long
 	default:
 		throw std::domain_error("Literal selection heuristic " + std::to_string(literalSelectionHeuristic) + " is not supported");
 	}
-
-	candidateLiteralIndices = { 0, 0 };
-	lastGeneratedCandidate = { getClauseLiteral(0) };
+	candidateLiteralIndices = { 0 };
 	requiredWrapAroundBeforeCandidateResize = { determineRequiredNumberOfWrapAroundsForIndex(0) };
 }
 
