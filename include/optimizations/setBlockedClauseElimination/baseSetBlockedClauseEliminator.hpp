@@ -33,13 +33,16 @@ namespace setBlockedClauseElimination {
 		
 		[[nodiscard]] virtual std::vector<const dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const = 0;
 		[[nodiscard]] static bool isClauseSetBlocked(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const dimacs::ProblemDefinition::Clause& clauseInResolutionEnvironment, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) {
-			// A clause C is blocked by a set L in a formula F iff. forall C' \in F: C' \union L != 0: C\L \union NOT(L) \union C' is a tautology 
+			// A clause C is blocked by a set L in a formula F iff. forall C' \in F: C' \union L != 0: C\L \union NOT(L) \union C' is a tautology
 			return std::any_of(
 				clauseInResolutionEnvironment.literals.cbegin(),
 				clauseInResolutionEnvironment.literals.cend(),
-				[&potentialBlockingSet, &literalsOfDiffSetOfClauseToCheckAndBlockingSet](const long literalOfClauseInResolutionEnvironment) {
-					return potentialBlockingSet.count(-literalOfClauseInResolutionEnvironment)
-						|| literalsOfDiffSetOfClauseToCheckAndBlockingSet.count(-literalOfClauseInResolutionEnvironment); }
+				[&potentialBlockingSet, &literalsOfDiffSetOfClauseToCheckAndBlockingSet](const long literal)
+				{
+					if (!potentialBlockingSet.count(-literal))
+						return literalsOfDiffSetOfClauseToCheckAndBlockingSet.count(-literal) > 0;
+					return false;
+				}
 			);
 		}
 
