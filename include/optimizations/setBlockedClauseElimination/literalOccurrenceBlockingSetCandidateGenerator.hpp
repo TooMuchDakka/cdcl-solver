@@ -77,6 +77,8 @@ namespace setBlockedClauseElimination {
 		BaseBlockingSetCandidateGenerator::BlockingSetCandidate lastGeneratedCandidate;
 		std::vector<std::size_t> candidateLiteralIndices;
 		std::vector<std::size_t> requiredWrapAroundBeforeCandidateResize;
+		bool userDefinedMinimumSizeMatchesMaximumPossibleSizeOneTimeFlag;
+		bool usingNoneDefaultInitialCandidateSizeOneTimeFlag;
 
 		[[nodiscard]] std::size_t getLastIncrementableIndexForPosition(std::size_t indexInCandidateVector) const noexcept
 		{
@@ -100,13 +102,21 @@ namespace setBlockedClauseElimination {
 			return candidateLiteralIndices.size() <= candidateSizeRestriction.maxAllowedSize;
 		}
 
-
 		[[nodiscard]] bool handleCandidateGenerationOfSizeOne();
 
 		void incrementCandidateSize();
 		void setInternalInitialStateAfterCandidateResize();
 		static void filterNoneOverlappingLiteralsFromClause(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup);
 		static void orderLiteralsAccordingToHeuristic(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, bool orderAscendingly);
+		[[nodiscard]] static bool getAndResetOneTimeFlagValueIfSet(bool& oneTimeFlagValue)
+		{
+			if (oneTimeFlagValue)
+			{
+				oneTimeFlagValue = false;
+				return true;
+			}
+			return false;
+		}
 	};
 }
 

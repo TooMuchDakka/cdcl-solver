@@ -11,6 +11,9 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 	if (clauseLiterals.empty() || !canGenerateMoreCandidates())
 		return std::nullopt;
 
+	if (getAndResetOneTimeFlagValueIfSet(usingNoneDefaultInitialCandidateSizeOneTimeFlag))
+		return lastGeneratedCandidate;
+
 	bool backtracking;
 	const std::size_t initialLastModifiedIdx = candidateLiteralIndices.size() - 1;
 	std::size_t lastModifiedIdx = initialLastModifiedIdx;
@@ -26,12 +29,25 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 		if (!requiredWrapAroundBeforeCandidateResize[lastModifiedIdx])
 		{
 			lastModifiedIdx -= lastModifiedIdx > 0;
+			// Backtracking has reached first index, increase of candidate size is required.
 			if (!lastModifiedIdx && !requiredWrapAroundBeforeCandidateResize[lastModifiedIdx])
 			{
+				// Increment for next candidate size should stop if future candidate is larger than the set of possible entries for a candidate
 				if (candidateLiteralIndices.size() == clauseLiterals.size())
-					return std::nullopt;
-
-				incrementCandidateSize();
+				{
+					/*
+					 * Handling of special case in which requested minimum candiate size matches the size of the set of possible entries for a candidate requires a special flag to be able to distinguish
+					 * said special case from the conventional stop condition
+					 */
+					if (!usingNoneDefaultInitialCandidateSizeOneTimeFlag || getAndResetOneTimeFlagValueIfSet(userDefinedMinimumSizeMatchesMaximumPossibleSizeOneTimeFlag))
+						return std::nullopt;
+				}
+				else
+				{
+					incrementCandidateSize();
+					if (!canGenerateMoreCandidates())
+						return std::nullopt;
+				}
 				return lastGeneratedCandidate;
 			}
 		}
@@ -63,7 +79,6 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 			if (!lastGeneratedCandidate.empty())
 				lastGeneratedCandidate.erase(getClauseLiteral(i));
 
-			//++candidateLiteralIndices[i - (i > 0)];
 			++candidateLiteralIndices[i];
 			lastGeneratedCandidate.emplace(getClauseLiteral(i));
 			requiredWrapAroundBeforeCandidateResize[i] = determineRequiredNumberOfWrapAroundsForIndex(i);
@@ -109,16 +124,19 @@ void LiteralOccurrenceBlockingSetCandidateGenerator::init(const std::vector<long
 
 	candidateLiteralIndices.resize(candidateSizeRestriction.minAllowedSize);
 	requiredWrapAroundBeforeCandidateResize.resize(candidateSizeRestriction.minAllowedSize);
-	if (candidateSizeRestriction.minAllowedSize > 1) {
-		candidateLiteralIndices[0] = 0;
+
+	candidateLiteralIndices[0] = 0;
+	if (candidateSizeRestriction.minAllowedSize > 1)
+	{
 		setInternalInitialStateAfterCandidateResize();
 	}
 	else
 	{
-		candidateLiteralIndices[0] = 0;
 		requiredWrapAroundBeforeCandidateResize[0] = determineRequiredNumberOfWrapAroundsForIndex(0);
 		candidateLiteralIndices[0] = INITIAL_INDEX_VALUE;
 	}
+	userDefinedMinimumSizeMatchesMaximumPossibleSizeOneTimeFlag = candidateSizeRestriction.minAllowedSize == clauseLiterals.size();
+	usingNoneDefaultInitialCandidateSizeOneTimeFlag = optionalCandidateSizeRestriction.has_value() && optionalCandidateSizeRestriction->minAllowedSize > 1;
 }
 
 // NON PUBLIC FUNCTIONALITY

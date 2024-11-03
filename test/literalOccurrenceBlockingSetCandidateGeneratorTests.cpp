@@ -62,7 +62,7 @@ public:
 		for (std::size_t i = 0; i < numExpectedCandidates; ++i)
 		{
 			const std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generatedCandidate = candidateGenerator.generateNextCandidate();
-			ASSERT_TRUE(generatedCandidate.has_value()) << "Expected to be able to generate " << std::to_string(numExpectedCandidates) << " candidates but only " << std::to_string(i + 1) << " were actually generated";
+			ASSERT_TRUE(generatedCandidate.has_value()) << "Failed to generate next candidate, expected to be able to generate " << std::to_string(numExpectedCandidates) << " candidates but only " << std::to_string(i) << " were actually generated";
 			actualCandidates.emplace_back(*generatedCandidate);
 		}
 		ASSERT_FALSE(candidateGenerator.generateNextCandidate());
@@ -355,6 +355,107 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicI
 	BlockingSetCandidateCollection actualCandidates;
 	ASSERT_NO_FATAL_FAILURE(determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size(), actualCandidates));
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SelectionHeuristicRespectsUserDefinedMaximumBlockingSetSize)
+{
+	const std::vector<long> candidateClauseLiterals = { 1, 2, 3, -4 };
+	constexpr std::size_t numVariablesInFormula = 4;
+	dimacs::ProblemDefinition::ptr formula;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}, {4, -3}
+	}, formula));
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 1,2 });
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction));
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{1}, {2}, {3}, {-4},
+		{1,2}, {1,3}, {1, -4}, {2,3}, {2,-4}, {3,-4}
+	});
+	BlockingSetCandidateCollection actualCandidates;
+	ASSERT_NO_FATAL_FAILURE(determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size(), actualCandidates));
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SelectionHeuristicRespectsUserDefinedMinimumBlockingSetSize)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,-5, 3,-4 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	dimacs::ProblemDefinition::ptr formula;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}, {4, -3}
+	}, formula));
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 3,candidateClauseLiterals.size() });
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction));
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
+		{1, 2, 3}, {1, 2, -4}, {1, 3, -4}, {2, 3, -4},
+		{1, 2, 3, -4}
+	});
+	BlockingSetCandidateCollection actualCandidates;
+	ASSERT_NO_FATAL_FAILURE(determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size(), actualCandidates));
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SelectionHeuristicRespectsUserDefinedBlockingSetSizeRestrictions)
+{
+	const std::vector<long> candidateClauseLiterals = { 1,2,-5, 3,-4 };
+	constexpr std::size_t numVariablesInFormula = 5;
+	dimacs::ProblemDefinition::ptr formula;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}, {4, -3}
+	}, formula));
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 4,4 });
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction));
+
+	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({{1, 2, 3, -4}});
+	BlockingSetCandidateCollection actualCandidates;
+	ASSERT_NO_FATAL_FAILURE(determineActualCandidatesOrThrow(*candidateSelector, expectedCandidates.size(), actualCandidates));
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidatesAreEqual(expectedCandidates, actualCandidates));
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, UserDefinedMaximumBlockingSetSizeLargerThanSetOfClauseLiteralsThrows)
+{
+	const std::vector<long> candidateClauseLiterals = { 1, -2, 3 };
+	constexpr std::size_t numVariablesInFormula = 3;
+	dimacs::ProblemDefinition::ptr formula;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { 2, -3}
+	}, formula));
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 1,candidateClauseLiterals.size() + 1 });
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction), std::invalid_argument);
+}
+
+TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, UserDefinedMaximumBlockingSetSizeLargerThanMinimumSizeThrows)
+{
+	const std::vector<long> candidateClauseLiterals = { 1, -2, 3 };
+	constexpr std::size_t numVariablesInFormula = 3;
+	dimacs::ProblemDefinition::ptr formula;
+	// Ordering of variables according to overlap count: 2: 4 > 3: 3 > 1: 1
+	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(numVariablesInFormula, {
+		{1,-2,-3}, {-1,-2}, {-2,-3}, { 2, -3}
+		}, formula));
+
+	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
+	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ candidateClauseLiterals.size(),1 });
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction), std::invalid_argument);
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeurisiticOnlyApplicableForClauseWithAtleastTwoLiterals)
