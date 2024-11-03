@@ -11,86 +11,85 @@ std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> LiteralOc
 	if (clauseLiterals.empty() || !canGenerateMoreCandidates())
 		return std::nullopt;
 
-	bool resizedCandidate = false;
-	if (candidateLiteralIndices.size() == 1)
-	{
-		if (candidateLiteralIndices[0] == (clauseLiterals.size() - 1))
-		{
-			incrementCandidateSize();
-			resizedCandidate = true;
-		}
-		else
-		{
-			if (!lastGeneratedCandidate.empty())
-			{
-				lastGeneratedCandidate.erase(getClauseLiteral(0));
-				++candidateLiteralIndices[0];
-			}
-			lastGeneratedCandidate.emplace(getClauseLiteral(0));
-			return lastGeneratedCandidate;
-		}
-	}
-
-	bool backTrack = true;
-	std::size_t lastModifiedIdx = candidateLiteralIndices.size() - 1;
+	bool backtracking;
+	const std::size_t initialLastModifiedIdx = candidateLiteralIndices.size() - 1;
+	std::size_t lastModifiedIdx = initialLastModifiedIdx;
 	do
 	{
-		if (candidateLiteralIndices[lastModifiedIdx] + 1 > getLastIncrementableIndexForPosition(lastModifiedIdx))
-		{
-			if (lastModifiedIdx)
-			{
-				--lastModifiedIdx;
-				if (requiredWrapAroundBeforeCandidateResize[lastModifiedIdx])
-					--requiredWrapAroundBeforeCandidateResize[lastModifiedIdx];
-			}
+		backtracking = candidateLiteralIndices[lastModifiedIdx] == getLastIncrementableIndexForPosition(lastModifiedIdx);
+		if (!backtracking)
+			continue;
 
-			if (!requiredWrapAroundBeforeCandidateResize[lastModifiedIdx] && !lastModifiedIdx)
+		if (requiredWrapAroundBeforeCandidateResize[lastModifiedIdx])
+			--requiredWrapAroundBeforeCandidateResize[lastModifiedIdx];
+
+		if (!requiredWrapAroundBeforeCandidateResize[lastModifiedIdx])
+		{
+			lastModifiedIdx -= lastModifiedIdx > 0;
+			if (!lastModifiedIdx && !requiredWrapAroundBeforeCandidateResize[lastModifiedIdx])
 			{
+				if (candidateLiteralIndices.size() == clauseLiterals.size())
+					return std::nullopt;
+
 				incrementCandidateSize();
-				backTrack = false;
-				resizedCandidate = true;
+				return lastGeneratedCandidate;
 			}
 		}
-		else
-		{
-			if (!resizedCandidate)
-			{
-				lastGeneratedCandidate.erase(getClauseLiteral(lastModifiedIdx));
-				++candidateLiteralIndices[lastModifiedIdx];
-			}
-			lastGeneratedCandidate.emplace(getClauseLiteral(lastModifiedIdx));
-			backTrack = false;
-		}
-	} while (backTrack);
-
-	// Perform reset of candidate literal indices after backtracking was performed
-	for (std::size_t i = lastModifiedIdx + 1; i < candidateLiteralIndices.size() && !resizedCandidate; ++i)
-	{
-		lastGeneratedCandidate.erase(getClauseLiteral(i));
-		candidateLiteralIndices[i] = candidateLiteralIndices[i - 1] + 1;
-		lastGeneratedCandidate.emplace(getClauseLiteral(i));
-
-		requiredWrapAroundBeforeCandidateResize[i - 1] = determineRequiredNumberOfWrapAroundsForIndex(candidateLiteralIndices[i - 1]);
-	}
+	} while (backtracking);
 
 	if (!canGenerateMoreCandidates())
 		return std::nullopt;
 
+	if (lastModifiedIdx != initialLastModifiedIdx)
+	{
+		for (std::size_t i = 0; i < candidateLiteralIndices.size() - lastModifiedIdx; ++i)
+			lastGeneratedCandidate.erase(getClauseLiteral(lastModifiedIdx + i));
+
+		++candidateLiteralIndices[lastModifiedIdx];
+		lastGeneratedCandidate.emplace(getClauseLiteral(lastModifiedIdx));
+		requiredWrapAroundBeforeCandidateResize[lastModifiedIdx] = determineRequiredNumberOfWrapAroundsForIndex(lastModifiedIdx);
+
+		for (std::size_t i = lastModifiedIdx + 1; i < candidateLiteralIndices.size(); ++i)
+		{
+			candidateLiteralIndices[i] = candidateLiteralIndices[i - 1] + 1;
+			lastGeneratedCandidate.emplace(getClauseLiteral(i));
+			requiredWrapAroundBeforeCandidateResize[i] = determineRequiredNumberOfWrapAroundsForIndex(i);
+		}
+	}
+	else
+	{
+		for (std::size_t i = lastModifiedIdx; i < candidateLiteralIndices.size(); ++i)
+		{
+			if (!lastGeneratedCandidate.empty())
+				lastGeneratedCandidate.erase(getClauseLiteral(i));
+
+			//++candidateLiteralIndices[i - (i > 0)];
+			++candidateLiteralIndices[i];
+			lastGeneratedCandidate.emplace(getClauseLiteral(i));
+			requiredWrapAroundBeforeCandidateResize[i] = determineRequiredNumberOfWrapAroundsForIndex(i);
+		}
+	}
 	return lastGeneratedCandidate;
 }
 
-void LiteralOccurrenceBlockingSetCandidateGenerator::init(const std::vector<long> candidateClauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup)
+void LiteralOccurrenceBlockingSetCandidateGenerator::init(const std::vector<long> candidateClauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, const std::optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>& optionalCandidateSizeRestriction)
 {
+	BaseBlockingSetCandidateGenerator::init(candidateClauseLiterals, literalOccurrenceLookup, optionalCandidateSizeRestriction);
+
 	candidateLiteralIndices.clear();
 	lastGeneratedCandidate.clear();
 	requiredWrapAroundBeforeCandidateResize.clear();
-	this->clauseLiterals = candidateClauseLiterals;
 
 	assertThatClauseContainsAtleastTwoLiterals(clauseLiterals);
 	filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
 
-	if (clauseLiterals.empty())
+	if (clauseLiterals.empty() || candidateSizeRestriction.minAllowedSize == 0 || candidateSizeRestriction.minAllowedSize > clauseLiterals.size())
+	{
+		clauseLiterals.clear();
 		return;
+	}
+	if (candidateSizeRestriction.maxAllowedSize > clauseLiterals.size())
+		candidateSizeRestriction.maxAllowedSize = clauseLiterals.size();
 
 	switch (literalSelectionHeuristic) {
 	case LiteralSelectionHeuristic::Random:
@@ -107,28 +106,61 @@ void LiteralOccurrenceBlockingSetCandidateGenerator::init(const std::vector<long
 	default:
 		throw std::domain_error("Literal selection heuristic " + std::to_string(literalSelectionHeuristic) + " is not supported");
 	}
-	candidateLiteralIndices = { 0 };
-	requiredWrapAroundBeforeCandidateResize = { determineRequiredNumberOfWrapAroundsForIndex(0) };
+
+	candidateLiteralIndices.resize(candidateSizeRestriction.minAllowedSize);
+	requiredWrapAroundBeforeCandidateResize.resize(candidateSizeRestriction.minAllowedSize);
+	if (candidateSizeRestriction.minAllowedSize > 1) {
+		candidateLiteralIndices[0] = 0;
+		setInternalInitialStateAfterCandidateResize();
+	}
+	else
+	{
+		candidateLiteralIndices[0] = 0;
+		requiredWrapAroundBeforeCandidateResize[0] = determineRequiredNumberOfWrapAroundsForIndex(0);
+		candidateLiteralIndices[0] = INITIAL_INDEX_VALUE;
+	}
 }
 
 // NON PUBLIC FUNCTIONALITY
+bool LiteralOccurrenceBlockingSetCandidateGenerator::handleCandidateGenerationOfSizeOne()
+{
+	if (candidateLiteralIndices.front() == getLastIncrementableIndexForPosition(0))
+		return false;
+
+	if (requiredWrapAroundBeforeCandidateResize.front())
+		--requiredWrapAroundBeforeCandidateResize.front();
+
+	if (!lastGeneratedCandidate.empty())
+		lastGeneratedCandidate.erase(getClauseLiteral(0));
+
+	++candidateLiteralIndices[0];
+	lastGeneratedCandidate.emplace(getClauseLiteral(0));
+	return true;
+}
+
 void LiteralOccurrenceBlockingSetCandidateGenerator::incrementCandidateSize()
 {
-	candidateLiteralIndices.emplace_back(0);
-	if (candidateLiteralIndices.size() > clauseLiterals.size())
+	candidateLiteralIndices[0] = 0;
+	candidateLiteralIndices.emplace_back(INITIAL_INDEX_VALUE);
+	requiredWrapAroundBeforeCandidateResize.emplace_back(0);
+	if (candidateLiteralIndices.size() > candidateSizeRestriction.maxAllowedSize)
 		return;
 
-	requiredWrapAroundBeforeCandidateResize.emplace_back(0);
-	candidateLiteralIndices[0] = 0;
+	setInternalInitialStateAfterCandidateResize();
+}
 
+void LiteralOccurrenceBlockingSetCandidateGenerator::setInternalInitialStateAfterCandidateResize()
+{
 	lastGeneratedCandidate.clear();
 	lastGeneratedCandidate.emplace(getClauseLiteral(0));
+	requiredWrapAroundBeforeCandidateResize[0] = determineRequiredNumberOfWrapAroundsForIndex(0);
 	for (std::size_t i = 1; i < candidateLiteralIndices.size(); ++i)
 	{
 		candidateLiteralIndices[i] = candidateLiteralIndices[i - 1] + 1;
 		lastGeneratedCandidate.emplace(getClauseLiteral(i));
-		requiredWrapAroundBeforeCandidateResize[i - 1] = determineRequiredNumberOfWrapAroundsForIndex(candidateLiteralIndices[i - 1]);
+		requiredWrapAroundBeforeCandidateResize[i] = determineRequiredNumberOfWrapAroundsForIndex(i);
 	}
+	//candidateLiteralIndices.back() = INITIAL_INDEX_VALUE;
 }
 
 void LiteralOccurrenceBlockingSetCandidateGenerator::orderLiteralsAccordingToHeuristic(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, bool orderAscendingly)

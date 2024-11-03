@@ -20,7 +20,11 @@ namespace setBlockedClauseElimination {
 		}
 
 		// TODO: Blocking set can also only contain one literal, currently we are assuming that the set always holds two elements
-		[[nodiscard]] virtual std::optional<FoundBlockingSet> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const = 0;
+		[[nodiscard]] virtual std::optional<FoundBlockingSet> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator)
+		{
+			return determineBlockingSet(clauseIdxInFormula, candidateGenerator, std::nullopt);
+		}
+		[[nodiscard]] virtual std::optional<FoundBlockingSet> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator, const std::optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>& optionalCandidateSizeRestriction) const = 0;
 
 		// TODO: Enable search for blocking set of specific size?
 

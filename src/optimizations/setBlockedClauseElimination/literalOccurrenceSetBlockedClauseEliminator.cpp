@@ -3,7 +3,7 @@
 
 using namespace setBlockedClauseElimination;
 
-std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenceSetBlockedClauseEliminator::determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const
+std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenceSetBlockedClauseEliminator::determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator, const std::optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>& optionalCandidateSizeRestriction) const
 {
 	const std::optional<dimacs::ProblemDefinition::Clause*> dataOfAccessedClause = problemDefinition->getClauseByIndexInFormula(clauseIdxInFormula);
 	if (!dataOfAccessedClause.has_value() || dataOfAccessedClause.value()->literals.size() < 2)
@@ -12,7 +12,7 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 	const std::vector<long>& clauseLiterals = dataOfAccessedClause.value()->literals;
 
 	std::unordered_set<long> clauseLiteralAndBlockingDiffSet;
-	candidateGenerator.init(clauseLiterals, literalOccurrenceLookup);
+	candidateGenerator.init(clauseLiterals, literalOccurrenceLookup, optionalCandidateSizeRestriction);
 
 	std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> candidateBlockingSet = candidateGenerator.generateNextCandidate();
 	bool foundBlockingSet = false;
@@ -34,9 +34,12 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 			});
 
 		if (!foundBlockingSet)
+		{
 			candidateBlockingSet = candidateGenerator.generateNextCandidate();
+			clauseLiteralAndBlockingDiffSet.clear();
+		}
+			
 	}
-
 	if (candidateBlockingSet.has_value())
 		return BaseSetBlockedClauseEliminator::FoundBlockingSet(candidateBlockingSet->cbegin(), candidateBlockingSet->cend());
 
@@ -48,21 +51,25 @@ std::vector<const dimacs::ProblemDefinition::Clause*> LiteralOccurrenceSetBlocke
 {
 	// Resolution environment R for a clause C and a given blocking set L is defined as \forall C' \in R: C' \in F \wedge C' \union \neg{L} != 0
 	std::unordered_set<std::size_t> indicesOfClausesInResolutionEnvironment;
+	std::vector<const dimacs::ProblemDefinition::Clause*> resolutionEnvironment;
 	for (const long literal : potentialBlockingSet)
 	{
-		if (const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[-literal]; clausesContainingLiteral.has_value() && !clausesContainingLiteral->empty())
-			indicesOfClausesInResolutionEnvironment.insert(clausesContainingLiteral->cbegin(), clausesContainingLiteral->cend());
-	}
+		if (const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[-literal]; clausesContainingLiteral.has_value())
+		{
+			for (const std::size_t clauseIdx : *clausesContainingLiteral)
+			{
+				if (!indicesOfClausesInResolutionEnvironment.count(clauseIdx))
+				{
+					const std::optional<dimacs::ProblemDefinition::Clause*> dataOfClause = problemDefinition->getClauseByIndexInFormula(clauseIdx);
+					if (!dataOfClause)
+						throw std::out_of_range("Could not determine data for clause with idx " + std::to_string(clauseIdx) + " in formula");
 
-	std::vector<const dimacs::ProblemDefinition::Clause*> resolutionEnvironment;
-	resolutionEnvironment.reserve(indicesOfClausesInResolutionEnvironment.size());
-	for (const std::size_t idx : indicesOfClausesInResolutionEnvironment)
-	{
-		const std::optional<dimacs::ProblemDefinition::Clause*> dataOfClause = problemDefinition->getClauseByIndexInFormula(idx);
-		if (!dataOfClause)
-			throw std::out_of_range("Could not determine data for clause with idx " + std::to_string(idx) + " in formula");
+					resolutionEnvironment.emplace_back(*dataOfClause);
+					indicesOfClausesInResolutionEnvironment.emplace(clauseIdx);
+				}
 
-		resolutionEnvironment.emplace_back(*dataOfClause);
+			}
+		}
 	}
 	return resolutionEnvironment;
 }

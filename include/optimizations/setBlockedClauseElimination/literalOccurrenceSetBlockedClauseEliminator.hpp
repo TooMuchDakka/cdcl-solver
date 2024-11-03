@@ -11,6 +11,8 @@
 namespace setBlockedClauseElimination {
 	class LiteralOccurrenceSetBlockedClauseEliminator : public BaseSetBlockedClauseEliminator {
 	public:
+		using BaseSetBlockedClauseEliminator::determineBlockingSet;
+
 		LiteralOccurrenceSetBlockedClauseEliminator() = delete;
 		explicit LiteralOccurrenceSetBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
 			: BaseSetBlockedClauseEliminator(std::move(problemDefinition)), literalOccurrenceLookup(*this->problemDefinition)
@@ -20,7 +22,7 @@ namespace setBlockedClauseElimination {
 				throw std::exception("Failed to initialize candidate generator");
 		}
 
-		[[nodiscard]] std::optional<std::vector<long>> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator) const override;
+		[[nodiscard]] std::optional<std::vector<long>> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator, const std::optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>& optionalCandidateSizeRestriction) const override;
 		
 	protected:
 		LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateGenerator;

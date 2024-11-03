@@ -2,7 +2,6 @@
 #define LITERAL_OCCURRENCE_BLOCKING_SET_CANDIDATE_GENERATOR_HPP
 
 #include <random>
-#include <string>
 
 #include "dimacs/literalOccurrenceLookup.hpp"
 #include "dimacs/problemDefinition.hpp"
@@ -11,6 +10,7 @@
 namespace setBlockedClauseElimination {
 	class LiteralOccurrenceBlockingSetCandidateGenerator : public BaseBlockingSetCandidateGenerator {
 	public:
+		using BaseBlockingSetCandidateGenerator::init;
 		enum LiteralClauseOverlapCountSortOrder
 		{
 			Ascending,
@@ -20,7 +20,7 @@ namespace setBlockedClauseElimination {
 		explicit LiteralOccurrenceBlockingSetCandidateGenerator()
 			: literalSelectionHeuristic(LiteralSelectionHeuristic::Sequential), optionalRng(std::nullopt), optionalSortOrder(std::nullopt) {}
 
-		explicit LiteralOccurrenceBlockingSetCandidateGenerator(const unsigned int rngSeed)
+		explicit LiteralOccurrenceBlockingSetCandidateGenerator(unsigned int rngSeed)
 			: LiteralOccurrenceBlockingSetCandidateGenerator()
 		{
 			literalSelectionHeuristic = LiteralSelectionHeuristic::Random;
@@ -58,9 +58,10 @@ namespace setBlockedClauseElimination {
 		}
 
 		[[nodiscard]] std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> generateNextCandidate() override;
-		void init(std::vector<long> candidateClauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup) override;
+		void init(std::vector<long> candidateClauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, const std::optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>& optionalCandidateSizeRestriction) override;
 
 	protected:
+		constexpr static std::size_t INITIAL_INDEX_VALUE = SIZE_MAX;
 		enum LiteralSelectionHeuristic
 		{
 			Sequential,
@@ -87,17 +88,23 @@ namespace setBlockedClauseElimination {
 			return clauseLiterals[candidateLiteralIndices[clauseLiteralIdx]];
 		}
 
-		[[nodiscard]] std::size_t determineRequiredNumberOfWrapAroundsForIndex(const std::size_t clauseLiteralIdx) const noexcept
+		[[nodiscard]] std::size_t determineRequiredNumberOfWrapAroundsForIndex(std::size_t indexInCandidateVector) const noexcept
 		{
-			return (clauseLiterals.size() - (candidateLiteralIndices.size() + clauseLiteralIdx)) + 1;
+			const std::size_t indexInClauseLiterals = candidateLiteralIndices[indexInCandidateVector];
+			std::size_t sizeOfRemainingCandiate = candidateLiteralIndices.size() - indexInCandidateVector;
+			return (clauseLiterals.size() - indexInClauseLiterals) - sizeOfRemainingCandiate;
 		}
 
 		[[nodiscard]] bool canGenerateMoreCandidates() const noexcept
 		{
-			return candidateLiteralIndices.size() <= clauseLiterals.size();
+			return candidateLiteralIndices.size() <= candidateSizeRestriction.maxAllowedSize;
 		}
 
+
+		[[nodiscard]] bool handleCandidateGenerationOfSizeOne();
+
 		void incrementCandidateSize();
+		void setInternalInitialStateAfterCandidateResize();
 		static void filterNoneOverlappingLiteralsFromClause(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup);
 		static void orderLiteralsAccordingToHeuristic(std::vector<long>& clauseLiterals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup, bool orderAscendingly);
 	};
