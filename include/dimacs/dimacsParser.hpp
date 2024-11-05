@@ -13,8 +13,28 @@ namespace dimacs
 	public:
 		using ptr = std::unique_ptr<DimacsParser>;
 
-		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromFile(const std::string& dimacsFilePath, std::vector<std::string>* optionalFoundErrors);
-		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromString(const std::string& dimacsContent, std::vector<std::string>* optionalFoundErrors);
+		struct ProcessingError
+		{
+			struct Position
+			{
+				std::size_t line;
+				std::size_t column;
+			};
+			std::optional<Position> position;
+			std::string text;
+
+			ProcessingError()
+				: position(std::nullopt) {}
+
+			ProcessingError(std::string text)
+				: position(std::nullopt), text(std::move(text)) {}
+
+			ProcessingError(std::size_t line, std::size_t column, std::string text)
+				: position(Position({line, column})), text(std::move(text)) {}
+		};
+
+		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromFile(const std::string& dimacsFilePath, std::vector<ProcessingError>* optionalFoundErrors);
+		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromString(const std::string& dimacsContent, std::vector<ProcessingError>* optionalFoundErrors);
 
 		DimacsParser(): recordFoundErrors(false), foundErrorsDuringCurrentParsingAttempt(false) {}
 	protected:
@@ -26,18 +46,28 @@ namespace dimacs
 
 		bool recordFoundErrors;
 		bool foundErrorsDuringCurrentParsingAttempt;
-		std::vector<std::string> foundErrors;
+		std::vector<ProcessingError> foundErrors;
 
 		void recordError(std::size_t line, std::size_t column, const std::string& errorText);
 		void resetInternals(bool shouldFoundErrorsBeRecorded);
 
-		[[nodiscard]] std::optional<ProblemDefinition::ptr> parseDimacsContent(std::basic_istream<char>& stream, std::vector<std::string>* optionalFoundErrors);
+		[[nodiscard]] std::optional<ProblemDefinition::ptr> parseDimacsContent(std::basic_istream<char>& stream, std::vector<ProcessingError>* optionalFoundErrors);
 		[[nodiscard]] static std::size_t skipCommentLines(std::basic_istream<char>& inputStream);
 		[[nodiscard]] static std::vector<std::string_view> splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter);
-		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string_view& stringToConvert, std::string* optionalFoundError);
-		[[nodiscard]] static std::optional<ProblemDefinitionConfiguration> processProblemDefinitionLine(std::basic_istream<char>& inputStream, std::string* optionalFoundError);
-		[[nodiscard]] static std::optional<dimacs::ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, std::string* optionalFoundErrors);
+		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string_view& stringToConvert, ProcessingError* optionalFoundError);
+		[[nodiscard]] static std::optional<ProblemDefinitionConfiguration> processProblemDefinitionLine(std::basic_istream<char>& inputStream, ProcessingError* optionalFoundError);
+		[[nodiscard]] static std::optional<dimacs::ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, ProcessingError* optionalFoundErrors);
 		[[nodiscard]] static bool isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept;
 	};
+
+	inline std::ostream& operator<<(std::ostream& os, const dimacs::DimacsParser::ProcessingError& processingError)
+	{
+		if (!processingError.position.has_value())
+			os << "--line: UNKNOWN col: UNKNOWN | " + processingError.text;
+		else
+			os << "--line: " + std::to_string(processingError.position->line) + " col: " + std::to_string(processingError.position->column) + " | " + processingError.text;
+		// write obj to stream
+		return os;
+	}
 }
 #endif

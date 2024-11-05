@@ -4,7 +4,7 @@
 #include <sstream>
 #include <string>
 
-std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemFromFile(const std::string& dimacsFilePath, std::vector<std::string>* optionalFoundErrors)
+std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemFromFile(const std::string& dimacsFilePath, std::vector<ProcessingError>* optionalFoundErrors)
 {
 	/*
 	 * The data return by tellg(..) as well as seekg is only correct, if the content from the file is read in binary mode.
@@ -21,22 +21,23 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemF
 	return parseDimacsContent(inputFileStream, optionalFoundErrors);
 }
 
-std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemFromString(const std::string& dimacsContent, std::vector<std::string>* optionalFoundErrors)
+std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemFromString(const std::string& dimacsContent, std::vector<ProcessingError>* optionalFoundErrors)
 {
 	std::istringstream buffer(dimacsContent);
 	return parseDimacsContent(buffer, optionalFoundErrors);
 }
 
-std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsContent(std::basic_istream<char>& stream, std::vector<std::string>* optionalFoundErrors)
+std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsContent(std::basic_istream<char>& stream, std::vector<ProcessingError>* optionalFoundErrors)
 {
 	resetInternals(optionalFoundErrors);
 	std::size_t currProcessedLine = skipCommentLines(stream) + 1;
 
-	std::string foundErrorDuringProcessingOfProblemDefinitionLine = optionalFoundErrors != nullptr ? "" : nullptr;
-	const std::optional<ProblemDefinitionConfiguration> problemDefinitionConfiguration = processProblemDefinitionLine(stream, &foundErrorDuringProcessingOfProblemDefinitionLine);
+	ProcessingError foundErrorDuringProcessingOfProblemDefinitionLine;
+	ProcessingError* temporaryProcessingErrorContainer = optionalFoundErrors ? &foundErrorDuringProcessingOfProblemDefinitionLine : nullptr;
+	const std::optional<ProblemDefinitionConfiguration> problemDefinitionConfiguration = processProblemDefinitionLine(stream, temporaryProcessingErrorContainer);
 	if (!problemDefinitionConfiguration)
 	{
-		recordError(currProcessedLine, 0, foundErrorDuringProcessingOfProblemDefinitionLine);
+		recordError(currProcessedLine, 0, foundErrorDuringProcessingOfProblemDefinitionLine.text);
 		if (optionalFoundErrors)
 			*optionalFoundErrors = foundErrors;
 		return std::nullopt;
@@ -53,26 +54,26 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 	}
 
 	std::size_t processedClauseCounter = 0;
-	std::string clauseParsingError;
-	
-	
+	ProcessingError clauseParsingError;
+	temporaryProcessingErrorContainer = optionalFoundErrors ? &clauseParsingError : nullptr;
+
 	bool continueProcessing;
 	do
 	{
-		std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, problemDefinitionConfiguration->numVariables, &clauseParsingError);
+		std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, problemDefinitionConfiguration->numVariables, temporaryProcessingErrorContainer);
 		if (!parsedClause.has_value())
 			break;
 
-		if (!clauseParsingError.empty() && processedClauseCounter == problemDefinitionConfiguration->numClauses)
+		if (!clauseParsingError.text.empty() && processedClauseCounter == problemDefinitionConfiguration->numClauses)
 		{
 			clauseParsingError = "More than " + std::to_string(problemDefinitionConfiguration->numClauses) + " clauses defined";
-			recordError(currProcessedLine++, 0, clauseParsingError);
+			recordError(currProcessedLine++, 0, clauseParsingError.text);
 			break;
 		}
 
-		if (!clauseParsingError.empty())
+		if (!clauseParsingError.text.empty())
 		{
-			recordError(currProcessedLine++, 0, clauseParsingError);
+			recordError(currProcessedLine++, 0, clauseParsingError.text);
 		}
 		else if (!isClauseTautology(*parsedClause))
 		{
@@ -118,7 +119,8 @@ void dimacs::DimacsParser::recordError(std::size_t line, std::size_t column, con
 {
 	foundErrorsDuringCurrentParsingAttempt = true;
 	if (recordFoundErrors)
-		foundErrors.emplace_back("--line: " + std::to_string(line) + " col: " + std::to_string(column) + " | " + errorText);
+		foundErrors.emplace_back(ProcessingError(line, column, errorText));
+	//foundErrors.emplace_back("--line: " + std::to_string(line) + " col: " + std::to_string(column) + " | " + errorText);
 }
 
 
@@ -176,7 +178,7 @@ inline std::size_t dimacs::DimacsParser::skipCommentLines(std::basic_istream<cha
 	return numCommentLines;
 }
 
-inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const std::string_view& stringToConvert, std::string* optionalFoundError)
+inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const std::string_view& stringToConvert, ProcessingError* optionalFoundError)
 {
 	if (stringToConvert == "0")
 		return 0;
@@ -187,13 +189,13 @@ inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const st
 	if (errno == ERANGE || !convertedNumericValue)
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Conversion of string " + std::string(stringToConvert) + " to numeric value failed";
+			*optionalFoundError = ProcessingError("Conversion of string " + std::string(stringToConvert) + " to numeric value failed");
 		return std::nullopt;
 	}
 	return convertedNumericValue;
 }
 
-inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimacs::DimacsParser::processProblemDefinitionLine(std::basic_istream<char>& inputStream, std::string* optionalFoundError)
+inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimacs::DimacsParser::processProblemDefinitionLine(std::basic_istream<char>& inputStream, ProcessingError* optionalFoundError)
 {
 	std::string readProblemLineDefinition;
 	bool parsingFailed = !std::getline(inputStream, readProblemLineDefinition);
@@ -203,7 +205,7 @@ inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimac
 	if (splitProblemDefinitionConfigurationLineData.empty() || splitProblemDefinitionConfigurationLineData.at(1) != "cnf" || splitProblemDefinitionConfigurationLineData.size() == 4)
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Expected line in format: p cnf <NUM_LITERALS> <NUM_CLAUSES> but was actually " + readProblemLineDefinition;
+			*optionalFoundError = ProcessingError("Expected line in format: p cnf <NUM_LITERALS> <NUM_CLAUSES> but was actually " + readProblemLineDefinition);
 		return std::nullopt;
 	}
 
@@ -215,13 +217,13 @@ inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimac
 	if (*userDefinedNumberOfVariables < 0)
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfVariables) + " must be larger than 0";
+			*optionalFoundError = ProcessingError("Processed integer value " + std::to_string(*userDefinedNumberOfVariables) + " must be larger than 0");
 		return std::nullopt;
 	}
 	if (*userDefinedNumberOfClauses < 0)
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " must be larger than 0";
+			*optionalFoundError = ProcessingError("Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " must be larger than 0");
 		return std::nullopt;
 	}
 
@@ -229,19 +231,19 @@ inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimac
 	if (*userDefinedNumberOfVariables > static_cast<long>(SIZE_MAX))
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfVariables) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX);
+			*optionalFoundError = ProcessingError("Processed integer value " + std::to_string(*userDefinedNumberOfVariables) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX));
 		return std::nullopt;
 	}
 	if (*userDefinedNumberOfClauses > static_cast<long>(SIZE_MAX))
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX);
+			*optionalFoundError = ProcessingError("Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX));
 		return std::nullopt;
 	}
 	return ProblemDefinitionConfiguration({ static_cast<std::size_t>(*userDefinedNumberOfVariables), static_cast<std::size_t>(*userDefinedNumberOfClauses) });
 }
 
-inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, std::string* optionalFoundErrors)
+inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, ProcessingError* optionalFoundErrors)
 {
 	std::string clauseDefinition;
 	if (!std::getline(inputStream, clauseDefinition))
@@ -257,7 +259,7 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 	if (clause.literals.back())
 	{
 		if (optionalFoundErrors)
-			*optionalFoundErrors = "Clause must define literal 0 as its closing delimiter";
+			*optionalFoundErrors = ProcessingError("Clause must define literal 0 as its closing delimiter");
 		return std::nullopt;
 	}
 
@@ -270,14 +272,14 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 		if (std::abs(*clauseLiteral) > static_cast<long>(numDefinedVariablesInCnf))
 		{
 			if (optionalFoundErrors)
-				*optionalFoundErrors = "Literal " + std::to_string(*clauseLiteral) + " was out of range, valid range is [-" + std::to_string(numDefinedVariablesInCnf) + ", -1] v [1, " + std::to_string(numDefinedVariablesInCnf) + "]";
+				*optionalFoundErrors = ProcessingError("Literal " + std::to_string(*clauseLiteral) + " was out of range, valid range is [-" + std::to_string(numDefinedVariablesInCnf) + ", -1] v [1, " + std::to_string(numDefinedVariablesInCnf) + "]");
 			return std::nullopt;
 		}
 
 		if (!*clauseLiteral && stringifiedClauseLiteralIterator != std::prev(stringifiedClauseLiterals.end(), 2)) 
 		{
 			if (optionalFoundErrors)
-				*optionalFoundErrors = "Clause must define literal 0 as its closing delimiter";
+				*optionalFoundErrors = ProcessingError("Clause must define literal 0 as its closing delimiter");
 			return std::nullopt;
 		}
 		clause.literals.emplace_back(*clauseLiteral);
