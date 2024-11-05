@@ -119,7 +119,7 @@ void dimacs::DimacsParser::recordError(std::size_t line, std::size_t column, con
 {
 	foundErrorsDuringCurrentParsingAttempt = true;
 	if (recordFoundErrors)
-		foundErrors.emplace_back(ProcessingError(line, column, errorText));
+		foundErrors.emplace_back(ProcessingError { line, column, errorText });
 	//foundErrors.emplace_back("--line: " + std::to_string(line) + " col: " + std::to_string(column) + " | " + errorText);
 }
 
@@ -199,10 +199,10 @@ inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimac
 {
 	std::string readProblemLineDefinition;
 	bool parsingFailed = !std::getline(inputStream, readProblemLineDefinition);
-	parsingFailed |= !readProblemLineDefinition.empty() && readProblemLineDefinition.front() == 'p';
+	parsingFailed |= !readProblemLineDefinition.empty() && readProblemLineDefinition.front() != 'p';
 
 	const auto& splitProblemDefinitionConfigurationLineData = !parsingFailed ? splitStringAtDelimiter(readProblemLineDefinition, ' ') : std::vector<std::string_view>();
-	if (splitProblemDefinitionConfigurationLineData.empty() || splitProblemDefinitionConfigurationLineData.at(1) != "cnf" || splitProblemDefinitionConfigurationLineData.size() == 4)
+	if (splitProblemDefinitionConfigurationLineData.empty() || splitProblemDefinitionConfigurationLineData.at(1) != "cnf" || splitProblemDefinitionConfigurationLineData.size() != 4)
 	{
 		if (optionalFoundError)
 			*optionalFoundError = ProcessingError("Expected line in format: p cnf <NUM_LITERALS> <NUM_CLAUSES> but was actually " + readProblemLineDefinition);
@@ -226,20 +226,6 @@ inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimac
 			*optionalFoundError = ProcessingError("Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " must be larger than 0");
 		return std::nullopt;
 	}
-
-
-	if (*userDefinedNumberOfVariables > static_cast<long>(SIZE_MAX))
-	{
-		if (optionalFoundError)
-			*optionalFoundError = ProcessingError("Processed integer value " + std::to_string(*userDefinedNumberOfVariables) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX));
-		return std::nullopt;
-	}
-	if (*userDefinedNumberOfClauses > static_cast<long>(SIZE_MAX))
-	{
-		if (optionalFoundError)
-			*optionalFoundError = ProcessingError("Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX));
-		return std::nullopt;
-	}
 	return ProblemDefinitionConfiguration({ static_cast<std::size_t>(*userDefinedNumberOfVariables), static_cast<std::size_t>(*userDefinedNumberOfClauses) });
 }
 
@@ -256,13 +242,7 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 	ProblemDefinition::Clause clause;
 	clause.literals.reserve(stringifiedClauseLiterals.size() - 1);
 
-	if (clause.literals.back())
-	{
-		if (optionalFoundErrors)
-			*optionalFoundErrors = ProcessingError("Clause must define literal 0 as its closing delimiter");
-		return std::nullopt;
-	}
-
+	bool wasRequiredEndDelimiterDefined = false;
 	for (auto stringifiedClauseLiteralIterator = stringifiedClauseLiterals.begin(); stringifiedClauseLiteralIterator < stringifiedClauseLiterals.end(); ++stringifiedClauseLiteralIterator)
 	{
 		const std::optional<long> clauseLiteral = tryConvertStringToLong(*stringifiedClauseLiteralIterator, optionalFoundErrors);
@@ -276,14 +256,27 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 			return std::nullopt;
 		}
 
-		if (!*clauseLiteral && stringifiedClauseLiteralIterator != std::prev(stringifiedClauseLiterals.end(), 2)) 
+		wasRequiredEndDelimiterDefined |= clauseLiteral.value_or(1) == 0;
+		if (wasRequiredEndDelimiterDefined)
 		{
-			if (optionalFoundErrors)
-				*optionalFoundErrors = ProcessingError("Clause must define literal 0 as its closing delimiter");
-			return std::nullopt;
+			if (stringifiedClauseLiteralIterator != std::prev(stringifiedClauseLiterals.end()))
+			{
+				if (optionalFoundErrors)
+					*optionalFoundErrors = ProcessingError("Clause must define literal 0 as its closing delimiter");
+				return std::nullopt;
+			}
 		}
-		clause.literals.emplace_back(*clauseLiteral);
+		else
+			clause.literals.emplace_back(*clauseLiteral);
 	}
+
+	if (!wasRequiredEndDelimiterDefined)
+	{
+		if (optionalFoundErrors)
+			*optionalFoundErrors = ProcessingError("Clause must define literal 0 as its closing delimiter");
+		return std::nullopt;
+	}
+
 	clause.sortLiterals();
 	return clause;
 }
