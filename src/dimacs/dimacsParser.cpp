@@ -63,21 +63,40 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 		if (!parsedClause.has_value())
 			break;
 
-		if (clauseParsingError.empty() && processedClauseCounter == problemDefinitionConfiguration->numClauses)
+		if (!clauseParsingError.empty() && processedClauseCounter == problemDefinitionConfiguration->numClauses)
+		{
 			clauseParsingError = "More than " + std::to_string(problemDefinitionConfiguration->numClauses) + " clauses defined";
+			recordError(currProcessedLine++, 0, clauseParsingError);
+			break;
+		}
 
 		if (!clauseParsingError.empty())
-			recordError(currProcessedLine, 0, clauseParsingError);
+		{
+			recordError(currProcessedLine++, 0, clauseParsingError);
+		}
+		else if (!isClauseTautology(*parsedClause))
+		{
+			if (parsedClause->literals.size() == 1)
+			{
+				if (problemDefinition->propagate(parsedClause->literals.front()) != ProblemDefinition::Ok)
+					recordError(currProcessedLine, 0, "Error during unit propagation of literal " + std::to_string(parsedClause->literals.front()));
+			}
+			else
+			{
+				problemDefinition->addClause(processedClauseCounter++, *parsedClause);
+			}
+		}
 		else
-			problemDefinition->addClause(processedClauseCounter++, *parsedClause);
-
-		continueProcessing = clauseParsingError.empty() && (stream.peek() && !stream.eof());
+			++processedClauseCounter;
+		
+		continueProcessing = stream.peek() && !stream.eof();
 		++currProcessedLine;
 	} while (continueProcessing);
 
 	if (processedClauseCounter < problemDefinitionConfiguration->numClauses)
 		recordError(currProcessedLine, 0, "Expected " + std::to_string(problemDefinitionConfiguration->numClauses) + " but only " + std::to_string(processedClauseCounter) + " were defined");
 
+	// TODO: Local variable elimination
 	if (!foundErrorsDuringCurrentParsingAttempt)
 		return std::move(problemDefinition);
 
@@ -265,4 +284,18 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 	}
 	clause.sortLiterals();
 	return clause;
+}
+
+bool dimacs::DimacsParser::isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept
+{
+	if (clause.literals.size() < 2)
+		return false;
+
+	std::size_t forwardIndex = 0;
+	std::size_t backwardIndex = clause.literals.size() - 1;
+	bool isTautology = false;
+	while (forwardIndex < backwardIndex && !isTautology)
+		isTautology = clause.literals[forwardIndex++] == -clause.literals[--backwardIndex];
+
+	return isTautology;
 }

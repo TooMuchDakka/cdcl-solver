@@ -37,6 +37,7 @@ namespace dimacs
 		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string_view& stringToConvert, std::string* optionalFoundError);
 		[[nodiscard]] static std::optional<ProblemDefinitionConfiguration> processProblemDefinitionLine(std::basic_istream<char>& inputStream, std::string* optionalFoundError);
 		[[nodiscard]] static std::optional<dimacs::ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, std::string* optionalFoundErrors);
+		[[nodiscard]] static bool isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept;
 	};
 }
 #endif

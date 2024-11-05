@@ -2,6 +2,7 @@ add_library(DimacsAbstractions "")
 target_sources(DimacsAbstractions
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/literalOccurrenceLookup.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/problemDefinition.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/dimacs/literalInContainerIndexLookup.hpp
 		${CMAKE_SOURCE_DIR}/include/dimacs/problemDefinition.hpp	
