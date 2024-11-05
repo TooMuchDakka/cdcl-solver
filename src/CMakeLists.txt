@@ -3,6 +3,7 @@ target_sources(DimacsAbstractions
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/literalOccurrenceLookup.cpp
 	PUBLIC
+		${CMAKE_SOURCE_DIR}/include/dimacs/literalInContainerIndexLookup.hpp
 		${CMAKE_SOURCE_DIR}/include/dimacs/problemDefinition.hpp	
 		${CMAKE_SOURCE_DIR}/include/dimacs/literalOccurrenceLookup.hpp
 )

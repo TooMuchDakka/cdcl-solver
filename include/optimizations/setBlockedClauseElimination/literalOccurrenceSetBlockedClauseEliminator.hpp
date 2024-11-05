@@ -15,7 +15,7 @@ namespace setBlockedClauseElimination {
 
 		LiteralOccurrenceSetBlockedClauseEliminator() = delete;
 		explicit LiteralOccurrenceSetBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
-			: BaseSetBlockedClauseEliminator(std::move(problemDefinition)), literalOccurrenceLookup(*this->problemDefinition)
+			: BaseSetBlockedClauseEliminator(std::move(problemDefinition))
 		{
 			candidateGenerator = std::make_unique<LiteralOccurrenceBlockingSetCandidateGenerator>();
 			if (!candidateGenerator)
@@ -26,7 +26,6 @@ namespace setBlockedClauseElimination {
 		
 	protected:
 		LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateGenerator;
-		dimacs::LiteralOccurrenceLookup literalOccurrenceLookup;
 
 		[[nodiscard]] std::vector<const dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const override;
 	};

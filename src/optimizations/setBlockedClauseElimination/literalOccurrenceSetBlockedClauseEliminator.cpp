@@ -12,7 +12,7 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 	const std::vector<long>& clauseLiterals = dataOfAccessedClause.value()->literals;
 
 	std::unordered_set<long> clauseLiteralAndBlockingDiffSet;
-	candidateGenerator.init(clauseLiterals, literalOccurrenceLookup, optionalCandidateSizeRestriction);
+	candidateGenerator.init(clauseLiterals, problemDefinition->getLiteralOccurrenceLookup(), optionalCandidateSizeRestriction);
 
 	std::optional<BaseBlockingSetCandidateGenerator::BlockingSetCandidate> candidateBlockingSet = candidateGenerator.generateNextCandidate();
 	bool foundBlockingSet = false;
@@ -54,7 +54,7 @@ std::vector<const dimacs::ProblemDefinition::Clause*> LiteralOccurrenceSetBlocke
 	std::vector<const dimacs::ProblemDefinition::Clause*> resolutionEnvironment;
 	for (const long literal : potentialBlockingSet)
 	{
-		if (const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[-literal]; clausesContainingLiteral.has_value())
+		if (const std::optional<std::vector<std::size_t>> clausesContainingLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal]; clausesContainingLiteral.has_value())
 		{
 			for (const std::size_t clauseIdx : *clausesContainingLiteral)
 			{

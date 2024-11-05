@@ -7,6 +7,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "literalOccurrenceLookup.hpp"
+
 namespace dimacs
 {
 	class ProblemDefinition
@@ -38,20 +40,22 @@ namespace dimacs
 		ProblemDefinition() = delete;
 		ProblemDefinition(std::size_t numVariables, std::size_t numClauses)
 		{
-			this->numUserDeclaredVariables = numVariables;
-			literalValues = std::vector<bool>((numVariables * 2) + 1, false);
+			const std::optional<std::size_t> requiredContainerSizeForStorageOfLiterals = LiteralInContainerIndexLookup::getRequiredTotalSizeOfContainerToStoreRange(numVariables);
+			if (!requiredContainerSizeForStorageOfLiterals.has_value())
+				throw std::invalid_argument("Internal container is only able to store at most " + std::to_string(LiteralInContainerIndexLookup::getMaximumStorableNumberOfVariables()) + " variables");
+
+			nVariables = numVariables;
+			literalValues = std::vector(*requiredContainerSizeForStorageOfLiterals, false);
 
 			clauses = std::make_shared<std::vector<Clause>>();
-			clauses->reserve(numClauses);
-			for (std::size_t i = 0; i < numClauses; ++i)
-			{
-				clauses->emplace_back();
-			}
+			clauses->resize(numClauses);
+
+			literalOccurrenceLookup = LiteralOccurrenceLookup(*requiredContainerSizeForStorageOfLiterals);
 		}
 
-		[[maybe_unused]] bool addClause(std::size_t index, Clause clause) const
+		[[maybe_unused]] bool addClause(std::size_t index, Clause clause)
 		{
-			if (clauses->size() <= index)
+			if (index >= clauses->size() || !literalOccurrenceLookup.recordClauseLiteralOccurrences(index, clause.literals))
 				return false;
 
 			clauses->at(index) = std::move(clause);
@@ -79,35 +83,19 @@ namespace dimacs
 			return &clauses->at(idxOfClauseInFormula);
 		}
 
-		[[maybe_unused]] bool fixVariableAssignment(long literal)
-		{
-			if (variablesWithValuesDeterminedDuringPreprocessing.count(std::abs(literal)))
-				return false;
-
-			variablesWithValuesDeterminedDuringPreprocessing.emplace(std::abs(literal));
-			setLiteral(literal, literal > 0);
-			return true;
-		}
-
-		void setLiteral(long literal, bool assignedValue)
-		{
-			literalValues.at(numUserDeclaredVariables + literal) = assignedValue;
-			literalValues.at(numUserDeclaredVariables - literal) = !assignedValue;
-		}
-
-		[[nodiscard]] std::vector<long> getVariablesWithValueDeterminedDuringPreprocessing() const
-		{
-			return { variablesWithValuesDeterminedDuringPreprocessing.cbegin(), variablesWithValuesDeterminedDuringPreprocessing.cend() };
-		}
-
-		[[nodiscard]] std::size_t getNumVariablesInFormula() const { return numUserDeclaredVariables; }
+		[[nodiscard]] std::size_t getNumVariablesInFormula() const { return nVariables; }
 		[[nodiscard]] std::size_t getNumClauses() const { return clauses->size(); }
+		[[nodiscard]] const LiteralOccurrenceLookup& getLiteralOccurrenceLookup() const
+		{
+			return literalOccurrenceLookup;
+		}
 
 	protected:
-		std::size_t numUserDeclaredVariables;
+		std::size_t nVariables;
 		std::unordered_set<long> variablesWithValuesDeterminedDuringPreprocessing;
 		std::vector<bool> literalValues;
 		std::shared_ptr<std::vector<Clause>> clauses;
+		LiteralOccurrenceLookup literalOccurrenceLookup;
 	};
 }
 #endif

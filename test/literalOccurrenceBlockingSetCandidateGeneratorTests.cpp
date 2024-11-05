@@ -85,9 +85,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicN
 	dimacs::ProblemDefinition::ptr formula;
 	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(candidateClauseLiterals.size(), { {-1,-2,-3} }, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 1 }, { 2 }, { 3 },
@@ -106,9 +105,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicW
 	dimacs::ProblemDefinition::ptr formula;
 	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(candidateClauseLiterals.size(), { {-1,-2,-3,-4} }, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 1 }, { 2 }, { 3 }, { 4 },
@@ -127,9 +125,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristics
 	dimacs::ProblemDefinition::ptr formula;
 	ASSERT_NO_FATAL_FAILURE(generateCnfFormulaOrThrow(candidateClauseLiterals.size(), { {-1,-2,-3,-4,-5} }, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 1 }, { 2 }, { 3 }, { 4 }, { 5 },
@@ -153,9 +150,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeur
 		{ -1,-2,-3 }, { -2,-3 }, { 2,-3 }
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({ { 1 }, { 2 }, { 3 }, { 1,2 }, { 1,3 }, { 2,3 }, { 1,2,3 } });
 	BlockingSetCandidateCollection actualCandidates;
@@ -173,9 +169,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeur
 		{ -1,-2,-3 }, { -2,-3 }, { -2,-3 }, { -3,-1,-4 }
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 4 }, { 1 }, { 2 }, { 3 },
@@ -198,9 +193,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeur
 		{ -1,-2,-3 }, { -2,-3 }, { -2,-3 }, { -3,-1,-4 }, { -3,-2 }, { -1,-4,-5 }
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{5}, {4}, {1}, {2}, {3},
@@ -224,9 +218,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeur
 		{-1,-2,-3}, {-1,-2}, {-2,-3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({ { 2 }, { 1 }, { 3 }, { 2,1 }, { 2,3 }, { 1,3 }, { 2,1,3 } });
 	BlockingSetCandidateCollection actualCandidates;
@@ -244,9 +237,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeur
 		{-1,-2,-3, 4}, {-1,-2, 4}, {-2,-3}, { -2, 4}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 2 }, { -4 }, { 1 }, { 3 },
@@ -269,9 +261,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeur
 		{ -1,-2,-3 }, { -2,-3 }, { -2,-3 }, { -3,-1,-4 }, { -3,-2 }, { -1,-4,-5 }
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{ 3 }, { 2 }, { 1 }, { 4 }, { 5 },
@@ -295,9 +286,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeur
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{2}, {3}, {1},
@@ -319,9 +309,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeur
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{1}, {3}, {2},
@@ -343,9 +332,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeuristicI
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{1}, {2}, {3},
@@ -367,10 +355,9 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SelectionHeuristicRe
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}, {4, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
 	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 1,2 });
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup(), customBlockingSetSizeRestriction));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{1}, {2}, {3}, {-4},
@@ -391,10 +378,9 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SelectionHeuristicRe
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}, {4, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
 	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 3,candidateClauseLiterals.size() });
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup(), customBlockingSetSizeRestriction));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({
 		{1, 2, 3}, {1, 2, -4}, {1, 3, -4}, {2, 3, -4},
@@ -415,10 +401,9 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SelectionHeuristicRe
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}, {4, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
 	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 4,4 });
-	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction));
+	ASSERT_NO_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup(), customBlockingSetSizeRestriction));
 
 	const BlockingSetCandidateCollection& expectedCandidates = buildExpectedCandidateLookup({{1, 2, 3, -4}});
 	BlockingSetCandidateCollection actualCandidates;
@@ -436,10 +421,9 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, UserDefinedMaximumBl
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { 2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
 	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ 1,candidateClauseLiterals.size() + 1 });
-	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction), std::invalid_argument);
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup(), customBlockingSetSizeRestriction), std::invalid_argument);
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, UserDefinedMaximumBlockingSetSizeLargerThanMinimumSizeThrows)
@@ -452,10 +436,9 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, UserDefinedMaximumBl
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { 2, -3}
 		}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
 	const auto& customBlockingSetSizeRestriction = std::make_optional<BaseBlockingSetCandidateGenerator::CandidateSizeRestriction>({ candidateClauseLiterals.size(),1 });
-	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup, customBlockingSetSizeRestriction), std::invalid_argument);
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup(), customBlockingSetSizeRestriction), std::invalid_argument);
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeurisiticOnlyApplicableForClauseWithAtleastTwoLiterals)
@@ -468,9 +451,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SequentialHeurisitic
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
-	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup), std::invalid_argument);
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()), std::invalid_argument);
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeuristicOnlyApplicableForClauseWithAtleastTwoLiterals)
@@ -483,9 +465,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MinClauseOverlapHeur
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection();
-	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup), std::invalid_argument);
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()), std::invalid_argument);
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeuristicOnlyApplicableForClauseWithAtleastTwoLiterals)
@@ -498,9 +479,8 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, MaxClauseOverlapHeur
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection();
-	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup), std::invalid_argument);
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()), std::invalid_argument);
 }
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, RandomHeuristicOnlyApplicableForClauseWithAtleastTwoLiterals)
@@ -513,7 +493,6 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, RandomHeuristicOnlyA
 		{1,-2,-3}, {-1,-2}, {-2,-3}, { -2, -3}
 	}, formula));
 
-	const dimacs::LiteralOccurrenceLookup literalOccurrenceLookup(*formula);
 	const LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateSelector = LiteralOccurrenceBlockingSetCandidateGenerator::usingRandomLiteralSelectionHeuristic(4711);
-	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, literalOccurrenceLookup), std::invalid_argument);
+	ASSERT_THROW(candidateSelector->init(candidateClauseLiterals, formula->getLiteralOccurrenceLookup()), std::invalid_argument);
 }

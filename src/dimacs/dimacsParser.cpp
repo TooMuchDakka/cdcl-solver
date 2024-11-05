@@ -30,11 +30,11 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemF
 std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsContent(std::basic_istream<char>& stream, std::vector<std::string>* optionalFoundErrors)
 {
 	resetInternals(optionalFoundErrors);
-	std::size_t currProcessedLine = 1 + skipCommentLines(stream);
+	std::size_t currProcessedLine = skipCommentLines(stream) + 1;
 
-	std::string foundErrorDuringProcessingOfProblemDefinitionLine;
-	const std::optional<std::pair<std::size_t, std::size_t>> problemDefinitionData = processProblemDefinitionLine(stream, &foundErrorDuringProcessingOfProblemDefinitionLine);
-	if (!problemDefinitionData)
+	std::string foundErrorDuringProcessingOfProblemDefinitionLine = optionalFoundErrors != nullptr ? "" : nullptr;
+	const std::optional<ProblemDefinitionConfiguration> problemDefinitionConfiguration = processProblemDefinitionLine(stream, &foundErrorDuringProcessingOfProblemDefinitionLine);
+	if (!problemDefinitionConfiguration)
 	{
 		recordError(currProcessedLine, 0, foundErrorDuringProcessingOfProblemDefinitionLine);
 		if (optionalFoundErrors)
@@ -43,10 +43,7 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 	}
 	++currProcessedLine;
 
-	const std::size_t numLiterals = problemDefinitionData->first;
-	const std::size_t numClauses = problemDefinitionData->second;
-
-	auto problemDefinition = std::make_unique<ProblemDefinition>(numLiterals, numClauses);
+	auto problemDefinition = std::make_unique<ProblemDefinition>(problemDefinitionConfiguration->numVariables, problemDefinitionConfiguration->numClauses);
 	if (!problemDefinition)
 	{
 		recordError(0, 0, "Failed to initialize problem definition");
@@ -54,34 +51,32 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 			*optionalFoundErrors = foundErrors;
 		return std::nullopt;
 	}
-	std::size_t currNumProcessedClauses = 0;
-	std::string clauseProcessingError;
 
-	bool continueProcessingClauses = true;
-	std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, numLiterals, &clauseProcessingError);
-	while (parsedClause.has_value() && continueProcessingClauses) {
-		if (currNumProcessedClauses == numClauses)
-		{
-			recordError(currProcessedLine, 0, "More than " + std::to_string(numClauses) + " clauses defined");
-			continueProcessingClauses = false;
-		}
+	std::size_t processedClauseCounter = 0;
+	std::string clauseParsingError;
+	
+	
+	bool continueProcessing;
+	do
+	{
+		std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, problemDefinitionConfiguration->numVariables, &clauseParsingError);
+		if (!parsedClause.has_value())
+			break;
 
-		if (!clauseProcessingError.empty())
-		{
-			recordError(currProcessedLine, 0, clauseProcessingError);
-			continueProcessingClauses = false;
-		}
-		problemDefinition->addClause(currNumProcessedClauses++, *parsedClause);
-		clauseProcessingError = "";
+		if (clauseParsingError.empty() && processedClauseCounter == problemDefinitionConfiguration->numClauses)
+			clauseParsingError = "More than " + std::to_string(problemDefinitionConfiguration->numClauses) + " clauses defined";
+
+		if (!clauseParsingError.empty())
+			recordError(currProcessedLine, 0, clauseParsingError);
+		else
+			problemDefinition->addClause(processedClauseCounter++, *parsedClause);
+
+		continueProcessing = clauseParsingError.empty() && (stream.peek() && !stream.eof());
 		++currProcessedLine;
-		parsedClause = parseClauseDefinition(stream, numLiterals, &clauseProcessingError);
-	}
+	} while (continueProcessing);
 
-	if (currNumProcessedClauses < numClauses)
-		recordError(currProcessedLine, 0, "Expected " + std::to_string(numClauses) + " but only " + std::to_string(currNumProcessedClauses) + " were defined");
-
-	if (!clauseProcessingError.empty())
-		recordError(currProcessedLine, 0, clauseProcessingError);
+	if (processedClauseCounter < problemDefinitionConfiguration->numClauses)
+		recordError(currProcessedLine, 0, "Expected " + std::to_string(problemDefinitionConfiguration->numClauses) + " but only " + std::to_string(processedClauseCounter) + " were defined");
 
 	if (!foundErrorsDuringCurrentParsingAttempt)
 		return std::move(problemDefinition);
@@ -108,13 +103,16 @@ void dimacs::DimacsParser::recordError(std::size_t line, std::size_t column, con
 }
 
 
-inline std::vector<std::string> dimacs::DimacsParser::splitStringAtDelimiter(const std::string& stringToSplit, char delimiter)
+inline std::vector<std::string_view> dimacs::DimacsParser::splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter)
 {
+	if (stringToSplit.empty())
+		return {};
+
 	std::size_t lastFoundDelimiterPosition = 0;
-	std::vector<std::string> splitStringParts;
+	std::vector<std::string_view> splitStringParts;
 
 	std::size_t foundDelimiterPosition = stringToSplit.find(delimiter, lastFoundDelimiterPosition);
-	while(!(foundDelimiterPosition == std::string::npos))
+	while (foundDelimiterPosition != std::string::npos)
 	{
 		if (const std::size_t splitPartLength = foundDelimiterPosition - lastFoundDelimiterPosition)
 			splitStringParts.emplace_back(stringToSplit.substr(lastFoundDelimiterPosition, splitPartLength));
@@ -159,7 +157,7 @@ inline std::size_t dimacs::DimacsParser::skipCommentLines(std::basic_istream<cha
 	return numCommentLines;
 }
 
-inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const std::string& stringToConvert, std::string* optionalFoundError)
+inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const std::string_view& stringToConvert, std::string* optionalFoundError)
 {
 	if (stringToConvert == "0")
 		return 0;
@@ -170,79 +168,72 @@ inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const st
 	if (errno == ERANGE || !convertedNumericValue)
 	{
 		if (optionalFoundError)
-			*optionalFoundError = "Conversion of string " + stringToConvert + " to numeric value failed";
+			*optionalFoundError = "Conversion of string " + std::string(stringToConvert) + " to numeric value failed";
 		return std::nullopt;
 	}
 	return convertedNumericValue;
 }
 
-inline std::optional<std::pair<std::size_t, std::size_t>> dimacs::DimacsParser::processProblemDefinitionLine(std::basic_istream<char>& inputStream, std::string* optionalFoundError)
+inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimacs::DimacsParser::processProblemDefinitionLine(std::basic_istream<char>& inputStream, std::string* optionalFoundError)
 {
 	std::string readProblemLineDefinition;
-	if (!std::getline(inputStream, readProblemLineDefinition) || readProblemLineDefinition.rfind('p', 0))
+	bool parsingFailed = !std::getline(inputStream, readProblemLineDefinition);
+	parsingFailed |= !readProblemLineDefinition.empty() && readProblemLineDefinition.front() == 'p';
+
+	const auto& splitProblemDefinitionConfigurationLineData = !parsingFailed ? splitStringAtDelimiter(readProblemLineDefinition, ' ') : std::vector<std::string_view>();
+	if (splitProblemDefinitionConfigurationLineData.empty() || splitProblemDefinitionConfigurationLineData.at(1) != "cnf" || splitProblemDefinitionConfigurationLineData.size() == 4)
 	{
 		if (optionalFoundError)
 			*optionalFoundError = "Expected line in format: p cnf <NUM_LITERALS> <NUM_CLAUSES> but was actually " + readProblemLineDefinition;
 		return std::nullopt;
 	}
 
-	if (const std::vector<std::string> splitProblemDefinitionLineData = splitStringAtDelimiter(readProblemLineDefinition, ' '); splitProblemDefinitionLineData.size() == 4
-		|| splitProblemDefinitionLineData.at(1) != "cnf")
-	{
-		const std::optional<long> numUserDefinedLiterals = tryConvertStringToLong(splitProblemDefinitionLineData.at(2), nullptr);
-		const std::optional<long> numUserDefinedClauses = tryConvertStringToLong(splitProblemDefinitionLineData.at(3), nullptr);
-		if (!numUserDefinedLiterals || !numUserDefinedClauses)
-			return std::nullopt;
+	const std::optional<long> userDefinedNumberOfVariables = tryConvertStringToLong(splitProblemDefinitionConfigurationLineData.at(2), optionalFoundError);
+	const std::optional<long> userDefinedNumberOfClauses = tryConvertStringToLong(splitProblemDefinitionConfigurationLineData.at(3), optionalFoundError);
+	if (!userDefinedNumberOfVariables || !userDefinedNumberOfClauses)
+		return std::nullopt;
 
-		return std::make_pair(*numUserDefinedLiterals, *numUserDefinedClauses);
+	if (*userDefinedNumberOfVariables < 0)
+	{
+		if (optionalFoundError)
+			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfVariables) + " must be larger than 0";
+		return std::nullopt;
+	}
+	if (*userDefinedNumberOfClauses < 0)
+	{
+		if (optionalFoundError)
+			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " must be larger than 0";
+		return std::nullopt;
 	}
 
-	if (optionalFoundError)
-		*optionalFoundError = "Expected line in format: p cnf <NUM_LITERALS> <NUM_CLAUSES>";
-	return std::nullopt;
+
+	if (*userDefinedNumberOfVariables > static_cast<long>(SIZE_MAX))
+	{
+		if (optionalFoundError)
+			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfVariables) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX);
+		return std::nullopt;
+	}
+	if (*userDefinedNumberOfClauses > static_cast<long>(SIZE_MAX))
+	{
+		if (optionalFoundError)
+			*optionalFoundError = "Processed integer value " + std::to_string(*userDefinedNumberOfClauses) + " is larger than the maximum storable value of " + std::to_string(SIZE_MAX);
+		return std::nullopt;
+	}
+	return ProblemDefinitionConfiguration({ static_cast<std::size_t>(*userDefinedNumberOfVariables), static_cast<std::size_t>(*userDefinedNumberOfClauses) });
 }
 
-inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDeclaredLiterals, std::string* optionalFoundErrors)
+inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, std::string* optionalFoundErrors)
 {
 	std::string clauseDefinition;
 	if (!std::getline(inputStream, clauseDefinition))
 		return std::nullopt;
 
-	dimacs::ProblemDefinition::Clause clause;
-
-	const std::vector<std::string> stringifiedClauseLiterals = splitStringAtDelimiter(clauseDefinition, ' ');
+	const std::vector<std::string_view>& stringifiedClauseLiterals = splitStringAtDelimiter(clauseDefinition, ' ');
 	if (stringifiedClauseLiterals.empty())
-		return clause;
+		return std::nullopt;
 
-	std::size_t clauseLiteralIdx = 0;
-	for (const std::string& clauseLiteralData : stringifiedClauseLiterals)
-	{
-		std::string stringToNumberConversionError;
-		const std::optional<long> parsedClauseLiteral = tryConvertStringToLong(clauseLiteralData, &stringToNumberConversionError);
-		if (!parsedClauseLiteral)
-		{
-			if (optionalFoundErrors)
-				*optionalFoundErrors = stringToNumberConversionError;
-			return std::nullopt;
-		}
-
-		if (!*parsedClauseLiteral && clauseLiteralIdx < stringifiedClauseLiterals.size() - 1)
-		{
-			if (optionalFoundErrors)
-				*optionalFoundErrors = "Literal 0 cannot only be used as the closing delimiter of a clause but was actually defines as the " + std::to_string(clauseLiteralIdx) + "-th literal of the clause";
-			return std::nullopt;
-		}
-
-		if (std::abs(*parsedClauseLiteral) > static_cast<long>(numDeclaredLiterals))
-		{
-			if (optionalFoundErrors)
-				*optionalFoundErrors = "Literal " + std::to_string(*parsedClauseLiteral) + " was out of range, valid range is [-" + std::to_string(numDeclaredLiterals) + ", -1] v [1, " + std::to_string(numDeclaredLiterals) + "]";
-			return std::nullopt;
-		}
-		
-		clause.literals.emplace_back(*parsedClauseLiteral);
-		++clauseLiteralIdx;
-	}
+	ProblemDefinition::Clause clause;
+	clause.literals.reserve(stringifiedClauseLiterals.size() - 1);
 
 	if (clause.literals.back())
 	{
@@ -251,6 +242,27 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 		return std::nullopt;
 	}
 
-	clause.literals.pop_back();
+	for (auto stringifiedClauseLiteralIterator = stringifiedClauseLiterals.begin(); stringifiedClauseLiteralIterator < stringifiedClauseLiterals.end(); ++stringifiedClauseLiteralIterator)
+	{
+		const std::optional<long> clauseLiteral = tryConvertStringToLong(*stringifiedClauseLiteralIterator, optionalFoundErrors);
+		if (!clauseLiteral.has_value())
+			return std::nullopt;
+
+		if (std::abs(*clauseLiteral) > static_cast<long>(numDefinedVariablesInCnf))
+		{
+			if (optionalFoundErrors)
+				*optionalFoundErrors = "Literal " + std::to_string(*clauseLiteral) + " was out of range, valid range is [-" + std::to_string(numDefinedVariablesInCnf) + ", -1] v [1, " + std::to_string(numDefinedVariablesInCnf) + "]";
+			return std::nullopt;
+		}
+
+		if (!*clauseLiteral && stringifiedClauseLiteralIterator != std::prev(stringifiedClauseLiterals.end(), 2)) 
+		{
+			if (optionalFoundErrors)
+				*optionalFoundErrors = "Clause must define literal 0 as its closing delimiter";
+			return std::nullopt;
+		}
+		clause.literals.emplace_back(*clauseLiteral);
+	}
+	clause.sortLiterals();
 	return clause;
 }
