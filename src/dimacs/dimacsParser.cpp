@@ -42,7 +42,6 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 			*optionalFoundErrors = foundErrors;
 		return std::nullopt;
 	}
-	++currProcessedLine;
 
 	auto problemDefinition = std::make_unique<ProblemDefinition>(problemDefinitionConfiguration->numVariables, problemDefinitionConfiguration->numClauses);
 	if (!problemDefinition)
@@ -60,42 +59,51 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 	bool continueProcessing;
 	do
 	{
-		std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, problemDefinitionConfiguration->numVariables, temporaryProcessingErrorContainer);
-		if (!parsedClause.has_value())
-			break;
-
-		if (!clauseParsingError.text.empty() && processedClauseCounter == problemDefinitionConfiguration->numClauses)
-		{
-			clauseParsingError = "More than " + std::to_string(problemDefinitionConfiguration->numClauses) + " clauses defined";
-			recordError(currProcessedLine++, 0, clauseParsingError.text);
-			break;
-		}
-
+		++currProcessedLine;
+		std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, problemDefinitionConfiguration->numVariables, *problemDefinition, temporaryProcessingErrorContainer);
 		if (!clauseParsingError.text.empty())
+			recordError(currProcessedLine, 0, clauseParsingError.text);
+
+		++processedClauseCounter;
+		continueProcessing = stream.peek() && !stream.eof();
+
+		if (processedClauseCounter > problemDefinitionConfiguration->numClauses)
+			break;
+
+		if (!parsedClause.has_value())
+			continue;
+
+		if (configuration.performUnitPropagation && parsedClause->literals.size() == 1)
 		{
-			recordError(currProcessedLine++, 0, clauseParsingError.text);
-		}
-		else if (!isClauseTautology(*parsedClause))
-		{
-			if (parsedClause->literals.size() == 1)
-			{
-				if (problemDefinition->propagate(parsedClause->literals.front()) != ProblemDefinition::Ok)
-					recordError(currProcessedLine, 0, "Error during unit propagation of literal " + std::to_string(parsedClause->literals.front()));
-			}
+			const long unitPropagatedLiteral = parsedClause->literals.front();
+			const std::size_t numAssignmentsPrioToUnitPropagation = problemDefinition->getPastAssignments().size();
+			if (problemDefinition->propagate(unitPropagatedLiteral) != ProblemDefinition::Ok)
+				recordError(currProcessedLine - 1, 0, "Error during unit propagation of literal " + std::to_string(unitPropagatedLiteral));
 			else
 			{
-				problemDefinition->addClause(processedClauseCounter++, *parsedClause);
+				const std::vector<ProblemDefinition::PastAssignment>& pastAssignments = problemDefinition->getPastAssignments();
+				if (pastAssignments.size() <= numAssignmentsPrioToUnitPropagation)
+					return std::nullopt;
+
+				const std::size_t numPerformedVariableAssignments = pastAssignments.size() - numAssignmentsPrioToUnitPropagation;
+				for (std::size_t i = 0; i < numPerformedVariableAssignments; ++i)
+				{
+					const long l = pastAssignments.at(numAssignmentsPrioToUnitPropagation + i).assignedLiteral;
+					if (!removeClausesSatisfiedByUnitPropagation(*problemDefinition, l))
+						recordError(currProcessedLine, 0, "Error during removal of clauses containing unit propagated literal " + std::to_string(l));
+					if (!problemDefinition->removeLiteralFromClausesOfFormula(-l))
+						recordError(currProcessedLine, 0, "Error during removal of literal " + std::to_string(-l) + " from clauses of formula");
+				}
 			}
 		}
+		else if (isClauseTautology(*parsedClause))
+			recordError(currProcessedLine, 0, "Formula is expected to contain no tautologies");
 		else
-			++processedClauseCounter;
-		
-		continueProcessing = stream.peek() && !stream.eof();
-		++currProcessedLine;
+			problemDefinition->addClause(processedClauseCounter - 1, *parsedClause);
 	} while (continueProcessing);
 
-	if (processedClauseCounter < problemDefinitionConfiguration->numClauses)
-		recordError(currProcessedLine, 0, "Expected " + std::to_string(problemDefinitionConfiguration->numClauses) + " but only " + std::to_string(processedClauseCounter) + " were defined");
+	if (processedClauseCounter != problemDefinitionConfiguration->numClauses)
+		recordError(currProcessedLine, 0, "Expected formula to contain " + std::to_string(problemDefinitionConfiguration->numClauses) + " clauses but " + std::to_string(processedClauseCounter) + " were parsed");
 
 	// TODO: Local variable elimination
 	if (!foundErrorsDuringCurrentParsingAttempt)
@@ -106,6 +114,18 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 	return std::nullopt;
 }
 
+bool dimacs::DimacsParser::removeClausesSatisfiedByUnitPropagation(ProblemDefinition& problemDefinition, long literal)
+{
+	const LiteralOccurrenceLookup& literalOccurrenceLookup = problemDefinition.getLiteralOccurrenceLookup();
+	const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[literal];
+	if (!clausesContainingLiteral.has_value())
+		return false;
+
+	for (const std::size_t clauseIndex : *clausesContainingLiteral)
+		if (!problemDefinition.removeClause(clauseIndex))
+			return false;
+	return true;
+}
 
 void dimacs::DimacsParser::resetInternals(bool shouldFoundErrorsBeRecorded)
 {
@@ -119,7 +139,7 @@ void dimacs::DimacsParser::recordError(std::size_t line, std::size_t column, con
 {
 	foundErrorsDuringCurrentParsingAttempt = true;
 	if (recordFoundErrors)
-		foundErrors.emplace_back(ProcessingError { line, column, errorText });
+		foundErrors.emplace_back(line, column, errorText);
 	//foundErrors.emplace_back("--line: " + std::to_string(line) + " col: " + std::to_string(column) + " | " + errorText);
 }
 
@@ -229,7 +249,7 @@ inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimac
 	return ProblemDefinitionConfiguration({ static_cast<std::size_t>(*userDefinedNumberOfVariables), static_cast<std::size_t>(*userDefinedNumberOfClauses) });
 }
 
-inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, ProcessingError* optionalFoundErrors)
+inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, const ProblemDefinition& variableValueLookupGateway, ProcessingError* optionalFoundErrors)
 {
 	std::string clauseDefinition;
 	if (!std::getline(inputStream, clauseDefinition))
@@ -241,8 +261,11 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 
 	ProblemDefinition::Clause clause;
 	clause.literals.reserve(stringifiedClauseLiterals.size() - 1);
+	clause.satisified = false;
 
 	bool wasRequiredEndDelimiterDefined = false;
+	bool doesCurrentVariableAssignmentSatisfyClause = false;
+
 	for (auto stringifiedClauseLiteralIterator = stringifiedClauseLiterals.begin(); stringifiedClauseLiteralIterator < stringifiedClauseLiterals.end(); ++stringifiedClauseLiteralIterator)
 	{
 		const std::optional<long> clauseLiteral = tryConvertStringToLong(*stringifiedClauseLiteralIterator, optionalFoundErrors);
@@ -267,7 +290,22 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 			}
 		}
 		else
-			clause.literals.emplace_back(*clauseLiteral);
+		{
+			const ProblemDefinition::VariableValue currentValueOfVariable = variableValueLookupGateway.getValueOfVariable(std::abs(*clauseLiteral)).value_or(ProblemDefinition::VariableValue::Unknown);
+			doesCurrentVariableAssignmentSatisfyClause |= currentValueOfVariable == ProblemDefinition::determineSatisfyingAssignmentForLiteral(*clauseLiteral);
+
+			if (!doesCurrentVariableAssignmentSatisfyClause)
+			{
+				if (currentValueOfVariable == ProblemDefinition::determineConflictingAssignmentForLiteral(*clauseLiteral))
+				{
+					if (optionalFoundErrors)
+						*optionalFoundErrors = ProcessingError("Derived UNSAT of formula using current variable assignments");
+					return std::nullopt;
+				}
+				if (currentValueOfVariable == ProblemDefinition::Unknown)
+					clause.literals.emplace_back(*clauseLiteral);
+			}
+		}
 	}
 
 	if (!wasRequiredEndDelimiterDefined)
@@ -277,8 +315,12 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 		return std::nullopt;
 	}
 
-	clause.sortLiterals();
-	return clause;
+	if (!doesCurrentVariableAssignmentSatisfyClause)
+	{
+		clause.sortLiterals();
+		return clause;
+	}
+	return std::nullopt;
 }
 
 bool dimacs::DimacsParser::isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept
@@ -286,11 +328,12 @@ bool dimacs::DimacsParser::isClauseTautology(const dimacs::ProblemDefinition::Cl
 	if (clause.literals.size() < 2)
 		return false;
 
-	std::size_t forwardIndex = 0;
-	std::size_t backwardIndex = clause.literals.size() - 1;
-	bool isTautology = false;
-	while (forwardIndex < backwardIndex && !isTautology)
-		isTautology = clause.literals[forwardIndex++] == -clause.literals[--backwardIndex];
-
-	return isTautology;
+	std::unordered_set<long> literals;
+	for (long literal : clause.literals)
+	{
+		if (literals.count(-literal))
+			return true;
+		literals.emplace(literal);
+	}
+	return false;
 }

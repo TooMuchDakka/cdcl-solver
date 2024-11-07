@@ -4,8 +4,9 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
-#include <unordered_set>
 #include <vector>
+#include <ostream>
+#include <unordered_map>
 
 #include "literalOccurrenceLookup.hpp"
 
@@ -31,7 +32,8 @@ namespace dimacs
 			using constPtr = std::shared_ptr<const Clause>;
 
 			Clause() = default;
-			explicit Clause(std::vector<long> literals) : literals(std::move(literals))
+			explicit Clause(std::vector<long> literals)
+				: literals(std::move(literals)), satisified(false)
 			{
 				sortLiterals();
 			}
@@ -40,8 +42,22 @@ namespace dimacs
 			{
 				std::stable_sort(literals.begin(), literals.end(), std::less_equal<>());
 			}
-			
+
 			std::vector<long> literals;
+			bool satisified;
+		};
+
+		enum VariableValue : char
+		{
+			Low = 0,
+			High = 1,
+			Unknown = -1
+		};
+
+		struct PastAssignment
+		{
+			bool isPropagation;
+			long assignedLiteral;
 		};
 
 		ProblemDefinition() = delete;
@@ -52,33 +68,44 @@ namespace dimacs
 				throw std::invalid_argument("Internal container is only able to store at most " + std::to_string(LiteralInContainerIndexLookup::getMaximumStorableNumberOfVariables()) + " variables");
 
 			nVariables = numVariables;
+			nClauses = numClauses;
 			variableValueLookup = VariableValueLookup(*requiredContainerSizeForStorageOfLiterals - 1);
 
-			clauses = std::make_shared<std::vector<Clause>>();
-			clauses->resize(numClauses);
-
-			literalOccurrenceLookup = LiteralOccurrenceLookup(*requiredContainerSizeForStorageOfLiterals);
+			clauses = std::make_shared<std::unordered_map<std::size_t, Clause>>();
+			literalOccurrenceLookup = LiteralOccurrenceLookup(numVariables);
 		}
 
 		[[maybe_unused]] bool addClause(std::size_t index, Clause clause);
-		[[nodiscard]] std::shared_ptr<std::vector<Clause>> getClauses() const;
-		[[nodiscard]] std::optional<const Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const;
+		[[maybe_unused]] bool removeClause(std::size_t index);
+		[[maybe_unused]] bool removeLiteralFromClausesOfFormula(long literal);
+
+
+ 		[[nodiscard]] std::optional<const Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const;
 		[[nodiscard]] std::optional<Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula);
-		[[nodiscard]] std::size_t getNumVariablesInFormula() const;
-		[[nodiscard]] std::size_t getNumClauses() const;
+		[[nodiscard]] std::vector<const Clause*> getClauses() const;
+		[[nodiscard]] std::size_t getNumDeclaredVariablesOfFormula() const;
+		[[nodiscard]] std::size_t getNumDeclaredClausesOfFormula() const;
+		[[nodiscard]] std::size_t getNumClausesAfterOptimizations() const;
 		[[nodiscard]] const LiteralOccurrenceLookup& getLiteralOccurrenceLookup() const;
 		[[nodiscard]] std::optional<std::vector<long>> getClauseLiteralsOmittingAlreadyAssignedOnes(std::size_t idxOfClauseInFormula) const;
 		[[maybe_unused]] PropagationResult propagate(long literal);
+		[[nodiscard]] std::optional<VariableValue> getValueOfVariable(std::size_t variable) const;
+		[[nodiscard]] std::string stringify() const;
+		[[nodiscard]] std::optional<bool> doesVariableAssignmentLeadToConflict(long literal, VariableValue chosenAssignment) const;
+		[[nodiscard]] const std::vector<PastAssignment>& getPastAssignments() const;
 
+		[[nodiscard]] static VariableValue determineSatisfyingAssignmentForLiteral(long literal) noexcept
+		{
+			return static_cast<VariableValue>(literal > 0);
+		}
+
+		[[nodiscard]] static VariableValue determineConflictingAssignmentForLiteral(long literal) noexcept
+		{
+			return static_cast<VariableValue>(literal < 0);
+		}
 	protected:
 		struct VariableValueLookup
 		{
-			enum VariableValue : char
-			{
-				Low = 0,
-				High = 1,
-				Unknown = -1
-			};
 			std::vector<VariableValue> variableValues;
 
 			VariableValueLookup() = default;
@@ -102,7 +129,7 @@ namespace dimacs
 				if (!isVariableWithinRange(literalToVariable(literal)))
 					return false;
 
-				if (getLiteralValue(literal).value_or(VariableValue::Unknown) == VariableValue::Unknown)
+				if (getLiteralValue(literal).value_or(VariableValue::Unknown) != VariableValue::Unknown)
 					return true;
 
 				variableValues[literalToVariable(literal)] = determineSatisfyingAssignmentForLiteral(literal);
@@ -114,21 +141,38 @@ namespace dimacs
 				return variable && variable < variableValues.size();
 			}
 
-			[[nodiscard]] static VariableValue determineSatisfyingAssignmentForLiteral(long literal) noexcept
-			{
-				return static_cast<VariableValue>(literal > 0);
-			}
-
 			[[nodiscard]] static std::size_t literalToVariable(long literal) noexcept
 			{
 				return std::abs(literal);
 			}
 		};
 
+		[[maybe_unused]] bool recordAssignment(PastAssignment variableAssignment)
+		{
+			pastAssignments.emplace_back(variableAssignment);
+			return variableValueLookup.recordSatisfyingLiteralAssignment(variableAssignment.assignedLiteral);
+		}
+
 		std::size_t nVariables;
-		std::shared_ptr<std::vector<Clause>> clauses;
+		std::size_t nClauses;
+		std::shared_ptr<std::unordered_map<std::size_t, Clause>> clauses;
 		VariableValueLookup variableValueLookup;
 		LiteralOccurrenceLookup literalOccurrenceLookup;
+		std::vector<PastAssignment> pastAssignments;
 	};
+
+	inline std::ostream& operator<<(std::ostream& os, const dimacs::ProblemDefinition::Clause& clause)
+	{
+		if (clause.literals.empty())
+			return os;
+
+		if (clause.literals.size() > 1)
+		{
+			for (auto literalIterator = clause.literals.begin(); literalIterator != std::prev(clause.literals.end(), 2); ++literalIterator)
+				os << std::to_string(*literalIterator) + " ";
+		}
+		os << std::to_string(clause.literals.back()) + " 0";
+		return os;
+	}
 }
 #endif

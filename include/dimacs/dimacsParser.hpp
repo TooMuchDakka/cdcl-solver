@@ -12,6 +12,10 @@ namespace dimacs
 	{
 	public:
 		using ptr = std::unique_ptr<DimacsParser>;
+		struct ParserConfiguration
+		{
+			bool performUnitPropagation;
+		};
 
 		struct ProcessingError
 		{
@@ -36,7 +40,8 @@ namespace dimacs
 		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromFile(const std::string& dimacsFilePath, std::vector<ProcessingError>* optionalFoundErrors);
 		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromString(const std::string& dimacsContent, std::vector<ProcessingError>* optionalFoundErrors);
 
-		DimacsParser(): recordFoundErrors(false), foundErrorsDuringCurrentParsingAttempt(false) {}
+		DimacsParser(ParserConfiguration configuration): recordFoundErrors(false), foundErrorsDuringCurrentParsingAttempt(false), configuration(configuration) {}
+		DimacsParser() : DimacsParser(ParserConfiguration({true})) {}
 	protected:
 		struct ProblemDefinitionConfiguration
 		{
@@ -47,16 +52,18 @@ namespace dimacs
 		bool recordFoundErrors;
 		bool foundErrorsDuringCurrentParsingAttempt;
 		std::vector<ProcessingError> foundErrors;
+		ParserConfiguration configuration;
 
 		void recordError(std::size_t line, std::size_t column, const std::string& errorText);
 		void resetInternals(bool shouldFoundErrorsBeRecorded);
 
 		[[nodiscard]] std::optional<ProblemDefinition::ptr> parseDimacsContent(std::basic_istream<char>& stream, std::vector<ProcessingError>* optionalFoundErrors);
+		[[maybe_unused]] static bool removeClausesSatisfiedByUnitPropagation(ProblemDefinition& problemDefinition, long literal);
 		[[nodiscard]] static std::size_t skipCommentLines(std::basic_istream<char>& inputStream);
 		[[nodiscard]] static std::vector<std::string_view> splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter);
 		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string_view& stringToConvert, ProcessingError* optionalFoundError);
 		[[nodiscard]] static std::optional<ProblemDefinitionConfiguration> processProblemDefinitionLine(std::basic_istream<char>& inputStream, ProcessingError* optionalFoundError);
-		[[nodiscard]] static std::optional<dimacs::ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, ProcessingError* optionalFoundErrors);
+		[[nodiscard]] static std::optional<ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, const ProblemDefinition& variableValueLookupGateway, ProcessingError* optionalFoundErrors);
 		[[nodiscard]] static bool isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept;
 	};
 

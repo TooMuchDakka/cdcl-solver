@@ -47,7 +47,7 @@ namespace clauseCandidateSelection {
 		}
 
 		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup) {
-			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumClauses(), CandidateSelectionHeuristic::MinimumClauseOverlap, std::nullopt); instance)
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MinimumClauseOverlap, std::nullopt); instance)
 			{
 				instance->initializeCandidateSequence(problemDefinition, literalOccurrenceLookup);
 				return instance;
@@ -56,7 +56,7 @@ namespace clauseCandidateSelection {
 		}
 
 		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup) {
-			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumClauses(), CandidateSelectionHeuristic::MaximumClauseOverlap, std::nullopt); instance)
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MaximumClauseOverlap, std::nullopt); instance)
 			{
 				instance->initializeCandidateSequence(problemDefinition, literalOccurrenceLookup);
 				return instance;

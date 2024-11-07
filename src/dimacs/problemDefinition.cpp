@@ -1,45 +1,99 @@
 #include "dimacs/problemDefinition.hpp"
+#include <sstream>
 
 using namespace dimacs;
 
 [[maybe_unused]] bool ProblemDefinition::addClause(std::size_t index, Clause clause)
 {
-	if (index >= clauses->size() || !literalOccurrenceLookup.recordClauseLiteralOccurrences(index, clause.literals))
+	if (clauses->count(index) || !literalOccurrenceLookup.recordClauseLiteralOccurrences(index, clause.literals))
 		return false;
 
-	clauses->at(index) = std::move(clause);
+	clauses->emplace(index, clause);
 	return true;
 }
 
-[[nodiscard]] std::shared_ptr<std::vector<ProblemDefinition::Clause>> ProblemDefinition::getClauses() const
+bool ProblemDefinition::removeClause(std::size_t index)
 {
-	return clauses;
+	const std::optional<const Clause*> accessedClause = getClauseByIndexInFormula(index);
+	if (!accessedClause.has_value())
+		return false;
+
+	for (const long literal : accessedClause.value()->literals)
+		literalOccurrenceLookup.removeLiteralFromClause(index, literal);
+
+	if (clauses->count(index))
+	{
+		clauses->erase(index);
+		return true;
+	}
+	return false;
+}
+
+bool ProblemDefinition::removeLiteralFromClausesOfFormula(long literal)
+{
+	const std::optional<std::vector<std::size_t>> indicesOfClausesContainingLiteral = literalOccurrenceLookup[literal];
+	if (!indicesOfClausesContainingLiteral.has_value())
+		return false;
+
+	return std::all_of(
+		indicesOfClausesContainingLiteral->cbegin(),
+		indicesOfClausesContainingLiteral->cend(),
+		[&](const std::size_t clauseIndex)
+		{
+			const std::optional<Clause*> accessedClause = getClauseByIndexInFormula(clauseIndex);
+			if (!accessedClause.has_value())
+				return false;
+
+			std::vector<long>& clauseLiterals = accessedClause.value()->literals;
+			clauseLiterals.erase(
+				std::remove_if(clauseLiterals.begin(), clauseLiterals.end(), 
+					[literal](long clauseLiteral) { return clauseLiteral == literal; }),
+				clauseLiterals.end()
+			);
+			literalOccurrenceLookup.removeLiteralFromClause(clauseIndex, literal);
+			return true;
+		}
+	);
 }
 
 [[nodiscard]] std::optional<const dimacs::ProblemDefinition::Clause*> ProblemDefinition::getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const
 {
-	if (idxOfClauseInFormula >= clauses->size())
-		return std::nullopt;
-
-	return &clauses->at(idxOfClauseInFormula);
+	if (clauses->count(idxOfClauseInFormula))
+		return &clauses->at(idxOfClauseInFormula);
+	return std::nullopt;
 }
 
 [[nodiscard]] std::optional<ProblemDefinition::Clause*> ProblemDefinition::getClauseByIndexInFormula(std::size_t idxOfClauseInFormula)
 {
-	if (idxOfClauseInFormula >= clauses->size())
-		return std::nullopt;
-
-	return &clauses->at(idxOfClauseInFormula);
+	if (clauses->count(idxOfClauseInFormula))
+		return &clauses->at(idxOfClauseInFormula);
+	return std::nullopt;
 }
 
-[[nodiscard]] std::size_t ProblemDefinition::getNumVariablesInFormula() const
+std::vector<const ProblemDefinition::Clause*> ProblemDefinition::getClauses() const
+{
+	std::vector<const ProblemDefinition::Clause*> clausesContainer;
+	clausesContainer.reserve(clauses->size());
+
+	for (const auto& [key, _] : *clauses)
+		clausesContainer.emplace_back(&clauses->at(key));
+	return clausesContainer;
+}
+
+
+[[nodiscard]] std::size_t ProblemDefinition::getNumDeclaredVariablesOfFormula() const
 {
 	return nVariables;
 }
 
-[[nodiscard]] std::size_t ProblemDefinition::getNumClauses() const
+[[nodiscard]] std::size_t ProblemDefinition::getNumDeclaredClausesOfFormula() const
 {
-	return clauses->size();
+	return nClauses;
+}
+
+std::size_t ProblemDefinition::getNumClausesAfterOptimizations() const
+{
+	return clauses ? clauses->size() : 0;
 }
 
 [[nodiscard]] const LiteralOccurrenceLookup& ProblemDefinition::getLiteralOccurrenceLookup() const
@@ -56,42 +110,96 @@ std::optional<std::vector<long>> ProblemDefinition::getClauseLiteralsOmittingAlr
 	std::vector<long> unassignedClauseLiterals;
 	for (const long literal : dataOfAccessedClause.value()->literals)
 	{
-		if (variableValueLookup.getLiteralValue(literal).value_or(VariableValueLookup::Unknown) == VariableValueLookup::Unknown)
+		if (variableValueLookup.getLiteralValue(literal).value_or(VariableValue::Unknown) == VariableValue::Unknown)
 			unassignedClauseLiterals.emplace_back(literal);
 	}
 	return unassignedClauseLiterals;
 }
 
-[[maybe_unused]] ProblemDefinition::PropagationResult ProblemDefinition::propagate(long literal)
+ProblemDefinition::PropagationResult ProblemDefinition::propagate(long literal)
 {
-	if (variableValueLookup.getLiteralValue(literal).has_value())
+	if (variableValueLookup.getLiteralValue(literal).value_or(VariableValue::Unknown) != VariableValue::Unknown)
 		return PropagationResult::Ok;
 
-	const std::optional<std::vector<std::size_t>>& indiciesOfClausesContainingNegatedLiteral = literalOccurrenceLookup[-literal];
-	auto propagationResult = indiciesOfClausesContainingNegatedLiteral.has_value() ? PropagationResult::Ok : PropagationResult::ErrorDuringPropagation;
+	const std::optional<bool> wouldAssignmentLeadToConflict = doesVariableAssignmentLeadToConflict(literal, determineSatisfyingAssignmentForLiteral(literal));
+	if (!wouldAssignmentLeadToConflict.has_value())
+		return PropagationResult::ErrorDuringPropagation;
+	if (wouldAssignmentLeadToConflict.value())
+		return PropagationResult::Conflict;
 
-	for (std::size_t i = 0; propagationResult == PropagationResult::Ok && i < indiciesOfClausesContainingNegatedLiteral->size(); ++i)
-	{
-		const std::optional<std::vector<long>>& unassignedLiteralsOfClause = getClauseLiteralsOmittingAlreadyAssignedOnes(indiciesOfClausesContainingNegatedLiteral->at(i));
-		if (!unassignedLiteralsOfClause.has_value())
-			propagationResult = PropagationResult::ErrorDuringPropagation;
-		else if (unassignedLiteralsOfClause->size() == 1)
-			propagationResult = PropagationResult::Conflict;
-	}
-
-	if (!variableValueLookup.recordSatisfyingLiteralAssignment(literal))
+	if (!recordAssignment(PastAssignment({true, literal})))
 		return PropagationResult::ErrorDuringPropagation;
 
-	const std::optional<std::vector<std::size_t>>& indiciesOfClausesContainingLiteral = literalOccurrenceLookup[literal];
-	propagationResult = indiciesOfClausesContainingLiteral.has_value() ? PropagationResult::Ok : PropagationResult::ErrorDuringPropagation;
+	const std::optional<std::vector<std::size_t>> indicesOfClausesContainingLiteralContainer = literalOccurrenceLookup[literal];
+	if (!indicesOfClausesContainingLiteralContainer.has_value())
+		return PropagationResult::ErrorDuringPropagation;
 
-	for (std::size_t i = 0; propagationResult == PropagationResult::Ok && i < indiciesOfClausesContainingLiteral->size(); ++i)
+	const std::vector<std::size_t>& indicesOfClausesContainingLiteral = *indicesOfClausesContainingLiteralContainer;
+	for (std::size_t clauseIdx : indicesOfClausesContainingLiteral)
 	{
-		const std::optional<std::vector<long>>& unassignedLiteralsOfClause = getClauseLiteralsOmittingAlreadyAssignedOnes(indiciesOfClausesContainingLiteral->at(i));
-		if (!unassignedLiteralsOfClause.has_value())
-			propagationResult = PropagationResult::ErrorDuringPropagation;
-		else if (unassignedLiteralsOfClause->size() == 1)
-			propagationResult = propagate(unassignedLiteralsOfClause->front());
+		if (const std::optional<Clause*> accessedClause = getClauseByIndexInFormula(clauseIdx); accessedClause.has_value())
+			accessedClause.value()->satisified = true;
+		else
+			return PropagationResult::ErrorDuringPropagation;
+	}
+		
+	const std::optional<std::vector<std::size_t>> indicesOfClausesContainingNegatedLiteralContainer = literalOccurrenceLookup[-literal];
+	if (!indicesOfClausesContainingNegatedLiteralContainer.has_value())
+		return PropagationResult::ErrorDuringPropagation;
+
+	const std::vector<std::size_t>& indicesOfClausesContainingNegatedLiteral = *indicesOfClausesContainingNegatedLiteralContainer;
+	auto propagationResult = PropagationResult::Ok;
+	for (std::size_t i = 0; propagationResult == PropagationResult::Ok && i < indicesOfClausesContainingNegatedLiteral.size(); ++i)
+	{
+		const std::optional<std::vector<long>> unassignedClauseLiteral = getClauseLiteralsOmittingAlreadyAssignedOnes(indicesOfClausesContainingNegatedLiteral.at(i));
+		if (!unassignedClauseLiteral.has_value())
+			return PropagationResult::ErrorDuringPropagation;
+		if (unassignedClauseLiteral->size() == 1)
+			propagationResult = propagate(unassignedClauseLiteral->front());
 	}
 	return propagationResult;
+}
+
+std::optional<ProblemDefinition::VariableValue> ProblemDefinition::getValueOfVariable(std::size_t variable) const
+{
+	return variableValueLookup.getVariableValue(variable);
+}
+
+std::string ProblemDefinition::stringify() const
+{
+	std::ostringstream stringificationContainer;
+	stringificationContainer << "p cnf " << std::to_string(getNumDeclaredVariablesOfFormula()) << " " << std::to_string(getNumClausesAfterOptimizations());
+	if (!clauses || clauses->empty())
+		return stringificationContainer.str();
+
+	for (const auto& [_, clause] : *clauses)
+		stringificationContainer << "\n" << clause;
+
+	return stringificationContainer.str();
+}
+
+std::optional<bool> ProblemDefinition::doesVariableAssignmentLeadToConflict(long literal, VariableValue chosenAssignment) const
+{
+	const std::optional<std::vector<std::size_t>>& indiciesOfClausesContainingNegatedLiteral = literalOccurrenceLookup[-literal];
+	if (!indiciesOfClausesContainingNegatedLiteral.has_value())
+		return std::nullopt;
+
+	if (indiciesOfClausesContainingNegatedLiteral->empty() || chosenAssignment == VariableValue::Unknown)
+		return false;
+
+	bool foundConflict = false;
+	for (std::size_t i = 0; i < indiciesOfClausesContainingNegatedLiteral->size() && !foundConflict; ++i)
+	{
+		const std::optional<std::vector<long>>& clauseLiterals = getClauseLiteralsOmittingAlreadyAssignedOnes(indiciesOfClausesContainingNegatedLiteral->at(i));
+		if (!clauseLiterals.has_value())
+			return std::nullopt;
+
+		foundConflict = clauseLiterals->size() == 1 && clauseLiterals->front() == -literal && chosenAssignment == determineConflictingAssignmentForLiteral(literal);
+	}
+	return foundConflict;
+}
+
+const std::vector<ProblemDefinition::PastAssignment>& ProblemDefinition::getPastAssignments() const
+{
+	return pastAssignments;
 }
