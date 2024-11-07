@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <dimacs/dimacsParser.hpp>
-#include "problemDefinitionBuilder.hpp"
 
 using namespace dimacs;
 
@@ -72,16 +71,15 @@ public:
 		auto parserInstance = std::make_unique<DimacsParser>();
 		ASSERT_TRUE(parserInstance);
 
-		std::optional<dimacs::ProblemDefinition::ptr> temporaryCnfFormulaStorage;
-		std::vector<dimacs::DimacsParser::ProcessingError> actualErrors;
-		ASSERT_NO_THROW(temporaryCnfFormulaStorage = parserInstance->readProblemFromString(stringifiedCnfFormulaDefinition, &actualErrors));
-		ASSERT_FALSE(temporaryCnfFormulaStorage.has_value());
+		DimacsParser::ParseResult cnfParseResult;
+		ASSERT_NO_THROW(cnfParseResult = parserInstance->readProblemFromString(stringifiedCnfFormulaDefinition));
+		ASSERT_FALSE(cnfParseResult.formula.has_value());
 
-		ASSERT_EQ(expectedErrors.size(), actualErrors.size());
+		ASSERT_EQ(expectedErrors.size(), cnfParseResult.errors.size());
 		for (std::size_t i = 0; i < expectedErrors.size(); ++i)
 		{
 			const DimacsParser::ProcessingError& expectedError = expectedErrors.at(i);
-			const DimacsParser::ProcessingError& actualError = actualErrors.at(i);
+			const DimacsParser::ProcessingError& actualError = cnfParseResult.errors.at(i);
 			ASSERT_EQ(expectedError.position.has_value(), actualError.position.has_value());
 			if (expectedError.position.has_value())
 			{
@@ -94,17 +92,18 @@ public:
 		}
 	}
 
-	static void parseCnfFormulaWithoutErrors(const std::string& stringifiedCnfFormulaDefinition, const DimacsParser::ParserConfiguration& parserConfiguration, dimacs::ProblemDefinition::ptr& parsedCnfFormula)
+	static void parseCnfFormulaWithoutErrors(const std::string& stringifiedCnfFormulaDefinition, const DimacsParser::ParserConfiguration& parserConfiguration, dimacs::ProblemDefinition::ptr& parsedCnfFormula, bool shouldFormulaBeDetectedToBeUnsat)
 	{
 		auto parserInstance = std::make_unique<DimacsParser>(parserConfiguration);
 		ASSERT_TRUE(parserInstance);
 
-		std::optional<dimacs::ProblemDefinition::ptr> temporaryCnfFormulaStorage;
-		std::vector<DimacsParser::ProcessingError> foundProcessingErrors;
-		ASSERT_NO_THROW(temporaryCnfFormulaStorage = parserInstance->readProblemFromString(stringifiedCnfFormulaDefinition, &foundProcessingErrors));
-		ASSERT_TRUE(temporaryCnfFormulaStorage.has_value());
+		DimacsParser::ParseResult cnfParseResult;
+		ASSERT_NO_THROW(cnfParseResult = parserInstance->readProblemFromString(stringifiedCnfFormulaDefinition));
+		ASSERT_TRUE(cnfParseResult.formula.has_value());
+		ASSERT_FALSE(cnfParseResult.determinedAnyErrors);
 
-		parsedCnfFormula = *temporaryCnfFormulaStorage;
+		parsedCnfFormula = *cnfParseResult.formula;
+		ASSERT_EQ(shouldFormulaBeDetectedToBeUnsat, cnfParseResult.wasFormulaDeterminedToBeUnsat);
 	}
 
 	static void assertCnfHeaderEquality(std::size_t expectedNumVariables, std::size_t expectedNumClauses, const ProblemDefinition& formula)
@@ -175,7 +174,7 @@ TEST_F(DimacsParserTests, FormulaWithClauseLiteralsOfDifferentPolarityAndNoUnitP
 
 	ASSERT_NO_FATAL_FAILURE(parseCnfFormulaWithoutErrors(
 		"p cnf 3 5\n1 -2 3 0\n 1 2 0\n 2 0\n -3 -1 0\n 2 3 0", 
-		parserConfiguration, cnfFormula));
+		parserConfiguration, cnfFormula, false));
 	ASSERT_TRUE(cnfFormula);
 
 	constexpr std::size_t expectedNumVariables = 3;
@@ -211,7 +210,7 @@ TEST_F(DimacsParserTests, UnitPropagationInFormulaPerformed)
 
 	ASSERT_NO_FATAL_FAILURE(parseCnfFormulaWithoutErrors(
 		"p cnf 3 5\n1 -2 3 0\n 1 2 0\n 2 0\n -3 -1 0\n 2 3 0",
-		parserConfiguration, cnfFormula));
+		parserConfiguration, cnfFormula, false));
 	ASSERT_TRUE(cnfFormula);
 
 	constexpr std::size_t expectedNumVariables = 3;
@@ -244,7 +243,7 @@ TEST_F(DimacsParserTests, UnitPropagationCausesSubsequentPropagations)
 
 	ASSERT_NO_FATAL_FAILURE(parseCnfFormulaWithoutErrors(
 		"p cnf 3 5\n-2 3 0\n 1 2 0\n 2 0\n -3 -1 0\n 2 3 0",
-		parserConfiguration, cnfFormula));
+		parserConfiguration, cnfFormula, false));
 	ASSERT_TRUE(cnfFormula);
 
 	constexpr std::size_t expectedNumVariables = 3;
@@ -269,7 +268,17 @@ TEST_F(DimacsParserTests, LocalVariablePropagatedInFormula)
 
 TEST_F(DimacsParserTests, ConflictDuringUnitPropagationDetectedCorrectly)
 {
-	GTEST_SKIP();
+	constexpr auto parserConfiguration = DimacsParser::ParserConfiguration({ true });
+	dimacs::ProblemDefinition::ptr cnfFormula;
+
+	ASSERT_NO_FATAL_FAILURE(parseCnfFormulaWithoutErrors(
+		"p cnf 3 5\n-2 3 0\n -2 -3 0\n 2 0\n -3 -1 0\n 2 3 0",
+		parserConfiguration, cnfFormula, true));
+	ASSERT_TRUE(cnfFormula);
+
+	constexpr std::size_t expectedNumVariables = 3;
+	constexpr std::size_t expectedNumClauses = 5;
+	ASSERT_NO_FATAL_FAILURE(assertCnfHeaderEquality(expectedNumVariables, expectedNumClauses, *cnfFormula));
 }
 
 // ERROR CASES

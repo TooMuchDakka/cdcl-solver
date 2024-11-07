@@ -4,42 +4,47 @@
 #include <sstream>
 #include <string>
 
-std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemFromFile(const std::string& dimacsFilePath, std::vector<ProcessingError>* optionalFoundErrors)
+using namespace dimacs;
+DimacsParser::ParseResult DimacsParser::readProblemFromFile(const std::string& dimacsFilePath)
 {
+	ParseResult parseResult;
 	/*
 	 * The data return by tellg(..) as well as seekg is only correct, if the content from the file is read in binary mode.
 	 * see: https://stackoverflow.com/questions/47508335/what-is-tellg-in-file-handling-in-c-and-how-does-it-work
 	 */
 	std::ifstream inputFileStream(dimacsFilePath, std::ifstream::binary);
 	if (!inputFileStream.is_open())
-	{
 		recordError(0, 0, "Could not open file " + dimacsFilePath);
-		if (optionalFoundErrors)
-			*optionalFoundErrors = foundErrors;
-		return std::nullopt;
-	}
-	return parseDimacsContent(inputFileStream, optionalFoundErrors);
+	else
+		parseResult.formula = parseDimacsContent(inputFileStream, parseResult.wasFormulaDeterminedToBeUnsat);
+
+	parseResult.determinedAnyErrors = foundErrorsDuringCurrentParsingAttempt;
+	parseResult.errors = foundErrors;
+	return parseResult;
 }
 
-std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::readProblemFromString(const std::string& dimacsContent, std::vector<ProcessingError>* optionalFoundErrors)
+DimacsParser::ParseResult DimacsParser::readProblemFromString(const std::string& dimacsContent)
 {
 	std::istringstream buffer(dimacsContent);
-	return parseDimacsContent(buffer, optionalFoundErrors);
+
+	ParseResult parseResult;
+	parseResult.formula = parseDimacsContent(buffer, parseResult.wasFormulaDeterminedToBeUnsat);
+	parseResult.determinedAnyErrors = foundErrorsDuringCurrentParsingAttempt;
+	parseResult.errors = foundErrors;
+	return parseResult;
 }
 
-std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsContent(std::basic_istream<char>& stream, std::vector<ProcessingError>* optionalFoundErrors)
+std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basic_istream<char>& stream, bool& wasFormulaDeterminedToBeUnsat)
 {
-	resetInternals(optionalFoundErrors);
+	resetInternals();
 	std::size_t currProcessedLine = skipCommentLines(stream) + 1;
 
 	ProcessingError foundErrorDuringProcessingOfProblemDefinitionLine;
-	ProcessingError* temporaryProcessingErrorContainer = optionalFoundErrors ? &foundErrorDuringProcessingOfProblemDefinitionLine : nullptr;
+	ProcessingError* temporaryProcessingErrorContainer = configuration.recordParsingErrors ? &foundErrorDuringProcessingOfProblemDefinitionLine : nullptr;
 	const std::optional<ProblemDefinitionConfiguration> problemDefinitionConfiguration = processProblemDefinitionLine(stream, temporaryProcessingErrorContainer);
 	if (!problemDefinitionConfiguration)
 	{
 		recordError(currProcessedLine, 0, foundErrorDuringProcessingOfProblemDefinitionLine.text);
-		if (optionalFoundErrors)
-			*optionalFoundErrors = foundErrors;
 		return std::nullopt;
 	}
 
@@ -47,20 +52,18 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 	if (!problemDefinition)
 	{
 		recordError(0, 0, "Failed to initialize problem definition");
-		if (optionalFoundErrors)
-			*optionalFoundErrors = foundErrors;
 		return std::nullopt;
 	}
 
 	std::size_t processedClauseCounter = 0;
 	ProcessingError clauseParsingError;
-	temporaryProcessingErrorContainer = optionalFoundErrors ? &clauseParsingError : nullptr;
+	temporaryProcessingErrorContainer = configuration.recordParsingErrors ? &clauseParsingError : nullptr;
 
 	bool continueProcessing;
 	do
 	{
 		++currProcessedLine;
-		std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, problemDefinitionConfiguration->numVariables, *problemDefinition, temporaryProcessingErrorContainer);
+		std::optional<ProblemDefinition::Clause> parsedClause = parseClauseDefinition(stream, problemDefinitionConfiguration->numVariables, *problemDefinition, temporaryProcessingErrorContainer, wasFormulaDeterminedToBeUnsat);
 		if (!clauseParsingError.text.empty())
 			recordError(currProcessedLine, 0, clauseParsingError.text);
 
@@ -109,12 +112,10 @@ std::optional<dimacs::ProblemDefinition::ptr> dimacs::DimacsParser::parseDimacsC
 	if (!foundErrorsDuringCurrentParsingAttempt)
 		return std::move(problemDefinition);
 
-	if (optionalFoundErrors)
-		*optionalFoundErrors = foundErrors;
 	return std::nullopt;
 }
 
-bool dimacs::DimacsParser::removeClausesSatisfiedByUnitPropagation(ProblemDefinition& problemDefinition, long literal)
+bool DimacsParser::removeClausesSatisfiedByUnitPropagation(ProblemDefinition& problemDefinition, long literal)
 {
 	const LiteralOccurrenceLookup& literalOccurrenceLookup = problemDefinition.getLiteralOccurrenceLookup();
 	const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[literal];
@@ -127,24 +128,23 @@ bool dimacs::DimacsParser::removeClausesSatisfiedByUnitPropagation(ProblemDefini
 	return true;
 }
 
-void dimacs::DimacsParser::resetInternals(bool shouldFoundErrorsBeRecorded)
+void DimacsParser::resetInternals()
 {
-	recordFoundErrors = shouldFoundErrorsBeRecorded;
 	foundErrorsDuringCurrentParsingAttempt = false;
 	foundErrors.clear();
 }
 
 
-void dimacs::DimacsParser::recordError(std::size_t line, std::size_t column, const std::string& errorText)
+void DimacsParser::recordError(std::size_t line, std::size_t column, const std::string& errorText)
 {
 	foundErrorsDuringCurrentParsingAttempt = true;
-	if (recordFoundErrors)
+	if (configuration.recordParsingErrors)
 		foundErrors.emplace_back(line, column, errorText);
 	//foundErrors.emplace_back("--line: " + std::to_string(line) + " col: " + std::to_string(column) + " | " + errorText);
 }
 
 
-inline std::vector<std::string_view> dimacs::DimacsParser::splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter)
+inline std::vector<std::string_view> DimacsParser::splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter)
 {
 	if (stringToSplit.empty())
 		return {};
@@ -169,7 +169,7 @@ inline std::vector<std::string_view> dimacs::DimacsParser::splitStringAtDelimite
 	return splitStringParts;
 }
 
-inline std::size_t dimacs::DimacsParser::skipCommentLines(std::basic_istream<char>& inputStream)
+inline std::size_t DimacsParser::skipCommentLines(std::basic_istream<char>& inputStream)
 {
 	std::size_t numCommentLines = 0;
 
@@ -198,7 +198,7 @@ inline std::size_t dimacs::DimacsParser::skipCommentLines(std::basic_istream<cha
 	return numCommentLines;
 }
 
-inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const std::string_view& stringToConvert, ProcessingError* optionalFoundError)
+inline std::optional<long> DimacsParser::tryConvertStringToLong(const std::string_view& stringToConvert, ProcessingError* optionalFoundError)
 {
 	if (stringToConvert == "0")
 		return 0;
@@ -215,7 +215,7 @@ inline std::optional<long> dimacs::DimacsParser::tryConvertStringToLong(const st
 	return convertedNumericValue;
 }
 
-inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimacs::DimacsParser::processProblemDefinitionLine(std::basic_istream<char>& inputStream, ProcessingError* optionalFoundError)
+inline std::optional<DimacsParser::ProblemDefinitionConfiguration> DimacsParser::processProblemDefinitionLine(std::basic_istream<char>& inputStream, ProcessingError* optionalFoundError)
 {
 	std::string readProblemLineDefinition;
 	bool parsingFailed = !std::getline(inputStream, readProblemLineDefinition);
@@ -249,7 +249,7 @@ inline std::optional<dimacs::DimacsParser::ProblemDefinitionConfiguration> dimac
 	return ProblemDefinitionConfiguration({ static_cast<std::size_t>(*userDefinedNumberOfVariables), static_cast<std::size_t>(*userDefinedNumberOfClauses) });
 }
 
-inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, const ProblemDefinition& variableValueLookupGateway, ProcessingError* optionalFoundErrors)
+std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, const ProblemDefinition& variableValueLookupGateway, ProcessingError* optionalFoundErrors, bool& wasClauseDeterminedToBeUnsat)
 {
 	std::string clauseDefinition;
 	if (!std::getline(inputStream, clauseDefinition))
@@ -296,12 +296,7 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 
 			if (!doesCurrentVariableAssignmentSatisfyClause)
 			{
-				if (currentValueOfVariable == ProblemDefinition::determineConflictingAssignmentForLiteral(*clauseLiteral))
-				{
-					if (optionalFoundErrors)
-						*optionalFoundErrors = ProcessingError("Derived UNSAT of formula using current variable assignments");
-					return std::nullopt;
-				}
+				wasClauseDeterminedToBeUnsat |= currentValueOfVariable == ProblemDefinition::determineConflictingAssignmentForLiteral(*clauseLiteral);
 				if (currentValueOfVariable == ProblemDefinition::Unknown)
 					clause.literals.emplace_back(*clauseLiteral);
 			}
@@ -323,7 +318,7 @@ inline std::optional<dimacs::ProblemDefinition::Clause> dimacs::DimacsParser::pa
 	return std::nullopt;
 }
 
-bool dimacs::DimacsParser::isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept
+bool DimacsParser::isClauseTautology(const ProblemDefinition::Clause& clause) noexcept
 {
 	if (clause.literals.size() < 2)
 		return false;

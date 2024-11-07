@@ -15,6 +15,7 @@ namespace dimacs
 		struct ParserConfiguration
 		{
 			bool performUnitPropagation;
+			bool recordParsingErrors;
 		};
 
 		struct ProcessingError
@@ -27,8 +28,7 @@ namespace dimacs
 			std::optional<Position> position;
 			std::string text;
 
-			ProcessingError()
-				: position(std::nullopt) {}
+			ProcessingError() = default;
 
 			ProcessingError(std::string text)
 				: position(std::nullopt), text(std::move(text)) {}
@@ -37,11 +37,25 @@ namespace dimacs
 				: position(Position({line, column})), text(std::move(text)) {}
 		};
 
-		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromFile(const std::string& dimacsFilePath, std::vector<ProcessingError>* optionalFoundErrors);
-		[[nodiscard]] std::optional<ProblemDefinition::ptr> readProblemFromString(const std::string& dimacsContent, std::vector<ProcessingError>* optionalFoundErrors);
+		struct ParseResult
+		{
+			std::optional<ProblemDefinition::ptr> formula;
+			std::vector<ProcessingError> errors;
+			bool determinedAnyErrors;
+			bool wasFormulaDeterminedToBeUnsat;
 
-		DimacsParser(ParserConfiguration configuration): recordFoundErrors(false), foundErrorsDuringCurrentParsingAttempt(false), configuration(configuration) {}
-		DimacsParser() : DimacsParser(ParserConfiguration({true})) {}
+			ParseResult()
+				: determinedAnyErrors(true), wasFormulaDeterminedToBeUnsat(false) {}
+		};
+
+		[[nodiscard]] ParseResult readProblemFromFile(const std::string& dimacsFilePath);
+		[[nodiscard]] ParseResult readProblemFromString(const std::string& dimacsContent);
+
+		DimacsParser(ParserConfiguration configuration)
+			: foundErrorsDuringCurrentParsingAttempt(false), configuration(configuration) {}
+
+		DimacsParser()
+			: DimacsParser(ParserConfiguration({true, true})) {}
 	protected:
 		struct ProblemDefinitionConfiguration
 		{
@@ -49,21 +63,20 @@ namespace dimacs
 			std::size_t numClauses;
 		};
 
-		bool recordFoundErrors;
 		bool foundErrorsDuringCurrentParsingAttempt;
 		std::vector<ProcessingError> foundErrors;
 		ParserConfiguration configuration;
 
 		void recordError(std::size_t line, std::size_t column, const std::string& errorText);
-		void resetInternals(bool shouldFoundErrorsBeRecorded);
+		void resetInternals();
 
-		[[nodiscard]] std::optional<ProblemDefinition::ptr> parseDimacsContent(std::basic_istream<char>& stream, std::vector<ProcessingError>* optionalFoundErrors);
+		[[nodiscard]] std::optional<ProblemDefinition::ptr> parseDimacsContent(std::basic_istream<char>& stream, bool& wasFormulaDeterminedToBeUnsat);
 		[[maybe_unused]] static bool removeClausesSatisfiedByUnitPropagation(ProblemDefinition& problemDefinition, long literal);
 		[[nodiscard]] static std::size_t skipCommentLines(std::basic_istream<char>& inputStream);
 		[[nodiscard]] static std::vector<std::string_view> splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter);
 		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string_view& stringToConvert, ProcessingError* optionalFoundError);
 		[[nodiscard]] static std::optional<ProblemDefinitionConfiguration> processProblemDefinitionLine(std::basic_istream<char>& inputStream, ProcessingError* optionalFoundError);
-		[[nodiscard]] static std::optional<ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, const ProblemDefinition& variableValueLookupGateway, ProcessingError* optionalFoundErrors);
+		[[nodiscard]] std::optional<ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, const ProblemDefinition& variableValueLookupGateway, ProcessingError* optionalFoundErrors, bool& wasClauseDeterminedToBeUnsat);
 		[[nodiscard]] static bool isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept;
 	};
 

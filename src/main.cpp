@@ -20,22 +20,17 @@ int main(int argc, char* argv[])
 	}
 
 	const std::string dimacsSatFormulaFile = argv[1];
-	std::vector<dimacs::DimacsParser::ProcessingError> foundErrorsDuringSatFormulaParsingFromFile;
-
-	const std::optional<dimacs::ProblemDefinition::ptr>& parsedSatFormula = dimacsParser->readProblemFromFile(dimacsSatFormulaFile, &foundErrorsDuringSatFormulaParsingFromFile);
-	if (!parsedSatFormula)
+	const dimacs::DimacsParser::ParseResult parsingResult = dimacsParser->readProblemFromFile(dimacsSatFormulaFile);
+	if (parsingResult.determinedAnyErrors)
 	{
-		if (!foundErrorsDuringSatFormulaParsingFromFile.empty())
-		{
-			std::ostringstream out;
-			for (const auto& processingError : foundErrorsDuringSatFormulaParsingFromFile)
-				out << processingError << "\r\n";
+		std::ostringstream out;
+		for (const auto& processingError : parsingResult.errors)
+			out << processingError << "\r\n";
 
-			if (foundErrorsDuringSatFormulaParsingFromFile.size() > 1)
-				out << foundErrorsDuringSatFormulaParsingFromFile.back();
+		if (parsingResult.errors.size() > 1)
+			out << parsingResult.errors.back();
 
-			std::cerr << out.str() << "\n";
-		}
+		std::cerr << out.str() << "\n";
 		return EXIT_FAILURE;
 	}
 	std::cout << "Parsing of SAT formula @ " + dimacsSatFormulaFile + " OK\n";
