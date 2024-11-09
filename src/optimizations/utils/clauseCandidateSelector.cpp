@@ -77,12 +77,12 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 
 std::optional<std::size_t> ClauseCandidateSelector::determineNumberOfOverlapsBetweenClauses(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition)
 {
-	const std::optional<const dimacs::ProblemDefinition::Clause*> dataOfAccessedClause = problemDefinition.getClauseByIndexInFormula(idxOfClauseInFormula);
-	if (!dataOfAccessedClause.has_value())
+	const dimacs::ProblemDefinition::Clause* dataOfAccessedClause = problemDefinition.getClauseByIndexInFormula(idxOfClauseInFormula);
+	if (!dataOfAccessedClause)
 		return std::nullopt;
 
 	std::size_t overlapCount = 0;
-	const std::vector<long>& clauseLiterals = dataOfAccessedClause.value()->literals;
+	const std::vector<long>& clauseLiterals = dataOfAccessedClause->literals;
 	const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup = problemDefinition.getLiteralOccurrenceLookup();
 	std::unordered_set<std::size_t> recordedOverlappingClauseIndices;
 

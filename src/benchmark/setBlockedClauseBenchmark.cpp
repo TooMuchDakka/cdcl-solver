@@ -16,6 +16,8 @@ const std::string clauseSelectionHeuristicCommandLineKey = "-clauseSelectionHeur
 const std::string clauseSelectionRngSeedCommandLineKey = "-clauseSelectionRngSeed";
 const std::string blockingSetLiteralCandidateSelectionHeuristicCommandLineKey = "-blockingSetClauseLiteralCandiateSelectionHeuristic";
 const std::string blockingSetLiteralCandidateSelectionRngSeedCommandLineKey = "-blockingSetClauseLiteralCandiateSelectionRngSeed";
+const std::string blockingSetMinimumSizeRestrictionCommandLineKey = "-blockingSetMinimumSize";
+const std::string blockingSetMaximumSizeRestrictionCommandLineKey = "-blockingSetMaximumSize";
 const std::string nClausesToConsiderCommandLineKey = "-nCandidates";
 const std::string cnfFileCommandLineKey = "-cnf";
 const std::string helpCommandLineKey = "--help";
@@ -162,7 +164,8 @@ BlockingSetCandidateGeneratorConfiguration generateBlockingSetCandidateGenerator
 	std::optional<setBlockedClauseElimination::BaseBlockingSetCandidateGenerator::CandidateSizeRestriction> optionalCandidateSizeRestriction;
 	std::optional<LiteralSelectionHeuristic> optionalClauseLiteralSelectionHeuristic;
 
-	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& clauseLiteralSelectionHeuristicCommandLineArgument = commandLineArgumentParser.getValueOfArgument(blockingSetLiteralCandidateSelectionHeuristicCommandLineKey); clauseLiteralSelectionHeuristicCommandLineArgument.has_value())
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& clauseLiteralSelectionHeuristicCommandLineArgument = commandLineArgumentParser.getValueOfArgument(blockingSetLiteralCandidateSelectionHeuristicCommandLineKey); clauseLiteralSelectionHeuristicCommandLineArgument.has_value()
+		&& clauseLiteralSelectionHeuristicCommandLineArgument->wasFoundInCommandLineArgument)
 	{
 		if (!clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue.has_value())
 			throw std::invalid_argument("Required value for command line argument " + blockingSetLiteralCandidateSelectionHeuristicCommandLineKey + " is missing");
@@ -193,16 +196,45 @@ BlockingSetCandidateGeneratorConfiguration generateBlockingSetCandidateGenerator
 		}
 		else
 		{
-
 			throw std::invalid_argument("Invalid value " + *clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue + "for blocking set clause literal selection heuristic");
 		}
 	}
+
+	std::optional<std::size_t> definedMinimumBlockingSetSize;
+	std::optional<std::size_t> definedMaximumBlockingSetSize;
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& blockingSetMinimumSizeRestrictionCommandLineArgument = commandLineArgumentParser.getValueOfArgument(blockingSetMinimumSizeRestrictionCommandLineKey); blockingSetMinimumSizeRestrictionCommandLineArgument.has_value()
+		&& blockingSetMinimumSizeRestrictionCommandLineArgument->wasFoundInCommandLineArgument)
+	{
+		if (!blockingSetMinimumSizeRestrictionCommandLineArgument->optionalArgumentValue.has_value())
+			throw std::invalid_argument("Required value for command line argument " + blockingSetMinimumSizeRestrictionCommandLineKey + " is missing");
+
+		definedMinimumBlockingSetSize = blockingSetMinimumSizeRestrictionCommandLineArgument->tryGetArgumentValueAsInteger();
+		if (!definedMinimumBlockingSetSize.has_value() || blockingSetMinimumSizeRestrictionCommandLineArgument->tryGetArgumentValueAsInteger().value() < 0)
+			throw std::invalid_argument("Expected positive integer value for command line argument " + blockingSetMinimumSizeRestrictionCommandLineKey + " but was actually " + blockingSetMinimumSizeRestrictionCommandLineArgument->optionalArgumentValue.value());
+	}
+
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& blockingSetMaximumSizeRestrictionCommandLineArgument = commandLineArgumentParser.getValueOfArgument(blockingSetMaximumSizeRestrictionCommandLineKey); blockingSetMaximumSizeRestrictionCommandLineArgument.has_value()
+		&& blockingSetMaximumSizeRestrictionCommandLineArgument->wasFoundInCommandLineArgument)
+	{
+		if (!blockingSetMaximumSizeRestrictionCommandLineArgument->optionalArgumentValue.has_value())
+			throw std::invalid_argument("Required value for command line argument " + blockingSetMinimumSizeRestrictionCommandLineKey + " is missing");
+
+		definedMaximumBlockingSetSize = blockingSetMaximumSizeRestrictionCommandLineArgument->tryGetArgumentValueAsInteger();
+		if (!definedMaximumBlockingSetSize.has_value() || blockingSetMaximumSizeRestrictionCommandLineArgument->tryGetArgumentValueAsInteger().value() < 0)
+			throw std::invalid_argument("Expected positive integer value for command line argument " + blockingSetMinimumSizeRestrictionCommandLineKey + " but was actually " + blockingSetMaximumSizeRestrictionCommandLineArgument->optionalArgumentValue.value());
+	}
+
+	if (definedMinimumBlockingSetSize.has_value() ^ definedMaximumBlockingSetSize.has_value())
+		throw std::invalid_argument("When defining blocking set size restrictions both the minimum as well as the maximum allowed size needs to be specified");
+	if (definedMinimumBlockingSetSize.has_value())
+		optionalCandidateSizeRestriction = setBlockedClauseElimination::BaseBlockingSetCandidateGenerator::CandidateSizeRestriction({ *definedMinimumBlockingSetSize, *definedMaximumBlockingSetSize });
+
 	return { optionalRngSeed, optionalCandidateSizeRestriction, optionalClauseLiteralSelectionHeuristic };
 }
 
 int main(int argc, char* argv[])
 {
-	std::unique_ptr<dimacs::DimacsParser> dimacsParser = std::make_unique<dimacs::DimacsParser>();
+	std::unique_ptr<dimacs::DimacsParser> dimacsParser = std::make_unique<dimacs::DimacsParser>(dimacs::DimacsParser::ParserConfiguration({ false, true }));
 	if (!dimacsParser)
 	{
 		std::cerr << "Failed to allocate resources for dimacs parser\n";
@@ -216,6 +248,8 @@ int main(int argc, char* argv[])
 	commandLineArgumentParser.registerCommandLineArgument(blockingSetLiteralCandidateSelectionHeuristicCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createStringArgument().asOptionalArgument());
 	commandLineArgumentParser.registerCommandLineArgument(blockingSetLiteralCandidateSelectionRngSeedCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
 	commandLineArgumentParser.registerCommandLineArgument(nClausesToConsiderCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
+	commandLineArgumentParser.registerCommandLineArgument(blockingSetMinimumSizeRestrictionCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
+	commandLineArgumentParser.registerCommandLineArgument(blockingSetMaximumSizeRestrictionCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
 	commandLineArgumentParser.registerCommandLineArgument(helpCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createValueLessArgument().asOptionalArgument());
 
 	try
@@ -322,7 +356,7 @@ int main(int argc, char* argv[])
 		}
 
 		const TimePoint blockingSetCheckStartTime = getCurrentTime();
-		if (const std::optional<setBlockedClauseElimination::BaseSetBlockedClauseEliminator::FoundBlockingSet>& foundBlockingSet = blockingSetEliminator->determineBlockingSet(clauseIdentifier, *blockingSetCandidateGenerator); foundBlockingSet.has_value())
+		if (const std::optional<setBlockedClauseElimination::BaseSetBlockedClauseEliminator::FoundBlockingSet>& foundBlockingSet = blockingSetEliminator->determineBlockingSet(clauseIdentifier, *blockingSetCandidateGenerator, blockingSetCandidateGeneratorConfiguration.optionalCandidateSizeRestriction); foundBlockingSet.has_value())
 			identifiersOfSetBlockedClauses.emplace_back(clauseIdentifier);
 
 		const TimePoint blockingSetCheckEndTime = getCurrentTime();

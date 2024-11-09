@@ -117,9 +117,9 @@ public:
 		ASSERT_EQ(expectedClauses.size(), formula.getNumClausesAfterOptimizations());
 		for (const ClauseAndFormulaIndexPair clauseAndFormulaIndexPair : expectedClauses)
 		{
-			const std::optional<const ProblemDefinition::Clause*> actualClause = formula.getClauseByIndexInFormula(clauseAndFormulaIndexPair.indexInFormula);
-			ASSERT_TRUE(actualClause.has_value());
-			ASSERT_NO_FATAL_FAILURE(assertClausesMatch(clauseAndFormulaIndexPair.clause, **actualClause));
+			const ProblemDefinition::Clause* actualClause = formula.getClauseByIndexInFormula(clauseAndFormulaIndexPair.indexInFormula);
+			ASSERT_TRUE(actualClause);
+			ASSERT_NO_FATAL_FAILURE(assertClausesMatch(clauseAndFormulaIndexPair.clause, *actualClause));
 		}
 	}
 

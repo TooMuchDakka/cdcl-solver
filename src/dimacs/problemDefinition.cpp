@@ -14,11 +14,11 @@ using namespace dimacs;
 
 bool ProblemDefinition::removeClause(std::size_t index)
 {
-	const std::optional<const Clause*> accessedClause = getClauseByIndexInFormula(index);
-	if (!accessedClause.has_value())
+	const Clause* accessedClause = getClauseByIndexInFormula(index);
+	if (!accessedClause)
 		return false;
 
-	for (const long literal : accessedClause.value()->literals)
+	for (const long literal : accessedClause->literals)
 		literalOccurrenceLookup.removeLiteralFromClause(index, literal);
 
 	if (clauses->count(index))
@@ -40,11 +40,11 @@ bool ProblemDefinition::removeLiteralFromClausesOfFormula(long literal)
 		indicesOfClausesContainingLiteral->cend(),
 		[&](const std::size_t clauseIndex)
 		{
-			const std::optional<Clause*> accessedClause = getClauseByIndexInFormula(clauseIndex);
-			if (!accessedClause.has_value())
+			Clause* accessedClause = getClauseByIndexInFormula(clauseIndex);
+			if (!accessedClause)
 				return false;
 
-			std::vector<long>& clauseLiterals = accessedClause.value()->literals;
+			std::vector<long>& clauseLiterals = accessedClause->literals;
 			clauseLiterals.erase(
 				std::remove_if(clauseLiterals.begin(), clauseLiterals.end(), 
 					[literal](long clauseLiteral) { return clauseLiteral == literal; }),
@@ -56,18 +56,16 @@ bool ProblemDefinition::removeLiteralFromClausesOfFormula(long literal)
 	);
 }
 
-[[nodiscard]] std::optional<const dimacs::ProblemDefinition::Clause*> ProblemDefinition::getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const
+[[nodiscard]] const ProblemDefinition::Clause* ProblemDefinition::getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const
 {
-	if (clauses->count(idxOfClauseInFormula))
-		return &clauses->at(idxOfClauseInFormula);
-	return std::nullopt;
+	const auto& elementMatchingKey = clauses->find(idxOfClauseInFormula);
+	return elementMatchingKey != clauses->end() ? &elementMatchingKey->second : nullptr;
 }
 
-[[nodiscard]] std::optional<ProblemDefinition::Clause*> ProblemDefinition::getClauseByIndexInFormula(std::size_t idxOfClauseInFormula)
+[[nodiscard]] ProblemDefinition::Clause* ProblemDefinition::getClauseByIndexInFormula(std::size_t idxOfClauseInFormula)
 {
-	if (clauses->count(idxOfClauseInFormula))
-		return &clauses->at(idxOfClauseInFormula);
-	return std::nullopt;
+	const auto& elementMatchingKey = clauses->find(idxOfClauseInFormula);
+	return elementMatchingKey != clauses->end() ? &elementMatchingKey->second : nullptr;
 }
 
 std::vector<const ProblemDefinition::Clause*> ProblemDefinition::getClauses() const
@@ -113,12 +111,12 @@ std::size_t ProblemDefinition::getNumClausesAfterOptimizations() const
 
 std::optional<std::vector<long>> ProblemDefinition::getClauseLiteralsOmittingAlreadyAssignedOnes(std::size_t idxOfClauseInFormula) const
 {
-	const std::optional<const dimacs::ProblemDefinition::Clause*> dataOfAccessedClause = getClauseByIndexInFormula(idxOfClauseInFormula);
-	if (!dataOfAccessedClause.has_value())
+	const dimacs::ProblemDefinition::Clause* dataOfAccessedClause = getClauseByIndexInFormula(idxOfClauseInFormula);
+	if (!dataOfAccessedClause)
 		return std::nullopt;
 
 	std::vector<long> unassignedClauseLiterals;
-	for (const long literal : dataOfAccessedClause.value()->literals)
+	for (const long literal : dataOfAccessedClause->literals)
 	{
 		if (variableValueLookup.getLiteralValue(literal).value_or(VariableValue::Unknown) == VariableValue::Unknown)
 			unassignedClauseLiterals.emplace_back(literal);
@@ -147,8 +145,8 @@ ProblemDefinition::PropagationResult ProblemDefinition::propagate(long literal)
 	const std::vector<std::size_t>& indicesOfClausesContainingLiteral = *indicesOfClausesContainingLiteralContainer;
 	for (std::size_t clauseIdx : indicesOfClausesContainingLiteral)
 	{
-		if (const std::optional<Clause*> accessedClause = getClauseByIndexInFormula(clauseIdx); accessedClause.has_value())
-			accessedClause.value()->satisified = true;
+		if (Clause* accessedClause = getClauseByIndexInFormula(clauseIdx); accessedClause)
+			accessedClause->satisified = true;
 		else
 			return PropagationResult::ErrorDuringPropagation;
 	}

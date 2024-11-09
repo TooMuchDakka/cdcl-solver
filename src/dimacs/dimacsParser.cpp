@@ -265,6 +265,7 @@ std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinition(std
 
 	bool wasRequiredEndDelimiterDefined = false;
 	bool doesCurrentVariableAssignmentSatisfyClause = false;
+	bool couldDetermineCurrentClauseIsUnsat = false;
 
 	for (auto stringifiedClauseLiteralIterator = stringifiedClauseLiterals.begin(); stringifiedClauseLiteralIterator < stringifiedClauseLiterals.end(); ++stringifiedClauseLiteralIterator)
 	{
@@ -296,10 +297,12 @@ std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinition(std
 
 			if (!doesCurrentVariableAssignmentSatisfyClause)
 			{
-				wasClauseDeterminedToBeUnsat |= currentValueOfVariable == ProblemDefinition::determineConflictingAssignmentForLiteral(*clauseLiteral);
+				couldDetermineCurrentClauseIsUnsat = currentValueOfVariable == ProblemDefinition::determineConflictingAssignmentForLiteral(*clauseLiteral);
 				if (currentValueOfVariable == ProblemDefinition::Unknown)
 					clause.literals.emplace_back(*clauseLiteral);
 			}
+			else
+				couldDetermineCurrentClauseIsUnsat = false;
 		}
 	}
 
@@ -310,6 +313,7 @@ std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinition(std
 		return std::nullopt;
 	}
 
+	wasClauseDeterminedToBeUnsat |= couldDetermineCurrentClauseIsUnsat;
 	if (!doesCurrentVariableAssignmentSatisfyClause)
 	{
 		clause.sortLiterals();
@@ -323,6 +327,17 @@ bool DimacsParser::isClauseTautology(const ProblemDefinition::Clause& clause) no
 	if (clause.literals.size() < 2)
 		return false;
 
+	/*for (std::size_t i = 0; i < clause.literals.size(); ++i)
+	{
+		for (std::size_t j = i + 1; j < clause.literals.size(); ++i)
+		{
+			if (std::abs(clause.literals.at(j)) > std::abs(clause.literals.at(i)))
+				break;
+			if (-clause.literals.at(j) == clause.literals.at(i))
+				return true;
+		}
+	}
+	return false;*/
 	std::unordered_set<long> literals;
 	for (long literal : clause.literals)
 	{

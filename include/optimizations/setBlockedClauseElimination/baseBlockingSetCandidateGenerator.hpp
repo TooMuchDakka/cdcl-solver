@@ -1,7 +1,6 @@
 #ifndef BLOCKING_SET_CANDIDATE_GENERATOR_HPP
 #define BLOCKING_SET_CANDIDATE_GENERATOR_HPP
 
-#include <unordered_set>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -33,12 +32,12 @@ namespace setBlockedClauseElimination {
 			this->clauseLiterals = std::move(clauseLiterals);
 			if (optionalCandidateSizeRestriction.has_value())
 			{
-				if (optionalCandidateSizeRestriction->maxAllowedSize > this->clauseLiterals.size())
-					throw std::invalid_argument("Maximum size of candidate can only be " + std::to_string(this->clauseLiterals.size()) + " was but configured to be " + std::to_string(optionalCandidateSizeRestriction->maxAllowedSize));
 				if (optionalCandidateSizeRestriction->maxAllowedSize < optionalCandidateSizeRestriction->minAllowedSize)
 					throw std::invalid_argument("Maximum candidate size of " + std::to_string(optionalCandidateSizeRestriction->maxAllowedSize) + " cannot be smaller than the configured minimum size " + std::to_string(optionalCandidateSizeRestriction->minAllowedSize));
 
 				candidateSizeRestriction = *optionalCandidateSizeRestriction;
+				if (candidateSizeRestriction.maxAllowedSize > this->clauseLiterals.size())
+					candidateSizeRestriction.maxAllowedSize = this->clauseLiterals.size();
 			}
 			else
 				candidateSizeRestriction = CandidateSizeRestriction({ 1, this->clauseLiterals.size() });

@@ -80,8 +80,8 @@ namespace dimacs
 		[[maybe_unused]] bool removeLiteralFromClausesOfFormula(long literal);
 
 
- 		[[nodiscard]] std::optional<const Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const;
-		[[nodiscard]] std::optional<Clause*> getClauseByIndexInFormula(std::size_t idxOfClauseInFormula);
+ 		[[nodiscard]] const Clause* getClauseByIndexInFormula(std::size_t idxOfClauseInFormula) const;
+		[[nodiscard]] Clause* getClauseByIndexInFormula(std::size_t idxOfClauseInFormula);
 		[[nodiscard]] std::vector<const Clause*> getClauses() const;
 		[[nodiscard]] std::vector<std::size_t> getIdentifiersOfClauses() const;
 		[[nodiscard]] std::size_t getNumDeclaredVariablesOfFormula() const;

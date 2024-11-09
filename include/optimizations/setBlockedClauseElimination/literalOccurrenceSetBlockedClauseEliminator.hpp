@@ -1,12 +1,11 @@
 #ifndef CLAUSE_LITERAL_LOOKUP_SET_BLOCKED_CLAUSE_ELIMINATOR_HPP
 #define CLAUSE_LITERAL_LOOKUP_SET_BLOCKED_CLAUSE_ELIMINATOR_HPP
 
-#include <stdexcept>
+#include <set>
 
 #include "baseSetBlockedClauseEliminator.hpp"
-#include <dimacs/literalOccurrenceLookup.hpp>
-
 #include "literalOccurrenceBlockingSetCandidateGenerator.hpp"
+#include <dimacs/literalOccurrenceLookup.hpp>
 
 namespace setBlockedClauseElimination {
 	class LiteralOccurrenceSetBlockedClauseEliminator : public BaseSetBlockedClauseEliminator {
@@ -28,6 +27,16 @@ namespace setBlockedClauseElimination {
 		LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateGenerator;
 
 		[[nodiscard]] std::vector<const dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const override;
+		[[nodiscard]] static std::unordered_set<long> determineDifferenceSetBetweenClauseAndBlockingSet(const std::vector<long>& clauseLiterals, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& blockingSet) noexcept
+		{
+			std::unordered_set<long> differenceSet;
+			std::set<long, std::less<>> orderedBlockingSet(blockingSet.cbegin(), blockingSet.cend());
+			std::set_difference(
+				clauseLiterals.cbegin(), clauseLiterals.cend(),
+				orderedBlockingSet.cbegin(), orderedBlockingSet.cend(),
+				std::inserter(differenceSet, differenceSet.begin()));
+			return differenceSet;
+		}
 	};
 }
 #endif

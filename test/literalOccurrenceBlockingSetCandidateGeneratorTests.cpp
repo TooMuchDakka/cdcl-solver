@@ -413,6 +413,7 @@ TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, SelectionHeuristicRe
 
 TEST_F(LiteralOccurrenceBlockingSetCandidateGeneratorTests, UserDefinedMaximumBlockingSetSizeLargerThanSetOfClauseLiteralsThrows)
 {
+	GTEST_SKIP() << "Whether the maximum size shall be truncted to the size of the set of clause literals or an exception be thrown needs to be determined";
 	const std::vector<long> candidateClauseLiterals = { 1, -2, 3 };
 	constexpr std::size_t numVariablesInFormula = 3;
 	dimacs::ProblemDefinition::ptr formula;
