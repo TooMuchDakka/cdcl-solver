@@ -19,7 +19,6 @@ namespace setBlockedClauseElimination {
 			this->problemDefinition = std::move(problemDefinition);
 		}
 
-		// TODO: Blocking set can also only contain one literal, currently we are assuming that the set always holds two elements
 		[[nodiscard]] virtual std::optional<FoundBlockingSet> determineBlockingSet(std::size_t clauseIdxInFormula, BaseBlockingSetCandidateGenerator& candidateGenerator)
 		{
 			return determineBlockingSet(clauseIdxInFormula, candidateGenerator, std::nullopt);

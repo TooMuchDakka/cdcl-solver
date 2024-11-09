@@ -1,0 +1,14 @@
+add_library(CommandLineArgumentParser "")
+target_sources(CommandLineArgumentParser
+	PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/commandLineArgumentParser.cpp
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include/benchmark/commandLineArgumentParser.hpp
+)
+target_include_directories(CommandLineArgumentParser
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include
+)
+
+add_executable(SetBlockedClauseBenchmarkExecutable setBlockedClauseBenchmark.cpp)
+target_link_libraries(SetBlockedClauseBenchmarkExecutable PRIVATE DimacsParser SetBlockedClauseElimination CommandLineArgumentParser)	

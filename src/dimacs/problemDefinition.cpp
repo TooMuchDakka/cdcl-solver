@@ -8,7 +8,7 @@ using namespace dimacs;
 	if (clauses->count(index) || !literalOccurrenceLookup.recordClauseLiteralOccurrences(index, clause.literals))
 		return false;
 
-	clauses->emplace(index, clause);
+	clauses->emplace(index, std::move(clause));
 	return true;
 }
 
@@ -78,6 +78,16 @@ std::vector<const ProblemDefinition::Clause*> ProblemDefinition::getClauses() co
 	for (const auto& [key, _] : *clauses)
 		clausesContainer.emplace_back(&clauses->at(key));
 	return clausesContainer;
+}
+
+std::vector<std::size_t> ProblemDefinition::getIdentifiersOfClauses() const
+{
+	std::vector<std::size_t> identifierContainer;
+	identifierContainer.reserve(clauses->size());
+
+	for (const auto& [key, _] : *clauses)
+		identifierContainer.emplace_back(key);
+	return identifierContainer;
 }
 
 

@@ -45,5 +45,11 @@ target_include_directories(SetBlockedClauseElimination
 )
 target_link_libraries(SetBlockedClauseElimination PRIVATE DimacsAbstractions)
 
-add_executable(SolverExecutable main.cpp)
-target_link_libraries(SolverExecutable PRIVATE DimacsParser SetBlockedClauseElimination)
+if(BUILD_SOLVER_EXECUTABLE)
+	add_executable(SolverExecutable main.cpp)
+	target_link_libraries(SolverExecutable PRIVATE DimacsParser SetBlockedClauseElimination)
+endif()
+
+if (BUILD_SET_BLOCKED_CLAUSE_BENCHMARK_EXECUTABLE)
+	add_subdirectory(benchmark)
+endif()

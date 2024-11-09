@@ -16,6 +16,7 @@ namespace setBlockedClauseElimination {
 			std::size_t maxAllowedSize;
 		};
 		using BlockingSetCandidate = std::unordered_set<long>;
+		using ptr = std::unique_ptr<BaseBlockingSetCandidateGenerator>;
 
 		virtual ~BaseBlockingSetCandidateGenerator() = default;
 		BaseBlockingSetCandidateGenerator()

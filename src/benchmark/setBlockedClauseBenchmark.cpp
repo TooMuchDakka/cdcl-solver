@@ -1,0 +1,359 @@
+#include <chrono>
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+
+#include <dimacs/dimacsParser.hpp>
+#include <optimizations/utils/clauseCandidateSelector.hpp>
+
+#include "optimizations/setBlockedClauseElimination/baseSetBlockedClauseEliminator.hpp"
+#include "optimizations/setBlockedClauseElimination/literalOccurrenceBlockingSetCandidateGenerator.hpp"
+#include <optimizations/setBlockedClauseElimination/literalOccurrenceSetBlockedClauseEliminator.hpp>
+
+#include "benchmark/commandLineArgumentParser.hpp"
+
+const std::string clauseSelectionHeuristicCommandLineKey = "-clauseSelectionHeuristic";
+const std::string clauseSelectionRngSeedCommandLineKey = "-clauseSelectionRngSeed";
+const std::string blockingSetLiteralCandidateSelectionHeuristicCommandLineKey = "-blockingSetClauseLiteralCandiateSelectionHeuristic";
+const std::string blockingSetLiteralCandidateSelectionRngSeedCommandLineKey = "-blockingSetClauseLiteralCandiateSelectionRngSeed";
+const std::string nClausesToConsiderCommandLineKey = "-nCandidates";
+const std::string cnfFileCommandLineKey = "-cnf";
+const std::string helpCommandLineKey = "--help";
+
+/*
+ * Prefer the usage of std::chrono::steady_clock instead of std::chrono::sytem_clock since the former cannot decrease (due to time zone changes, etc.) and is most suitable for measuring intervals according to (https://en.cppreference.com/w/cpp/chrono/steady_clock)
+ */
+using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
+
+TimePoint getCurrentTime()
+{
+	return std::chrono::steady_clock::now();
+}
+
+std::chrono::milliseconds getDurationBetweenTimestamps(const TimePoint endTimestamp, const TimePoint startTimestamp)
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>(endTimestamp - startTimestamp);
+}
+
+
+enum LiteralSelectionHeuristic
+{
+	Sequential,
+	Random,
+	MinimalClauseOverlap,
+	MaximumClauseOverlap
+};
+
+struct ClauseCandidateGeneratorConfiguration
+{
+	std::size_t numCandidateClauses;
+	std::optional<clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic> optionalCandidateSelectionHeuristic;
+	std::optional<long> optionalRngSeed;
+};
+
+struct BlockingSetCandidateGeneratorConfiguration
+{
+	std::optional<long> optionalRngSeed;
+	std::optional<setBlockedClauseElimination::BaseBlockingSetCandidateGenerator::CandidateSizeRestriction> optionalCandidateSizeRestriction;
+	std::optional<LiteralSelectionHeuristic> optionalClauseLiteralSelectionHeuristic;
+};
+
+setBlockedClauseElimination::BaseBlockingSetCandidateGenerator::ptr initializeBlockingSetCandidateGenerator(const BlockingSetCandidateGeneratorConfiguration& blockingSetCandidateGeneratorConfiguration)
+{
+	if (blockingSetCandidateGeneratorConfiguration.optionalRngSeed.has_value())
+		return setBlockedClauseElimination::LiteralOccurrenceBlockingSetCandidateGenerator::usingRandomLiteralSelectionHeuristic(*blockingSetCandidateGeneratorConfiguration.optionalRngSeed);
+	if (blockingSetCandidateGeneratorConfiguration.optionalClauseLiteralSelectionHeuristic.has_value())
+	{
+		if (blockingSetCandidateGeneratorConfiguration.optionalClauseLiteralSelectionHeuristic.value() == LiteralSelectionHeuristic::MinimalClauseOverlap)
+			return setBlockedClauseElimination::LiteralOccurrenceBlockingSetCandidateGenerator::usingMinimumClauseOverlapForLiteralSelection();
+		if (blockingSetCandidateGeneratorConfiguration.optionalClauseLiteralSelectionHeuristic.value() == LiteralSelectionHeuristic::MaximumClauseOverlap)
+			return setBlockedClauseElimination::LiteralOccurrenceBlockingSetCandidateGenerator::usingMaximumClauseOverlapForLiteralSelection();
+	}
+	return setBlockedClauseElimination::LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+}
+
+clauseCandidateSelection::ClauseCandidateSelector::ptr initializeClauseCandidateSelector(const dimacs::ProblemDefinition& parsedCnfFormula, const ClauseCandidateGeneratorConfiguration& clauseCandidateGeneratorConfiguration)
+{
+	if (clauseCandidateGeneratorConfiguration.optionalRngSeed.has_value())
+		return clauseCandidateSelection::ClauseCandidateSelector::initUsingRandomCandidateSelection(clauseCandidateGeneratorConfiguration.numCandidateClauses, *clauseCandidateGeneratorConfiguration.optionalRngSeed);
+	if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.has_value())
+	{
+		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseOverlap)
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimalClauseOverlapForCandidateSelection(parsedCnfFormula);
+		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseOverlap)
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximalClauseOverlapForCandidateSelection(parsedCnfFormula);
+		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseLength)
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimumClauseLenghtForCandidateSelection(parsedCnfFormula);
+		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseLength)
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximumClauseLengthForCandidateSelection(parsedCnfFormula);
+	}
+	return clauseCandidateSelection::ClauseCandidateSelector::initUsingSequentialCandidateSelection(clauseCandidateGeneratorConfiguration.numCandidateClauses);
+}
+
+ClauseCandidateGeneratorConfiguration generateClauseCandidateGeneratorConfigurationFromCommandLine(std::size_t numClausesOfFormulaAfterPreprocessing, const utils::CommandLineArgumentParser& commandLineArgumentParser)
+{
+	std::optional<long> optionalRngSeed;
+	std::optional<clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic> optionalCandidateSelectionHeuristic;
+	std::size_t nClausesToConsider;
+
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& nCandidateToConsiderCommandLineArgument = commandLineArgumentParser.getValueOfArgument(nClausesToConsiderCommandLineKey); nCandidateToConsiderCommandLineArgument.has_value())
+	{
+		if (!nCandidateToConsiderCommandLineArgument.value().wasFoundInCommandLineArgument)
+			throw std::invalid_argument("Required value for number of clauses to consider as candidates was not specified");
+
+		if (!nCandidateToConsiderCommandLineArgument.value().tryGetArgumentValueAsInteger())
+			throw std::invalid_argument("Number of clauses to consider as candidates was not defined as an integer value but was actually " + *nCandidateToConsiderCommandLineArgument.value().optionalArgumentValue);
+
+		const int nCandidateToConsiderUserSpecifiedValue = *nCandidateToConsiderCommandLineArgument->tryGetArgumentValueAsInteger();
+		if (nCandidateToConsiderUserSpecifiedValue < 0)
+			throw std::invalid_argument("Number of candiate clauses to consider must be a positive integer");
+
+		nClausesToConsider = std::min(numClausesOfFormulaAfterPreprocessing, static_cast<std::size_t>(nCandidateToConsiderUserSpecifiedValue));
+	}
+	else
+	{
+		nClausesToConsider = numClausesOfFormulaAfterPreprocessing;
+	}
+
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& clauseCandidateSelectionCommandLineArugment = commandLineArgumentParser.getValueOfArgument(clauseSelectionHeuristicCommandLineKey); clauseCandidateSelectionCommandLineArugment.has_value())
+	{
+		if (!clauseCandidateSelectionCommandLineArugment->optionalArgumentValue.has_value())
+			throw std::invalid_argument("Required value for command line argument " + clauseSelectionHeuristicCommandLineKey + " is missing");
+
+		if (*clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "sequential")
+		{
+			optionalCandidateSelectionHeuristic = clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::Sequential;
+		}
+		else if (*clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "random")
+		{
+			const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& rngSeed = commandLineArgumentParser.getValueOfArgument(blockingSetLiteralCandidateSelectionRngSeedCommandLineKey);
+			if (!rngSeed.has_value() || !rngSeed.value().wasFoundInCommandLineArgument)
+				throw std::invalid_argument("Required rng seed for random clause literal selection for blocking set is missing");
+
+			if (!rngSeed.value().tryGetArgumentValueAsInteger())
+				throw std::invalid_argument("Could not convert specified rng seed " + *rngSeed.value().optionalArgumentValue + "for clause literal selection for blocking set check");
+
+			optionalRngSeed = rngSeed->tryGetArgumentValueAsInteger();
+			optionalCandidateSelectionHeuristic = clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::Random;
+		}
+		else if (*clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "minOverlap" || *clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "maxOverlap")
+		{
+			optionalCandidateSelectionHeuristic = *clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "minOverlap"
+				? clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseOverlap
+				: clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseOverlap;
+		}
+		else if (*clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "minLength" || *clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "maxLength")
+		{
+			optionalCandidateSelectionHeuristic = *clauseCandidateSelectionCommandLineArugment->optionalArgumentValue == "minLength"
+				? clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseLength
+				: clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseLength;
+		}
+		else
+		{
+			throw std::invalid_argument("Invalid value " + *clauseCandidateSelectionCommandLineArugment->optionalArgumentValue + "for blocking set clause literal selection heuristic");
+		}
+	}
+	return { nClausesToConsider, optionalCandidateSelectionHeuristic, optionalRngSeed };
+}
+
+BlockingSetCandidateGeneratorConfiguration generateBlockingSetCandidateGeneratorConfigurationFromCommandLine(const utils::CommandLineArgumentParser& commandLineArgumentParser)
+{
+	std::optional<long> optionalRngSeed;
+	std::optional<setBlockedClauseElimination::BaseBlockingSetCandidateGenerator::CandidateSizeRestriction> optionalCandidateSizeRestriction;
+	std::optional<LiteralSelectionHeuristic> optionalClauseLiteralSelectionHeuristic;
+
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& clauseLiteralSelectionHeuristicCommandLineArgument = commandLineArgumentParser.getValueOfArgument(blockingSetLiteralCandidateSelectionHeuristicCommandLineKey); clauseLiteralSelectionHeuristicCommandLineArgument.has_value())
+	{
+		if (!clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue.has_value())
+			throw std::invalid_argument("Required value for command line argument " + blockingSetLiteralCandidateSelectionHeuristicCommandLineKey + " is missing");
+
+		if (*clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue == "sequential")
+		{
+			optionalClauseLiteralSelectionHeuristic = LiteralSelectionHeuristic::Sequential;
+		}
+		else if (*clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue == "random")
+		{
+			const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& rngSeed = commandLineArgumentParser.getValueOfArgument(blockingSetLiteralCandidateSelectionRngSeedCommandLineKey);
+			if (!rngSeed.has_value() || !rngSeed.value().wasFoundInCommandLineArgument)
+				throw std::invalid_argument("Required rng seed for random clause literal selection for blocking set is missing");
+
+			if (!rngSeed.value().tryGetArgumentValueAsInteger())
+				throw std::invalid_argument("Could not convert specified rng seed " + *rngSeed.value().optionalArgumentValue + "for clause literal selection for blocking set check");
+
+			optionalRngSeed = rngSeed->tryGetArgumentValueAsInteger();
+			optionalClauseLiteralSelectionHeuristic = LiteralSelectionHeuristic::Random;
+		}
+		else if (*clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue == "minOverlap")
+		{
+			optionalClauseLiteralSelectionHeuristic = LiteralSelectionHeuristic::MinimalClauseOverlap;
+		}
+		else if (*clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue == "maxOverlap")
+		{
+			optionalClauseLiteralSelectionHeuristic = LiteralSelectionHeuristic::MaximumClauseOverlap;
+		}
+		else
+		{
+
+			throw std::invalid_argument("Invalid value " + *clauseLiteralSelectionHeuristicCommandLineArgument->optionalArgumentValue + "for blocking set clause literal selection heuristic");
+		}
+	}
+	return { optionalRngSeed, optionalCandidateSizeRestriction, optionalClauseLiteralSelectionHeuristic };
+}
+
+int main(int argc, char* argv[])
+{
+	std::unique_ptr<dimacs::DimacsParser> dimacsParser = std::make_unique<dimacs::DimacsParser>();
+	if (!dimacsParser)
+	{
+		std::cerr << "Failed to allocate resources for dimacs parser\n";
+		return EXIT_FAILURE;
+	}
+
+	auto commandLineArgumentParser = utils::CommandLineArgumentParser();
+	commandLineArgumentParser.registerCommandLineArgument(cnfFileCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createStringArgument());
+	commandLineArgumentParser.registerCommandLineArgument(clauseSelectionHeuristicCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createStringArgument().asOptionalArgument());
+	commandLineArgumentParser.registerCommandLineArgument(clauseSelectionRngSeedCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
+	commandLineArgumentParser.registerCommandLineArgument(blockingSetLiteralCandidateSelectionHeuristicCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createStringArgument().asOptionalArgument());
+	commandLineArgumentParser.registerCommandLineArgument(blockingSetLiteralCandidateSelectionRngSeedCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
+	commandLineArgumentParser.registerCommandLineArgument(nClausesToConsiderCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
+	commandLineArgumentParser.registerCommandLineArgument(helpCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createValueLessArgument().asOptionalArgument());
+
+	try
+	{
+		commandLineArgumentParser.processCommandLineArguments(argc, argv);
+	}
+	catch (const std::exception& ex)
+	{
+		std::cerr << "Failed to parse command line arguments, reason: " << ex.what() << "\n";
+		return EXIT_FAILURE;
+	}
+
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& helpCommandRegistation = commandLineArgumentParser.getValueOfArgument(helpCommandLineKey); helpCommandRegistation.has_value() && helpCommandRegistation->wasFoundInCommandLineArgument)
+	{
+		std::cout << commandLineArgumentParser << "\n";
+		return EXIT_SUCCESS;
+	}
+
+	const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& cnfFileCommandRegistration = commandLineArgumentParser.getValueOfArgument(cnfFileCommandLineKey);
+	if (!cnfFileCommandRegistration.has_value() || !cnfFileCommandRegistration->wasFoundInCommandLineArgument || !cnfFileCommandRegistration->optionalArgumentValue.has_value())
+		std::cerr << "Required cnf file path was no defined" << "\n";
+
+	//const std::string dimacsSatFormulaFile = argv[1];
+	const std::string dimacsSatFormulaFile = cnfFileCommandRegistration->optionalArgumentValue.value();
+
+	std::cout << "=== START - PROCESSING CNF ===\n";
+	const TimePoint dimacsFormulaParsingStartTime = getCurrentTime();
+	const dimacs::DimacsParser::ParseResult parsingResult = dimacsParser->readProblemFromFile(dimacsSatFormulaFile);
+	const TimePoint dimacsFormulaParsingEndtime = getCurrentTime();
+
+	const std::chrono::milliseconds dimacsFormulaParsingDuration = getDurationBetweenTimestamps(dimacsFormulaParsingEndtime, dimacsFormulaParsingStartTime);
+	std::cout << "Duration for processing of cnf formula: " + std::to_string(dimacsFormulaParsingDuration.count()) + "ms\n";
+	std::cout << "=== END - PROCESSING CNF ===\n";
+
+	if (parsingResult.determinedAnyErrors)
+	{
+		std::ostringstream out;
+		for (const auto& processingError : parsingResult.errors)
+			out << processingError << "\r\n";
+
+		if (parsingResult.errors.size() > 1)
+			out << parsingResult.errors.back();
+
+		std::cerr << out.str() << "\n";
+		return EXIT_FAILURE;
+	}
+	if (!parsingResult.formula.has_value())
+		return EXIT_FAILURE;
+
+	std::cout << "Parsing of SAT formula @ " + dimacsSatFormulaFile + " OK\n";
+	dimacs::ProblemDefinition::ptr cnfFormula = parsingResult.formula.value();
+
+	ClauseCandidateGeneratorConfiguration clauseCandidateGeneratorConfiguration;
+	BlockingSetCandidateGeneratorConfiguration blockingSetCandidateGeneratorConfiguration;
+
+	try
+	{
+		clauseCandidateGeneratorConfiguration = generateClauseCandidateGeneratorConfigurationFromCommandLine(cnfFormula->getNumClausesAfterOptimizations(), commandLineArgumentParser);
+		blockingSetCandidateGeneratorConfiguration = generateBlockingSetCandidateGeneratorConfigurationFromCommandLine(commandLineArgumentParser);
+	}
+	catch (const std::invalid_argument& ex)
+	{
+		std::cerr << "Validation of command line arguments failed, reason: " << ex.what() << "\n";
+		return EXIT_FAILURE;
+	}
+
+	std::cout << "=== START - CLAUSE CANDIDATE GENERATION INITIALIZATION ===\n";
+	const TimePoint clauseCandidateGeneratorInitStartTime = getCurrentTime();
+	clauseCandidateSelection::ClauseCandidateSelector::ptr clauseCandidateSelector = initializeClauseCandidateSelector(*cnfFormula, clauseCandidateGeneratorConfiguration);
+	const TimePoint clauseCandidateGeneratorInitEndTime = getCurrentTime();
+
+	const std::chrono::milliseconds clauseCandidateGeneratorInitDuration = getDurationBetweenTimestamps(clauseCandidateGeneratorInitEndTime, clauseCandidateGeneratorInitStartTime);
+	std::cout << "Duration for generation of clause candidate generator duration: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
+	std::cout << "=== END - CLAUSE CANDIDATE GENERATOR INITIALIZATION ===\n";
+
+	std::cout << "=== START - BLOCKING SET CANDIDATE GENERATOR INITALIZATION ===\n";
+	const TimePoint blockingSetCandidateGeneratorInitStartTime = getCurrentTime();
+	setBlockedClauseElimination::BaseBlockingSetCandidateGenerator::ptr blockingSetCandidateGenerator = initializeBlockingSetCandidateGenerator(blockingSetCandidateGeneratorConfiguration);
+	const TimePoint blockingSetCandidateGeneratorInitEndTime = getCurrentTime();
+
+	const std::chrono::milliseconds blockingSetCandidateGeneratorInitDuration = getDurationBetweenTimestamps(blockingSetCandidateGeneratorInitEndTime, blockingSetCandidateGeneratorInitStartTime);
+	std::cout << "Duration for generation of clause candidate generator duration: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
+	std::cout << "=== END - BLOCKING SET CANDIDATE GENERATOR INITALIZATION ===\n";
+
+	auto blockingSetEliminator = std::make_unique<setBlockedClauseElimination::LiteralOccurrenceSetBlockedClauseEliminator>(cnfFormula);
+	const std::vector<std::size_t>& identifiersOfClausesToCheck = cnfFormula->getIdentifiersOfClauses();
+
+	constexpr std::size_t percentageThreshold = 5;
+	const std::size_t numClausesToProcessUntilPercentageThresholdIsReached = identifiersOfClausesToCheck.size() / (100 / percentageThreshold);
+
+	std::size_t percentThresholdReachedCounter = 0;
+	std::size_t remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
+
+	std::vector<std::size_t> identifiersOfSetBlockedClauses;
+
+	std::chrono::milliseconds totalBenchmarkExecutionTime = dimacsFormulaParsingDuration + clauseCandidateGeneratorInitDuration + blockingSetCandidateGeneratorInitDuration;
+	std::chrono::milliseconds setBlockedClauseCheckDuration = std::chrono::milliseconds(0);
+	for (const std::size_t clauseIdentifier : identifiersOfClausesToCheck)
+	{
+		if (identifiersOfSetBlockedClauses.size() >= clauseCandidateGeneratorConfiguration.numCandidateClauses)
+		{
+			std::cout << "Reached required number of clauses to check and will stop search...\n";
+			break;
+		}
+
+		const TimePoint blockingSetCheckStartTime = getCurrentTime();
+		if (const std::optional<setBlockedClauseElimination::BaseSetBlockedClauseEliminator::FoundBlockingSet>& foundBlockingSet = blockingSetEliminator->determineBlockingSet(clauseIdentifier, *blockingSetCandidateGenerator); foundBlockingSet.has_value())
+			identifiersOfSetBlockedClauses.emplace_back(clauseIdentifier);
+
+		const TimePoint blockingSetCheckEndTime = getCurrentTime();
+		totalBenchmarkExecutionTime += getDurationBetweenTimestamps(blockingSetCheckEndTime, blockingSetCheckStartTime);
+		setBlockedClauseCheckDuration += getDurationBetweenTimestamps(blockingSetCheckEndTime, blockingSetCheckStartTime);
+
+		--remainingNumClausesForPercentageThreshold;
+		if (!remainingNumClausesForPercentageThreshold)
+		{
+			remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
+			++percentThresholdReachedCounter;
+			std::cout << "Handled [" << std::to_string(percentThresholdReachedCounter * percentageThreshold) << "%] of all candidate clauses, current benchmark duration: " << std::to_string(totalBenchmarkExecutionTime.count()) + "ms\n";
+		}
+	}
+
+	std::cout << "=== BEGIN - VERIFICATION OF RESULTS ===\n";
+	const TimePoint resultVerificationStartTime = getCurrentTime();
+
+	std::cout << "SKIPPED FOR NOW...\n";
+
+	const TimePoint resultVerificationEndTime = getCurrentTime();
+	const std::chrono::milliseconds resultVerificationDuration = getDurationBetweenTimestamps(resultVerificationEndTime, resultVerificationStartTime);
+	std::cout << "=== BEGIN - VERIFICATION OF RESULTS ===\n";
+
+	std::cout << "=== RESULTS ===\n";
+	std::cout << std::to_string(identifiersOfSetBlockedClauses.size()) + " clauses out of " + std::to_string(identifiersOfClausesToCheck.size()) + " were set blocked!\n";
+	std::cout << "Search for blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) << " blocked clauses were found\n\n";
+
+	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(dimacsFormulaParsingDuration.count()) + "ms\n";
+	std::cout << "SBCE check duration: " + std::to_string(setBlockedClauseCheckDuration.count()) + "ms\n";
+	std::cout << "SBCE result verification duration: " + std::to_string(resultVerificationDuration.count()) + "ms\n";
+	std::cout << "TOTAL: " + std::to_string(totalBenchmarkExecutionTime.count()) + "ms\n";
+	return EXIT_SUCCESS;
+}
