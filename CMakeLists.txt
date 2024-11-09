@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 option(BUILD_CDCL_TESTS "Build the test suite" OFF)
+option(BUILD_SET_BLOCKED_CLAUSE_BENCHMARK_EXECUTABLE "Build executable to perform benchmarking of set block clause elimination metric" OFF)
+option(BUILD_SOLVER_EXECUTABLE "Build the cdcl solver executable" OFF)
 
 include(cmake/ExternalDependencies.cmake)
 add_subdirectory(src)

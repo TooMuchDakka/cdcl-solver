@@ -1,12 +1,10 @@
 #ifndef CLAUSE_CANDIDATE_SELECTOR_HPP
 #define CLAUSE_CANDIDATE_SELECTOR_HPP
 
-#include <dimacs/literalOccurrenceLookup.hpp>
 #include <dimacs/problemDefinition.hpp>
 
 #include <optional>
 #include <random>
-#include <string>
 
 namespace clauseCandidateSelection {
 	class ClauseCandidateSelector {
@@ -17,7 +15,9 @@ namespace clauseCandidateSelection {
 			Random,
 			Sequential,
 			MinimumClauseOverlap,
-			MaximumClauseOverlap
+			MaximumClauseOverlap,
+			MinimumClauseLength,
+			MaximumClauseLength
 		};
 
 		explicit ClauseCandidateSelector(const std::size_t numCandidates, const CandidateSelectionHeuristic candidateSelectionHeuristic, std::optional<unsigned int> rngSeed)
@@ -46,32 +46,53 @@ namespace clauseCandidateSelection {
 			return std::make_unique<ClauseCandidateSelector>(numCandidates, CandidateSelectionHeuristic::Random, rngSeed);
 		}
 
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup) {
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition) {
 			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MinimumClauseOverlap, std::nullopt); instance)
 			{
-				instance->initializeCandidateSequence(problemDefinition, literalOccurrenceLookup);
+				instance->initializeCandidateSequence(problemDefinition);
 				return instance;
 			}
 			return nullptr;
 		}
 
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup) {
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition) {
 			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MaximumClauseOverlap, std::nullopt); instance)
 			{
-				instance->initializeCandidateSequence(problemDefinition, literalOccurrenceLookup);
+				instance->initializeCandidateSequence(problemDefinition);
 				return instance;
 			}
 			return nullptr;
 		}
 
-		void initializeCandidateSequence(const dimacs::ProblemDefinition& problemDefinition, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup);
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimumClauseLenghtForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition)
+		{
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MinimumClauseLength, std::nullopt); instance)
+			{
+				instance->initializeCandidateSequence(problemDefinition);
+				return instance;
+			}
+			return nullptr;
+		}
+
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximumClauseLengthForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition)
+		{
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MaximumClauseLength, std::nullopt); instance)
+			{
+				instance->initializeCandidateSequence(problemDefinition);
+				return instance;
+			}
+			return nullptr;
+		}
+
+		void initializeCandidateSequence(const dimacs::ProblemDefinition& problemDefinition);
 		[[nodiscard]] std::optional<std::size_t> selectNextCandidate();
 	protected:
 		CandidateSelectionHeuristic candidateSelectionHeuristic;
 		std::vector<std::size_t> candidateClauseIndexQueue;
 		std::size_t lastChosenCandidateIndexInQueue;
 
-		[[nodiscard]] static std::optional<std::size_t> determineNumberOfOverlapsBetweenClauses(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup);
+		[[nodiscard]] static std::optional<std::size_t> determineNumberOfOverlapsBetweenClauses(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition);
+		[[nodiscard]] static std::optional<std::size_t> determineLengthOfClause(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition);
 	};
 }
 
