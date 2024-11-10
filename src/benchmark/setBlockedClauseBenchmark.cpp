@@ -403,7 +403,7 @@ int main(int argc, char* argv[])
 		{
 			remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
 			++percentThresholdReachedCounter;
-			std::cout << "Handled [" << std::to_string(percentThresholdReachedCounter * percentageThreshold) << "%] of all candidate clauses, current benchmark duration: " << std::to_string(totalBenchmarkExecutionTime.count()) + "ms\n";
+			std::cout << "Handled [" << std::to_string(percentThresholdReachedCounter * percentageThreshold) << "%] of all candidate clauses, current duration of blocked set check: " << std::to_string(setBlockedClauseCheckDuration.count()) << " current benchmark duration : " << std::to_string(totalBenchmarkExecutionTime.count()) + "ms\n";
 		}
 	}
 	std::cout << "=== END - BLOCKING SET CANDIDATE SEARCH ===\n";
@@ -418,7 +418,7 @@ int main(int argc, char* argv[])
 	std::cout << "=== BEGIN - VERIFICATION OF RESULTS ===\n";
 
 	std::cout << "=== RESULTS ===\n";
-	std::cout << std::to_string(identifiersOfSetBlockedClauses.size()) + " clauses out of " + std::to_string(identifiersOfClausesToCheck.size()) + " were set blocked!\n";
+	std::cout << std::to_string(identifiersOfSetBlockedClauses.size()) + " clauses out of " + std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) + " were set blocked!\n";
 
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(dimacsFormulaParsingDuration.count()) + "ms\n";
 	std::cout << "SBCE check duration: " + std::to_string(setBlockedClauseCheckDuration.count()) + "ms\n";
