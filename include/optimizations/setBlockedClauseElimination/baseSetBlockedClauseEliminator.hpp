@@ -38,13 +38,10 @@ namespace setBlockedClauseElimination {
 			bool didResolutionEnvironmentContaingAtleastOneEntry = false;
 			for (const long literal : potentialBlockingSet)
 			{
-				const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* indicesOfClauesContainingNegatedLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal]
-					.value_or(nullptr);
-				didResolutionEnvironmentContaingAtleastOneEntry |= indicesOfClauesContainingNegatedLiteral != nullptr;
-				if (!indicesOfClauesContainingNegatedLiteral)
-					continue;
+				const std::unordered_set<std::size_t>& indicesOfClauesContainingNegatedLiteral = determineIndicesOfOverlappingClausesForLiteral(-literal);
+				didResolutionEnvironmentContaingAtleastOneEntry |= !indicesOfClauesContainingNegatedLiteral.empty();
 
-				for (const std::size_t clauseIdx : *indicesOfClauesContainingNegatedLiteral)
+				for (const std::size_t clauseIdx : indicesOfClauesContainingNegatedLiteral)
 				{
 					if (alreadyCheckedClauseIndicesInResolutionEnvironment.count(clauseIdx))
 						continue;
