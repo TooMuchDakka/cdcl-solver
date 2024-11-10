@@ -17,15 +17,7 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 	while (!foundBlockingSet && candidateBlockingSet.has_value())
 	{
 		const std::unordered_set<long>& clauseLiteralsAndBlockingSetDifferenceSet = determineDifferenceSetBetweenClauseAndBlockingSet(clauseLiterals, *candidateBlockingSet);
-		const std::vector<const dimacs::ProblemDefinition::Clause*> resolutionEnvironment = determineResolutionEnvironment(*candidateBlockingSet);
-		foundBlockingSet = !resolutionEnvironment.empty() && std::all_of(
-			resolutionEnvironment.cbegin(),
-			resolutionEnvironment.cend(),
-			[&](const dimacs::ProblemDefinition::Clause* clauseInResolutionEnvironment)
-			{
-				return isClauseSetBlocked(clauseLiteralsAndBlockingSetDifferenceSet, *clauseInResolutionEnvironment, *candidateBlockingSet);
-			});
-
+		foundBlockingSet |= doesEveryClauseInResolutionEnvironmentFullfillSetBlockedCondition(clauseLiteralsAndBlockingSetDifferenceSet, *candidateBlockingSet);
 		if (!foundBlockingSet)
 			candidateBlockingSet = candidateGenerator.generateNextCandidate();
 	}
@@ -36,29 +28,33 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 }
 
 // NON-PUBLIC FUNCTIONALITY
-std::vector<const dimacs::ProblemDefinition::Clause*> LiteralOccurrenceSetBlockedClauseEliminator::determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const
+bool LiteralOccurrenceSetBlockedClauseEliminator::doesEveryClauseInResolutionEnvironmentFullfillSetBlockedCondition(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const
 {
 	// Resolution environment R for a clause C and a given blocking set L is defined as \forall C' \in R: C' \in F \wedge C' \union \neg{L} != 0
-	std::unordered_set<std::size_t> indicesOfClausesInResolutionEnvironment;
-	std::vector<const dimacs::ProblemDefinition::Clause*> resolutionEnvironment;
+	std::unordered_set<std::size_t> alreadyCheckedClauseIndicesInResolutionEnvironment;
+	bool didResolutionEnvironmentContaingAtleastOneEntry = false;
 	for (const long literal : potentialBlockingSet)
 	{
-		if (const std::optional<std::vector<std::size_t>> clausesContainingLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal]; clausesContainingLiteral.has_value())
+		const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* indicesOfClauesContainingNegatedLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal]
+			.value_or(nullptr);
+		didResolutionEnvironmentContaingAtleastOneEntry |= indicesOfClauesContainingNegatedLiteral != nullptr;
+		if (!indicesOfClauesContainingNegatedLiteral)
+			continue;
+
+		for (const std::size_t clauseIdx : *indicesOfClauesContainingNegatedLiteral)
 		{
-			for (const std::size_t clauseIdx : *clausesContainingLiteral)
-			{
-				if (!indicesOfClausesInResolutionEnvironment.count(clauseIdx))
-				{
-					const dimacs::ProblemDefinition::Clause* dataOfClause = problemDefinition->getClauseByIndexInFormula(clauseIdx);
-					if (!dataOfClause)
-						throw std::out_of_range("Could not determine data for clause with idx " + std::to_string(clauseIdx) + " in formula");
+			if (alreadyCheckedClauseIndicesInResolutionEnvironment.count(clauseIdx))
+				continue;
 
-					resolutionEnvironment.emplace_back(dataOfClause);
-					indicesOfClausesInResolutionEnvironment.emplace(clauseIdx);
-				}
+			const dimacs::ProblemDefinition::Clause* dataOfClause = problemDefinition->getClauseByIndexInFormula(clauseIdx);
+			if (!dataOfClause)
+				throw std::out_of_range("Could not determine data for clause with idx " + std::to_string(clauseIdx) + " in formula");
 
-			}
+			if (!isClauseSetBlocked(literalsOfDiffSetOfClauseToCheckAndBlockingSet, *dataOfClause, potentialBlockingSet))
+				return false;
+
+			alreadyCheckedClauseIndicesInResolutionEnvironment.emplace(clauseIdx);
 		}
 	}
-	return resolutionEnvironment;
+	return didResolutionEnvironmentContaingAtleastOneEntry;
 }

@@ -19,6 +19,7 @@ const std::string blockingSetLiteralCandidateSelectionRngSeedCommandLineKey = "-
 const std::string blockingSetMinimumSizeRestrictionCommandLineKey = "-blockingSetMinimumSize";
 const std::string blockingSetMaximumSizeRestrictionCommandLineKey = "-blockingSetMaximumSize";
 const std::string nClausesToConsiderCommandLineKey = "-nCandidates";
+const std::string nClauseMatchesCommandLineKey = "-nMatches";
 const std::string cnfFileCommandLineKey = "-cnf";
 const std::string helpCommandLineKey = "--help";
 
@@ -49,6 +50,7 @@ enum LiteralSelectionHeuristic
 struct ClauseCandidateGeneratorConfiguration
 {
 	std::size_t numCandidateClauses;
+	std::size_t numCandidateClauseMatchesToSearchFor;
 	std::optional<clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic> optionalCandidateSelectionHeuristic;
 	std::optional<long> optionalRngSeed;
 };
@@ -97,12 +99,11 @@ ClauseCandidateGeneratorConfiguration generateClauseCandidateGeneratorConfigurat
 	std::optional<long> optionalRngSeed;
 	std::optional<clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic> optionalCandidateSelectionHeuristic;
 	std::size_t nClausesToConsider;
+	std::size_t nClauseMatchesToSearchFor;
 
-	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& nCandidateToConsiderCommandLineArgument = commandLineArgumentParser.getValueOfArgument(nClausesToConsiderCommandLineKey); nCandidateToConsiderCommandLineArgument.has_value())
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& nCandidateToConsiderCommandLineArgument = commandLineArgumentParser.getValueOfArgument(nClausesToConsiderCommandLineKey); nCandidateToConsiderCommandLineArgument.has_value()
+		&& nCandidateToConsiderCommandLineArgument.value().wasFoundInCommandLineArgument)
 	{
-		if (!nCandidateToConsiderCommandLineArgument.value().wasFoundInCommandLineArgument)
-			throw std::invalid_argument("Required value for number of clauses to consider as candidates was not specified");
-
 		if (!nCandidateToConsiderCommandLineArgument.value().tryGetArgumentValueAsInteger())
 			throw std::invalid_argument("Number of clauses to consider as candidates was not defined as an integer value but was actually " + *nCandidateToConsiderCommandLineArgument.value().optionalArgumentValue);
 
@@ -115,6 +116,25 @@ ClauseCandidateGeneratorConfiguration generateClauseCandidateGeneratorConfigurat
 	else
 	{
 		nClausesToConsider = numClausesOfFormulaAfterPreprocessing;
+	}
+
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& nCandidateMatchesToSearchForCommandLineArgument = commandLineArgumentParser.getValueOfArgument(nClauseMatchesCommandLineKey); nCandidateMatchesToSearchForCommandLineArgument.has_value())
+	{
+		if (!nCandidateMatchesToSearchForCommandLineArgument.value().wasFoundInCommandLineArgument)
+			throw std::invalid_argument("Required value for number of clause matches to search for was not specified");
+
+		if (!nCandidateMatchesToSearchForCommandLineArgument.value().tryGetArgumentValueAsInteger())
+			throw std::invalid_argument("Number of clause matches to search for was not defined as an integer value but was actually " + *nCandidateMatchesToSearchForCommandLineArgument.value().optionalArgumentValue);
+
+		const int nCandidateMatchesToSearchForUserSpecifiedValue = *nCandidateMatchesToSearchForCommandLineArgument->tryGetArgumentValueAsInteger();
+		if (nCandidateMatchesToSearchForUserSpecifiedValue < 0)
+			throw std::invalid_argument("Number of candiate clauses to consider must be a positive integer");
+
+		nClauseMatchesToSearchFor = std::min(numClausesOfFormulaAfterPreprocessing, static_cast<std::size_t>(nCandidateMatchesToSearchForUserSpecifiedValue));
+	}
+	else
+	{
+		nClauseMatchesToSearchFor = numClausesOfFormulaAfterPreprocessing;
 	}
 
 	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& clauseCandidateSelectionCommandLineArugment = commandLineArgumentParser.getValueOfArgument(clauseSelectionHeuristicCommandLineKey); clauseCandidateSelectionCommandLineArugment.has_value())
@@ -155,7 +175,7 @@ ClauseCandidateGeneratorConfiguration generateClauseCandidateGeneratorConfigurat
 			throw std::invalid_argument("Invalid value " + *clauseCandidateSelectionCommandLineArugment->optionalArgumentValue + "for blocking set clause literal selection heuristic");
 		}
 	}
-	return { nClausesToConsider, optionalCandidateSelectionHeuristic, optionalRngSeed };
+	return { nClausesToConsider, nClauseMatchesToSearchFor, optionalCandidateSelectionHeuristic, optionalRngSeed };
 }
 
 BlockingSetCandidateGeneratorConfiguration generateBlockingSetCandidateGeneratorConfigurationFromCommandLine(const utils::CommandLineArgumentParser& commandLineArgumentParser)
@@ -334,26 +354,41 @@ int main(int argc, char* argv[])
 	std::cout << "Duration for generation of clause candidate generator duration: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
 	std::cout << "=== END - BLOCKING SET CANDIDATE GENERATOR INITALIZATION ===\n";
 
+	std::cout << "=== START - BLOCKING SET CANDIDATE SEARCH ===\n";
+	std::cout << "Search for set blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor) << " blocked clauses were found...\n";
+	std::cout << "Search for set blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) << " candidates where considered...\n";
+
 	auto blockingSetEliminator = std::make_unique<setBlockedClauseElimination::LiteralOccurrenceSetBlockedClauseEliminator>(cnfFormula);
 	const std::vector<std::size_t>& identifiersOfClausesToCheck = cnfFormula->getIdentifiersOfClauses();
 
 	constexpr std::size_t percentageThreshold = 5;
-	const std::size_t numClausesToProcessUntilPercentageThresholdIsReached = identifiersOfClausesToCheck.size() / (100 / percentageThreshold);
+	std::size_t numClausesToProcessUntilPercentageThresholdIsReached = clauseCandidateGeneratorConfiguration.numCandidateClauses / (100 / percentageThreshold);
+	if (numClausesToProcessUntilPercentageThresholdIsReached == 0)
+		++numClausesToProcessUntilPercentageThresholdIsReached;
 
 	std::size_t percentThresholdReachedCounter = 0;
 	std::size_t remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
 
 	std::vector<std::size_t> identifiersOfSetBlockedClauses;
+	std::size_t numCandiatesConsidered = 0;
 
 	std::chrono::milliseconds totalBenchmarkExecutionTime = dimacsFormulaParsingDuration + clauseCandidateGeneratorInitDuration + blockingSetCandidateGeneratorInitDuration;
 	std::chrono::milliseconds setBlockedClauseCheckDuration = std::chrono::milliseconds(0);
+
+	std::cout << "Progress will be logged every time " << std::to_string(numClausesToProcessUntilPercentageThresholdIsReached) << " candidates where processed...\n\n";
 	for (const std::size_t clauseIdentifier : identifiersOfClausesToCheck)
 	{
-		if (identifiersOfSetBlockedClauses.size() >= clauseCandidateGeneratorConfiguration.numCandidateClauses)
+		if (identifiersOfSetBlockedClauses.size() >= clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor)
 		{
-			std::cout << "Reached required number of clauses to check and will stop search...\n";
+			std::cout << "Reached required number of set blocked clauses found, will stop search...\n";
 			break;
 		}
+		if (numCandiatesConsidered > clauseCandidateGeneratorConfiguration.numCandidateClauses)
+		{
+			std::cout << "Reached required number of clause candidates, will stop search...\n";
+			break;
+		}
+		++numCandiatesConsidered;
 
 		const TimePoint blockingSetCheckStartTime = getCurrentTime();
 		if (const std::optional<setBlockedClauseElimination::BaseSetBlockedClauseEliminator::FoundBlockingSet>& foundBlockingSet = blockingSetEliminator->determineBlockingSet(clauseIdentifier, *blockingSetCandidateGenerator, blockingSetCandidateGeneratorConfiguration.optionalCandidateSizeRestriction); foundBlockingSet.has_value())
@@ -371,6 +406,7 @@ int main(int argc, char* argv[])
 			std::cout << "Handled [" << std::to_string(percentThresholdReachedCounter * percentageThreshold) << "%] of all candidate clauses, current benchmark duration: " << std::to_string(totalBenchmarkExecutionTime.count()) + "ms\n";
 		}
 	}
+	std::cout << "=== END - BLOCKING SET CANDIDATE SEARCH ===\n";
 
 	std::cout << "=== BEGIN - VERIFICATION OF RESULTS ===\n";
 	const TimePoint resultVerificationStartTime = getCurrentTime();
@@ -383,7 +419,6 @@ int main(int argc, char* argv[])
 
 	std::cout << "=== RESULTS ===\n";
 	std::cout << std::to_string(identifiersOfSetBlockedClauses.size()) + " clauses out of " + std::to_string(identifiersOfClausesToCheck.size()) + " were set blocked!\n";
-	std::cout << "Search for blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) << " blocked clauses were found\n\n";
 
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(dimacsFormulaParsingDuration.count()) + "ms\n";
 	std::cout << "SBCE check duration: " + std::to_string(setBlockedClauseCheckDuration.count()) + "ms\n";

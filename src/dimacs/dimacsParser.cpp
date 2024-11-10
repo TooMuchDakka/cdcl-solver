@@ -80,9 +80,13 @@ std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basi
 		{
 			const long unitPropagatedLiteral = parsedClause->literals.front();
 			const std::size_t numAssignmentsPrioToUnitPropagation = problemDefinition->getPastAssignments().size();
-			if (problemDefinition->propagate(unitPropagatedLiteral) != ProblemDefinition::Ok)
-				recordError(currProcessedLine - 1, 0, "Error during unit propagation of literal " + std::to_string(unitPropagatedLiteral));
-			else
+			const ProblemDefinition::PropagationResult propagationResult = problemDefinition->propagate(unitPropagatedLiteral);
+
+			if (propagationResult == ProblemDefinition::Conflict)
+			{
+				wasFormulaDeterminedToBeUnsat = true;
+			}
+			else if (propagationResult == ProblemDefinition::Ok)
 			{
 				const std::vector<ProblemDefinition::PastAssignment>& pastAssignments = problemDefinition->getPastAssignments();
 				if (pastAssignments.size() <= numAssignmentsPrioToUnitPropagation)
@@ -97,6 +101,10 @@ std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basi
 					if (!problemDefinition->removeLiteralFromClausesOfFormula(-l))
 						recordError(currProcessedLine, 0, "Error during removal of literal " + std::to_string(-l) + " from clauses of formula");
 				}
+			}
+			else
+			{
+				recordError(currProcessedLine - 1, 0, "Error during unit propagation of literal " + std::to_string(unitPropagatedLiteral));
 			}
 		}
 		else if (isClauseTautology(*parsedClause))
@@ -118,13 +126,16 @@ std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basi
 bool DimacsParser::removeClausesSatisfiedByUnitPropagation(ProblemDefinition& problemDefinition, long literal)
 {
 	const LiteralOccurrenceLookup& literalOccurrenceLookup = problemDefinition.getLiteralOccurrenceLookup();
-	const std::optional<std::vector<std::size_t>> clausesContainingLiteral = literalOccurrenceLookup[literal];
-	if (!clausesContainingLiteral.has_value())
+	const std::optional<const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> lookupEntry = literalOccurrenceLookup[literal];
+	if (!lookupEntry.has_value())
 		return false;
 
-	for (const std::size_t clauseIndex : *clausesContainingLiteral)
+	const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry clausesContainingLiteral = *lookupEntry ? **lookupEntry : LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry();
+	for (const std::size_t clauseIndex : clausesContainingLiteral)
+	{
 		if (!problemDefinition.removeClause(clauseIndex))
 			return false;
+	}
 	return true;
 }
 
@@ -140,9 +151,7 @@ void DimacsParser::recordError(std::size_t line, std::size_t column, const std::
 	foundErrorsDuringCurrentParsingAttempt = true;
 	if (configuration.recordParsingErrors)
 		foundErrors.emplace_back(line, column, errorText);
-	//foundErrors.emplace_back("--line: " + std::to_string(line) + " col: " + std::to_string(column) + " | " + errorText);
 }
-
 
 inline std::vector<std::string_view> DimacsParser::splitStringAtDelimiter(const std::string_view& stringToSplit, char delimiter)
 {

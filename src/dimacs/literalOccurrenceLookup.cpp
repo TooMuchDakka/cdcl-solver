@@ -5,11 +5,14 @@
 
 using namespace dimacs;
 
-std::optional<std::vector<std::size_t>> LiteralOccurrenceLookup::operator[](long literal) const
+std::optional<const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> LiteralOccurrenceLookup::operator[](long literal) const
 {
 	if (const std::optional<std::size_t> lookupIndexForLiteral = LiteralInContainerIndexLookup::getIndexInContainer(literal, nVariables); lookupIndexForLiteral.value_or(0))
-		return std::make_optional<std::vector<std::size_t>>({ literalOccurrences.at(*lookupIndexForLiteral).begin(), literalOccurrences.at(*lookupIndexForLiteral).end() });
-
+	{
+		if (literalOccurrences.at(*lookupIndexForLiteral).empty())
+			return nullptr;
+		return std::make_optional(&literalOccurrences.at(*lookupIndexForLiteral));
+	}
 	return std::nullopt;
 }
 

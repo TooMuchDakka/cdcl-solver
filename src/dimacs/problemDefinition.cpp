@@ -31,13 +31,17 @@ bool ProblemDefinition::removeClause(std::size_t index)
 
 bool ProblemDefinition::removeLiteralFromClausesOfFormula(long literal)
 {
-	const std::optional<std::vector<std::size_t>> indicesOfClausesContainingLiteral = literalOccurrenceLookup[literal];
-	if (!indicesOfClausesContainingLiteral.has_value())
+	const std::optional<const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> lookupEntry = literalOccurrenceLookup[literal];
+	if (!lookupEntry.has_value())
 		return false;
 
+	if (!*lookupEntry || lookupEntry.value()->empty())
+		return true;
+
+	LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry indicesOfClausesContainingLiteral = **lookupEntry;
 	return std::all_of(
-		indicesOfClausesContainingLiteral->cbegin(),
-		indicesOfClausesContainingLiteral->cend(),
+		indicesOfClausesContainingLiteral.cbegin(),
+		indicesOfClausesContainingLiteral.cend(),
 		[&](const std::size_t clauseIndex)
 		{
 			Clause* accessedClause = getClauseByIndexInFormula(clauseIndex);
@@ -138,11 +142,11 @@ ProblemDefinition::PropagationResult ProblemDefinition::propagate(long literal)
 	if (!recordAssignment(PastAssignment({true, literal})))
 		return PropagationResult::ErrorDuringPropagation;
 
-	const std::optional<std::vector<std::size_t>> indicesOfClausesContainingLiteralContainer = literalOccurrenceLookup[literal];
-	if (!indicesOfClausesContainingLiteralContainer.has_value())
+	const std::optional<const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> lookupEntryForLiteral = literalOccurrenceLookup[literal];
+	if (!lookupEntryForLiteral.has_value())
 		return PropagationResult::ErrorDuringPropagation;
 
-	const std::vector<std::size_t>& indicesOfClausesContainingLiteral = *indicesOfClausesContainingLiteralContainer;
+	const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry& indicesOfClausesContainingLiteral = *lookupEntryForLiteral ? **lookupEntryForLiteral : LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry();
 	for (std::size_t clauseIdx : indicesOfClausesContainingLiteral)
 	{
 		if (Clause* accessedClause = getClauseByIndexInFormula(clauseIdx); accessedClause)
@@ -150,16 +154,19 @@ ProblemDefinition::PropagationResult ProblemDefinition::propagate(long literal)
 		else
 			return PropagationResult::ErrorDuringPropagation;
 	}
-		
-	const std::optional<std::vector<std::size_t>> indicesOfClausesContainingNegatedLiteralContainer = literalOccurrenceLookup[-literal];
-	if (!indicesOfClausesContainingNegatedLiteralContainer.has_value())
+
+	const std::optional<const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> lookupEntryForNegatedLiteral = literalOccurrenceLookup[-literal];
+	if (!lookupEntryForNegatedLiteral.has_value())
 		return PropagationResult::ErrorDuringPropagation;
 
-	const std::vector<std::size_t>& indicesOfClausesContainingNegatedLiteral = *indicesOfClausesContainingNegatedLiteralContainer;
 	auto propagationResult = PropagationResult::Ok;
-	for (std::size_t i = 0; propagationResult == PropagationResult::Ok && i < indicesOfClausesContainingNegatedLiteral.size(); ++i)
+	const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry& indicesOfClausesContainingNegatedLiteral = *lookupEntryForNegatedLiteral ? **lookupEntryForNegatedLiteral : LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry();
+	for (std::size_t clauseIdx : indicesOfClausesContainingNegatedLiteral)
 	{
-		const std::optional<std::vector<long>> unassignedClauseLiteral = getClauseLiteralsOmittingAlreadyAssignedOnes(indicesOfClausesContainingNegatedLiteral.at(i));
+		if (propagationResult != PropagationResult::Ok)
+			break;
+
+		const std::optional<std::vector<long>> unassignedClauseLiteral = getClauseLiteralsOmittingAlreadyAssignedOnes(clauseIdx);
 		if (!unassignedClauseLiteral.has_value())
 			return PropagationResult::ErrorDuringPropagation;
 		if (unassignedClauseLiteral->size() == 1)
@@ -188,21 +195,24 @@ std::string ProblemDefinition::stringify() const
 
 std::optional<bool> ProblemDefinition::doesVariableAssignmentLeadToConflict(long literal, VariableValue chosenAssignment) const
 {
-	const std::optional<std::vector<std::size_t>>& indiciesOfClausesContainingNegatedLiteral = literalOccurrenceLookup[-literal];
-	if (!indiciesOfClausesContainingNegatedLiteral.has_value())
+	const std::optional<const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> lookupEntryForNegatedLiteral = literalOccurrenceLookup[-literal];
+	if (!lookupEntryForNegatedLiteral.has_value())
 		return std::nullopt;
 
-	if (indiciesOfClausesContainingNegatedLiteral->empty() || chosenAssignment == VariableValue::Unknown)
+	const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry& indicesOfClausesContainingNegatedLiteral = *lookupEntryForNegatedLiteral ? **lookupEntryForNegatedLiteral : LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry();
+	if (indicesOfClausesContainingNegatedLiteral.empty() || chosenAssignment == VariableValue::Unknown)
 		return false;
 
 	bool foundConflict = false;
-	for (std::size_t i = 0; i < indiciesOfClausesContainingNegatedLiteral->size() && !foundConflict; ++i)
+	for (const std::size_t clauseIdx : indicesOfClausesContainingNegatedLiteral)
 	{
-		const std::optional<std::vector<long>>& clauseLiterals = getClauseLiteralsOmittingAlreadyAssignedOnes(indiciesOfClausesContainingNegatedLiteral->at(i));
+		const std::optional<std::vector<long>>& clauseLiterals = getClauseLiteralsOmittingAlreadyAssignedOnes(clauseIdx);
 		if (!clauseLiterals.has_value())
 			return std::nullopt;
 
-		foundConflict = clauseLiterals->size() == 1 && clauseLiterals->front() == -literal && chosenAssignment == determineConflictingAssignmentForLiteral(literal);
+		foundConflict = clauseLiterals->size() == 1 && clauseLiterals->front() == -literal && chosenAssignment == determineConflictingAssignmentForLiteral(-literal);
+		if (foundConflict)
+			break;
 	}
 	return foundConflict;
 }

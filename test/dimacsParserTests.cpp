@@ -150,11 +150,14 @@ public:
 		for (const auto& [literal, expectedOverlaps] : expectedOverlapsPerLiteral.lookup)
 		{
 			std::unordered_set<std::size_t> unordedLookupForExpectedOverlaps(expectedOverlaps.cbegin(), expectedOverlaps.cend());
-			const std::optional<std::vector<std::size_t>>& actualOverlappedClauses = actualLiteralOccurrenceLookup[literal];
-			ASSERT_TRUE(actualOverlappedClauses.has_value());
-			ASSERT_EQ(unordedLookupForExpectedOverlaps.size(), actualOverlappedClauses->size());
 
-			for (const std::size_t actualOverlappedClauseIndex : *actualOverlappedClauses)
+			const std::optional<const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> lookupEntry = actualLiteralOccurrenceLookup[literal];
+			ASSERT_TRUE(lookupEntry.has_value());
+
+			const LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry& actualOverlappedClauses = *lookupEntry ? **lookupEntry : LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry();
+			ASSERT_EQ(unordedLookupForExpectedOverlaps.size(), actualOverlappedClauses.size());
+
+			for (const std::size_t actualOverlappedClauseIndex : actualOverlappedClauses)
 				ASSERT_TRUE(unordedLookupForExpectedOverlaps.count(actualOverlappedClauseIndex));
 		}
 	}

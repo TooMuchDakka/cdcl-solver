@@ -24,12 +24,11 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 			candidateClauseIndexQueue.end(),
 			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 			{
-				const std::size_t numLClauseOverlaps = determineNumberOfOverlapsBetweenClauses(lClauseIdx, problemDefinition).value_or(SIZE_MAX);
-				const std::size_t numRClauseOverlaps = determineNumberOfOverlapsBetweenClauses(rClauseIdx, problemDefinition).value_or(SIZE_MAX);
-				if (numLClauseOverlaps == numRClauseOverlaps)
-					return lClauseIdx < rClauseIdx;
-
-				return numLClauseOverlaps < numRClauseOverlaps;
+				return determineOrderingOfElementAccordingToHeuristic(
+					lClauseIdx, determineNumberOfOverlapsBetweenClauses(lClauseIdx, problemDefinition).value_or(SIZE_MAX),
+					rClauseIdx, determineNumberOfOverlapsBetweenClauses(rClauseIdx, problemDefinition).value_or(SIZE_MAX),
+					false
+				);
 			}
 		);
 		break;
@@ -39,8 +38,11 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 			candidateClauseIndexQueue.end(),
 			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 			{
-				return determineNumberOfOverlapsBetweenClauses(lClauseIdx, problemDefinition).value_or(0)
-					> determineNumberOfOverlapsBetweenClauses(rClauseIdx, problemDefinition).value_or(0);
+				return determineOrderingOfElementAccordingToHeuristic(
+					lClauseIdx, determineNumberOfOverlapsBetweenClauses(lClauseIdx, problemDefinition).value_or(0),
+					rClauseIdx, determineNumberOfOverlapsBetweenClauses(rClauseIdx, problemDefinition).value_or(0),
+					true
+				);
 			}
 		);
 		break;
@@ -50,12 +52,11 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 			candidateClauseIndexQueue.end(),
 			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 			{
-				const std::size_t lClauseLength = determineLengthOfClause(lClauseIdx, problemDefinition).value_or(SIZE_MAX);
-				const std::size_t rClauseLength = determineLengthOfClause(rClauseIdx, problemDefinition).value_or(SIZE_MAX);
-				if (lClauseLength == rClauseLength)
-					return lClauseIdx < rClauseIdx;
-
-				return lClauseLength < rClauseLength;
+				return determineOrderingOfElementAccordingToHeuristic(
+					lClauseIdx, determineLengthOfClause(lClauseIdx, problemDefinition).value_or(SIZE_MAX),
+					rClauseIdx, determineLengthOfClause(rClauseIdx, problemDefinition).value_or(SIZE_MAX),
+					false
+				);
 			}
 		);
 		break;
@@ -65,8 +66,11 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 			candidateClauseIndexQueue.end(),
 			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 			{
-				return determineLengthOfClause(lClauseIdx, problemDefinition).value_or(0)
-					> determineLengthOfClause(rClauseIdx, problemDefinition).value_or(0);
+				return determineOrderingOfElementAccordingToHeuristic(
+					lClauseIdx, determineLengthOfClause(lClauseIdx, problemDefinition).value_or(0),
+					rClauseIdx, determineLengthOfClause(rClauseIdx, problemDefinition).value_or(0),
+					true
+				);
 			}
 		);
 		break;
@@ -88,12 +92,17 @@ std::optional<std::size_t> ClauseCandidateSelector::determineNumberOfOverlapsBet
 
 	for (const long literal : clauseLiterals)
 	{
-		const std::optional<std::vector<std::size_t>> overlappedClausesForLiteral = literalOccurrenceLookup[-literal];
-		if (!overlappedClausesForLiteral.has_value())
+		const std::optional<const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*>& literalOccurrenceLookupEntry = literalOccurrenceLookup[-literal];
+		if (!literalOccurrenceLookupEntry.has_value())
 			return std::nullopt;
 
+		if (!*literalOccurrenceLookupEntry)
+			continue;
+
 		std::size_t notRecordedOverlapsOfClause = 0;
-		for (std::size_t clauseIndex : *overlappedClausesForLiteral)
+
+		const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry& overlappedClausesForLiteral = **literalOccurrenceLookupEntry;
+		for (std::size_t clauseIndex : overlappedClausesForLiteral)
 		{
 			notRecordedOverlapsOfClause += recordedOverlappingClauseIndices.count(clauseIndex) == 0;
 			recordedOverlappingClauseIndices.emplace(clauseIndex);

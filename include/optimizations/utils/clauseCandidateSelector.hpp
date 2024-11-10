@@ -93,6 +93,13 @@ namespace clauseCandidateSelection {
 
 		[[nodiscard]] static std::optional<std::size_t> determineNumberOfOverlapsBetweenClauses(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition);
 		[[nodiscard]] static std::optional<std::size_t> determineLengthOfClause(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition);
+		[[nodiscard]] static bool determineOrderingOfElementAccordingToHeuristic(std::size_t lElementIndex, std::size_t lElementHeuristicValue, std::size_t rElementIndex, std::size_t rElementHeuristicValue, bool sortedDescendingly)
+		{
+			if (lElementHeuristicValue == rElementHeuristicValue)
+				return lElementIndex < rElementIndex;
+
+			return sortedDescendingly ? (lElementHeuristicValue > rElementHeuristicValue) : (lElementHeuristicValue < rElementHeuristicValue);
+		}
 	};
 }
 
