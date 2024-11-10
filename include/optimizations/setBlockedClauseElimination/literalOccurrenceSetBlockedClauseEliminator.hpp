@@ -26,17 +26,8 @@ namespace setBlockedClauseElimination {
 	protected:
 		LiteralOccurrenceBlockingSetCandidateGenerator::ptr candidateGenerator;
 
-		[[nodiscard]] bool doesEveryClauseInResolutionEnvironmentFullfillSetBlockedCondition(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const override;
-		[[nodiscard]] static std::unordered_set<long> determineDifferenceSetBetweenClauseAndBlockingSet(const std::vector<long>& clauseLiterals, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& blockingSet) noexcept
-		{
-			std::unordered_set<long> differenceSet;
-			std::set<long, std::less<>> orderedBlockingSet(blockingSet.cbegin(), blockingSet.cend());
-			std::set_difference(
-				clauseLiterals.cbegin(), clauseLiterals.cend(),
-				orderedBlockingSet.cbegin(), orderedBlockingSet.cend(),
-				std::inserter(differenceSet, differenceSet.begin()));
-			return differenceSet;
-		}
+		[[nodiscard]] std::unordered_set<std::size_t> determineIndicesOfOverlappingClausesForLiteral(long literal) const override;
+		[[nodiscard]] static std::unordered_set<long> determineDifferenceSetBetweenClauseAndBlockingSet(const std::vector<long>& clauseLiterals, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& blockingSet);
 	};
 }
 #endif

@@ -28,47 +28,39 @@ namespace setBlockedClauseElimination {
 		// TODO: Enable search for blocking set of specific size?
 
 	protected:
-		//struct DiffSetOfClauseAndBlockingSet
-		//{
-		//	std::unordered_set<long> remainingLiteralsOfClause;
-		//	long minimumLiteralValueOfClause;
-		//	long maximumLiteralValueOfClause;
-		//};
-
-		//dimacs::ProblemDefinition::ptr problemDefinition;
-
-		//[[nodiscard]] virtual std::vector<const dimacs::ProblemDefinition::Clause*> determineResolutionEnvironment(const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const = 0;
-		//[[nodiscard]] static bool isClauseSetBlocked(const DiffSetOfClauseAndBlockingSet& diffSetOfClauseAndBlockingSet, const dimacs::ProblemDefinition::Clause& clauseInResolutionEnvironment, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) {
-		//	// A clause C is blocked by a set L in a formula F iff. forall C' \in F: C' \union L != 0: C\L \union NOT(L) \union C' is a tautology
-
-		// TODO: Check whether a condition can be defined that is usable to determine whether the given clause of the resolution environment could contain a literal of the difference set instead of having to potentially iterate over all literals of said clause
-		//	if (clauseInResolutionEnvironment.literals.size() > 1)
-		//	{
-		//		const long smallestLiteralOfClauseInResolutionEnvironment = clauseInResolutionEnvironment.literals.front();
-		//		const long largestLiteralOfClauseInResolutionEnvironemnt = clauseInResolutionEnvironment.literals.back();
-
-
-		//		if ((clauseInResolutionEnvironment.literals.front() < 0 && diffSetOfClauseAndBlockingSet.maximumLiteralValueOfClause < clauseInResolutionEnvironment.literals.front())
-		//			|| clauseInResolutionEnvironment.
-		//	}
-
-		//	if (diffSetOfClauseAndBlockingSet.maximumLiteralValueOfClause > clauseInResolutionEnvironment.literals.)
-
-		//		return std::any_of(
-		//			clauseInResolutionEnvironment.literals.cbegin(),
-		//			clauseInResolutionEnvironment.literals.cend(),
-		//			[&potentialBlockingSet, &literalsOfDiffSetOfClauseToCheckAndBlockingSet](const long literal)
-		//			{
-		//				if (!potentialBlockingSet.count(-literal))
-		//					return literalsOfDiffSetOfClauseToCheckAndBlockingSet.count(-literal) > 0;
-		//				return false;
-		//			}
-		//		);
-		//}
-
 		dimacs::ProblemDefinition::ptr problemDefinition;
 
-		[[nodiscard]] virtual bool doesEveryClauseInResolutionEnvironmentFullfillSetBlockedCondition(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const = 0;
+		[[nodiscard]] virtual std::unordered_set<std::size_t> determineIndicesOfOverlappingClausesForLiteral(long literal) const = 0;
+		[[nodiscard]] bool doesEveryClauseInResolutionEnvironmentFullfillSetBlockedCondition(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const
+		{
+			// Resolution environment R for a clause C and a given blocking set L is defined as \forall C' \in R: C' \in F \wedge C' \union \neg{L} != 0
+			std::unordered_set<std::size_t> alreadyCheckedClauseIndicesInResolutionEnvironment;
+			bool didResolutionEnvironmentContaingAtleastOneEntry = false;
+			for (const long literal : potentialBlockingSet)
+			{
+				const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* indicesOfClauesContainingNegatedLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal]
+					.value_or(nullptr);
+				didResolutionEnvironmentContaingAtleastOneEntry |= indicesOfClauesContainingNegatedLiteral != nullptr;
+				if (!indicesOfClauesContainingNegatedLiteral)
+					continue;
+
+				for (const std::size_t clauseIdx : *indicesOfClauesContainingNegatedLiteral)
+				{
+					if (alreadyCheckedClauseIndicesInResolutionEnvironment.count(clauseIdx))
+						continue;
+
+					const dimacs::ProblemDefinition::Clause* dataOfClause = problemDefinition->getClauseByIndexInFormula(clauseIdx);
+					if (!dataOfClause)
+						throw std::out_of_range("Could not determine data for clause with idx " + std::to_string(clauseIdx) + " in formula");
+
+					if (!isClauseSetBlocked(literalsOfDiffSetOfClauseToCheckAndBlockingSet, *dataOfClause, potentialBlockingSet))
+						return false;
+
+					alreadyCheckedClauseIndicesInResolutionEnvironment.emplace(clauseIdx);
+				}
+			}
+			return didResolutionEnvironmentContaingAtleastOneEntry;
+		}
 		[[nodiscard]] static bool isClauseSetBlocked(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const dimacs::ProblemDefinition::Clause& clauseInResolutionEnvironment, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) {
 			// A clause C is blocked by a set L in a formula F iff. forall C' \in F: C' \union L != 0: C\L \union NOT(L) \union C' is a tautology
 			return std::any_of(

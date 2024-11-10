@@ -46,6 +46,17 @@ namespace setBlockedClauseElimination {
 		std::vector<long> clauseLiterals;
 		CandidateSizeRestriction candidateSizeRestriction;
 
+		/*
+		 * Local variable propgation during processing of cnf could prevent the detection of blocking set (see the following cnf)
+		 * p cnf 4 3
+		 * -1 2 3 4 0
+		 * -1 -2 3 0
+		 * 1 -2 3 4 0
+		 *
+		 * Due to our assumption that literals without overlap are not considered as candidates for the blocking set, the blocking set {1, -2, 3} would not be detected.
+		 *
+		 */
+
 		static void assertThatClauseContainsAtleastTwoLiterals(const std::vector<long>& clauseLiterals)
 		{
 			if (clauseLiterals.size() < 2)

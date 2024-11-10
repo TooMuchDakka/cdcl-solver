@@ -28,33 +28,20 @@ std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> LiteralOccurrenc
 }
 
 // NON-PUBLIC FUNCTIONALITY
-bool LiteralOccurrenceSetBlockedClauseEliminator::doesEveryClauseInResolutionEnvironmentFullfillSetBlockedCondition(const std::unordered_set<long>& literalsOfDiffSetOfClauseToCheckAndBlockingSet, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& potentialBlockingSet) const
+std::unordered_set<long> LiteralOccurrenceSetBlockedClauseEliminator::determineDifferenceSetBetweenClauseAndBlockingSet(const std::vector<long>& clauseLiterals, const BaseBlockingSetCandidateGenerator::BlockingSetCandidate& blockingSet)
 {
-	// Resolution environment R for a clause C and a given blocking set L is defined as \forall C' \in R: C' \in F \wedge C' \union \neg{L} != 0
-	std::unordered_set<std::size_t> alreadyCheckedClauseIndicesInResolutionEnvironment;
-	bool didResolutionEnvironmentContaingAtleastOneEntry = false;
-	for (const long literal : potentialBlockingSet)
-	{
-		const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* indicesOfClauesContainingNegatedLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal]
-			.value_or(nullptr);
-		didResolutionEnvironmentContaingAtleastOneEntry |= indicesOfClauesContainingNegatedLiteral != nullptr;
-		if (!indicesOfClauesContainingNegatedLiteral)
-			continue;
+	std::unordered_set<long> differenceSet;
+	std::set<long, std::less<>> orderedBlockingSet(blockingSet.cbegin(), blockingSet.cend());
+	std::set_difference(
+		clauseLiterals.cbegin(), clauseLiterals.cend(),
+		orderedBlockingSet.cbegin(), orderedBlockingSet.cend(),
+		std::inserter(differenceSet, differenceSet.begin()));
+	return differenceSet;
+}
 
-		for (const std::size_t clauseIdx : *indicesOfClauesContainingNegatedLiteral)
-		{
-			if (alreadyCheckedClauseIndicesInResolutionEnvironment.count(clauseIdx))
-				continue;
-
-			const dimacs::ProblemDefinition::Clause* dataOfClause = problemDefinition->getClauseByIndexInFormula(clauseIdx);
-			if (!dataOfClause)
-				throw std::out_of_range("Could not determine data for clause with idx " + std::to_string(clauseIdx) + " in formula");
-
-			if (!isClauseSetBlocked(literalsOfDiffSetOfClauseToCheckAndBlockingSet, *dataOfClause, potentialBlockingSet))
-				return false;
-
-			alreadyCheckedClauseIndicesInResolutionEnvironment.emplace(clauseIdx);
-		}
-	}
-	return didResolutionEnvironmentContaingAtleastOneEntry;
+std::unordered_set<std::size_t> LiteralOccurrenceSetBlockedClauseEliminator::determineIndicesOfOverlappingClausesForLiteral(long literal) const
+{
+	if (const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* indicesOfClauesContainingNegatedLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal].value_or(nullptr); indicesOfClauesContainingNegatedLiteral)
+		return *indicesOfClauesContainingNegatedLiteral;
+	return {};
 }

@@ -80,6 +80,21 @@ TEST_F(LiteralOccurrenceSetBlockedClauseEliminatorTests, BlockingSetOfSizeOneCor
 	assertThatBlockingSetsMatchOrThrow(expectedBlockingSet, actualBlockingSet);
 }
 
+TEST_F(LiteralOccurrenceSetBlockedClauseEliminatorTests, BlockingSetOfSizeLargerThanOneCorrectlyDetected)
+{
+	dimacs::ProblemDefinition::ptr problemDefinition;
+	ASSERT_NO_FATAL_FAILURE(generateProblemDefinition(5, { {1, 2, 3, 4, 5}, {1, -2, 3}, {-1, 2, 3}, {-1, -2, -3, 4, -5 }}, problemDefinition));
+	auto setBlockedClauseEliminatorInstance = LiteralOccurrenceSetBlockedClauseEliminator(problemDefinition);
+
+	const auto blockingSetCandidateGenerator = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+	ASSERT_TRUE(blockingSetCandidateGenerator);
+
+	constexpr std::size_t clauseToBeChecked = 3;
+	const BaseSetBlockedClauseEliminator::FoundBlockingSet expectedBlockingSet = { -1, -2, -5 };
+	const std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> actualBlockingSet = setBlockedClauseEliminatorInstance.determineBlockingSet(clauseToBeChecked, *blockingSetCandidateGenerator, BaseBlockingSetCandidateGenerator::CandidateSizeRestriction({ 3,3 }));
+	assertThatBlockingSetsMatchOrThrow(expectedBlockingSet, actualBlockingSet);
+}
+
 TEST_F(LiteralOccurrenceSetBlockedClauseEliminatorTests, TautologyBetweenDifferenceSetOfProcessedClauseAndClauseOfResolutionEnvironmentCorrectlyDetected)
 {
 	dimacs::ProblemDefinition::ptr problemDefinition;
@@ -94,6 +109,22 @@ TEST_F(LiteralOccurrenceSetBlockedClauseEliminatorTests, TautologyBetweenDiffere
 	const std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> actualBlockingSet = setBlockedClauseEliminatorInstance.determineBlockingSet(clauseToBeChecked, *blockingSetCandidateGenerator);
 	assertThatBlockingSetsMatchOrThrow(expectedBlockingSet, actualBlockingSet);
 }
+
+// TODO: Whether we can assume that local variables, variables only used in one polarity in the cnf, where propagated in the cnf during processing effects the detection of blocking sets
+//TEST_F(LiteralOccurrenceSetBlockedClauseEliminatorTests, TautologyBetweenClauseOfResolutionEnvironmentAndNotOverlappingPartsOfBlockingSetCorrectlyDetected)
+//{
+//	dimacs::ProblemDefinition::ptr problemDefinition;
+//	ASSERT_NO_FATAL_FAILURE(generateProblemDefinition(4, { {-1, 2, 3, 4}, {1, -2, -3}, {1, -2, 3, -4} }, problemDefinition));
+//	auto setBlockedClauseEliminatorInstance = LiteralOccurrenceSetBlockedClauseEliminator(problemDefinition);
+//
+//	const auto blockingSetCandidateGenerator = LiteralOccurrenceBlockingSetCandidateGenerator::usingSequentialLiteralSelectionHeuristic();
+//	ASSERT_TRUE(blockingSetCandidateGenerator);
+//
+//	constexpr std::size_t clauseToBeChecked = 2;
+//	const BaseSetBlockedClauseEliminator::FoundBlockingSet expectedBlockingSet = { 1, -2, 3 };
+//	const std::optional<BaseSetBlockedClauseEliminator::FoundBlockingSet> actualBlockingSet = setBlockedClauseEliminatorInstance.determineBlockingSet(clauseToBeChecked, *blockingSetCandidateGenerator, BaseBlockingSetCandidateGenerator::CandidateSizeRestriction({ 3,3 }));
+//	assertThatBlockingSetsMatchOrThrow(expectedBlockingSet, actualBlockingSet);
+//}
 
 TEST_F(LiteralOccurrenceSetBlockedClauseEliminatorTests, EmptyUnionOfClauseLiteralsAndBlockingSetNotDetectedAsTautology)
 {
