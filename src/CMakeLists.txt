@@ -3,6 +3,7 @@ target_sources(DimacsAbstractions
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/literalOccurrenceLookup.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/dimacs/problemDefinition.cpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/utils/binarySearchUtils.hpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/dimacs/literalInContainerIndexLookup.hpp
 		${CMAKE_SOURCE_DIR}/include/dimacs/problemDefinition.hpp	
@@ -35,6 +36,8 @@ target_sources(SetBlockedClauseElimination
 		
 		${CMAKE_SOURCE_DIR}/include/optimizations/utils/clauseCandidateSelector.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/clauseCandidateSelector.cpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/utils/avlIntervalTree.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/avlIntervalTree.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/setBlockedClauseElimination/baseSetBlockedClauseEliminator.hpp
 )

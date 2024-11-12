@@ -1,7 +1,33 @@
 #include "dimacs/problemDefinition.hpp"
+#include "optimizations/utils/binarySearchUtils.hpp"
 #include <sstream>
 
 using namespace dimacs;
+
+void ProblemDefinition::Clause::sortLiteralsAscendingly()
+{
+	std::stable_sort(literals.begin(), literals.end(), std::less_equal<>());
+}
+
+bool ProblemDefinition::Clause::doesClauseContainLiteral(long literal) const
+{
+	return bSearchUtils::bSearchInSortedContainer<long>(literals, std::nullopt, literal, bSearchUtils::SortOrder::Ascending).has_value();
+}
+
+bool ProblemDefinition::Clause::isTautology() const
+{
+	if (literals.size() < 2)
+		return false;
+
+	std::unordered_set<long> processedLiteralsSet;
+	for (long literal : literals)
+	{
+		if (processedLiteralsSet.count(-literal))
+			return true;
+		processedLiteralsSet.emplace(literal);
+	}
+	return false;
+}
 
 [[maybe_unused]] bool ProblemDefinition::addClause(std::size_t index, Clause clause)
 {
@@ -10,6 +36,16 @@ using namespace dimacs;
 
 	clauses->emplace(index, std::move(clause));
 	return true;
+}
+
+std::optional<long> ProblemDefinition::Clause::getSmallestLiteralOfClause() const
+{
+	return literals.empty() ? std::nullopt : std::make_optional(literals.front());
+}
+
+std::optional<long> ProblemDefinition::Clause::getLargestLiteralOfClause() const
+{
+	return literals.empty() ? std::nullopt : std::make_optional(literals.back());
 }
 
 bool ProblemDefinition::removeClause(std::size_t index)

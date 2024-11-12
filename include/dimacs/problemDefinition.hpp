@@ -35,13 +35,14 @@ namespace dimacs
 			explicit Clause(std::vector<long> literals)
 				: literals(std::move(literals)), satisified(false)
 			{
-				sortLiterals();
+				sortLiteralsAscendingly();
 			}
 
-			void sortLiterals()
-			{
-				std::stable_sort(literals.begin(), literals.end(), std::less_equal<>());
-			}
+			void sortLiteralsAscendingly();
+			[[nodiscard]] bool doesClauseContainLiteral(long literal) const;
+			[[nodiscard]] bool isTautology() const;
+			[[nodiscard]] std::optional<long> getSmallestLiteralOfClause() const;
+			[[nodiscard]] std::optional<long> getLargestLiteralOfClause() const;
 
 			std::vector<long> literals;
 			bool satisified;

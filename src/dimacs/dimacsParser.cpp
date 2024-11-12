@@ -107,7 +107,7 @@ std::optional<ProblemDefinition::ptr> DimacsParser::parseDimacsContent(std::basi
 				recordError(currProcessedLine - 1, 0, "Error during unit propagation of literal " + std::to_string(unitPropagatedLiteral));
 			}
 		}
-		else if (isClauseTautology(*parsedClause))
+		else if (parsedClause->isTautology())
 			recordError(currProcessedLine, 0, "Formula is expected to contain no tautologies");
 		else
 			problemDefinition->addClause(processedClauseCounter - 1, *parsedClause);
@@ -325,34 +325,8 @@ std::optional<ProblemDefinition::Clause> DimacsParser::parseClauseDefinition(std
 	wasClauseDeterminedToBeUnsat |= couldDetermineCurrentClauseIsUnsat;
 	if (!doesCurrentVariableAssignmentSatisfyClause)
 	{
-		clause.sortLiterals();
+		clause.sortLiteralsAscendingly();
 		return clause;
 	}
 	return std::nullopt;
-}
-
-bool DimacsParser::isClauseTautology(const ProblemDefinition::Clause& clause) noexcept
-{
-	if (clause.literals.size() < 2)
-		return false;
-
-	/*for (std::size_t i = 0; i < clause.literals.size(); ++i)
-	{
-		for (std::size_t j = i + 1; j < clause.literals.size(); ++i)
-		{
-			if (std::abs(clause.literals.at(j)) > std::abs(clause.literals.at(i)))
-				break;
-			if (-clause.literals.at(j) == clause.literals.at(i))
-				return true;
-		}
-	}
-	return false;*/
-	std::unordered_set<long> literals;
-	for (long literal : clause.literals)
-	{
-		if (literals.count(-literal))
-			return true;
-		literals.emplace(literal);
-	}
-	return false;
 }

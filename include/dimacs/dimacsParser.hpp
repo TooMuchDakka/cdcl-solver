@@ -77,7 +77,6 @@ namespace dimacs
 		[[nodiscard]] static std::optional<long> tryConvertStringToLong(const std::string_view& stringToConvert, ProcessingError* optionalFoundError);
 		[[nodiscard]] static std::optional<ProblemDefinitionConfiguration> processProblemDefinitionLine(std::basic_istream<char>& inputStream, ProcessingError* optionalFoundError);
 		[[nodiscard]] static std::optional<ProblemDefinition::Clause> parseClauseDefinition(std::basic_istream<char>& inputStream, std::size_t numDefinedVariablesInCnf, const ProblemDefinition& variableValueLookupGateway, ProcessingError* optionalFoundErrors, bool& wasClauseDeterminedToBeUnsat);
-		[[nodiscard]] static bool isClauseTautology(const dimacs::ProblemDefinition::Clause& clause) noexcept;
 	};
 
 	inline std::ostream& operator<<(std::ostream& os, const dimacs::DimacsParser::ProcessingError& processingError)
