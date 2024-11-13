@@ -17,7 +17,7 @@ namespace setBlockedClauseElimination {
 	protected:
 		[[nodiscard]] std::unordered_set<std::size_t> determineIndicesOfOverlappingClausesForLiteral(long literal) const override
 		{
-			if (const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* indicesOfClauesContainingNegatedLiteral = problemDefinition->getLiteralOccurrenceLookup()[-literal].value_or(nullptr); indicesOfClauesContainingNegatedLiteral)
+			if (const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* indicesOfClauesContainingNegatedLiteral = problemDefinition->getLiteralOccurrenceLookup()[literal].value_or(nullptr); indicesOfClauesContainingNegatedLiteral)
 				return *indicesOfClauesContainingNegatedLiteral;
 			return {};
 		}
