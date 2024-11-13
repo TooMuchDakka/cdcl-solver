@@ -1,6 +1,7 @@
 #ifndef BINARY_SEARCH_UTILS_HPP
 #define BINARY_SEARCH_UTILS_HPP
 
+// https://stackoverflow.com/questions/6553970/find-the-first-element-in-a-sorted-array-that-is-greater-than-the-target?rq=3
 namespace bSearchUtils {
 	enum SortOrder {
 		Descending,
@@ -8,28 +9,27 @@ namespace bSearchUtils {
 	};
 
 	template<typename ElemType>
-	bool isElementOutsideOfRange(const std::vector<ElemType>& container, const std::optional<std::vector<std::size_t>>& optionalContainerIndirection, ElemType element, SortOrder sortOrderOfContainer)
+	bool isElementOutsideOfRange(const std::vector<ElemType>& container, ElemType element, SortOrder sortOrderOfContainer)
 	{
 		if (container.empty())
 			return true;
 
-		const std::size_t firstSortedContainerIndirectionIndex = optionalContainerIndirection.has_value() ? optionalContainerIndirection->front() : 0;
-		const std::size_t lastSortedContainerIndirectionIndex = optionalContainerIndirection.has_value() ? optionalContainerIndirection->back() : container.size() - 1;
-		return (sortOrderOfContainer == SortOrder::Descending && (container[firstSortedContainerIndirectionIndex] < element || container[lastSortedContainerIndirectionIndex] > element))
-			|| (sortOrderOfContainer == SortOrder::Ascending && (container[firstSortedContainerIndirectionIndex] > element || container[lastSortedContainerIndirectionIndex] < element));
+		return container.empty()
+			|| (sortOrderOfContainer == SortOrder::Descending && (container.front() < element || container.back() > element))
+				|| (sortOrderOfContainer == SortOrder::Ascending && (container.front() > element || container.back() < element));
 	}
 
 	template<typename ElemType>
-	std::optional<std::size_t> bSearchInSortedContainer(const std::vector<ElemType>& container, const std::optional<std::vector<std::size_t>>& optionalContainerIndirection, ElemType element, SortOrder sortOrderOfContainer) {
-		if (isElementOutsideOfRange(container, optionalContainerIndirection, element, sortOrderOfContainer))
+	std::optional<std::size_t> bSearchInSortedContainer(const std::vector<ElemType>& container, ElemType element, SortOrder sortOrderOfContainer) {
+		if (isElementOutsideOfRange(container, element, sortOrderOfContainer))
 			return std::nullopt;
 
 		std::size_t low = 0;
 		std::size_t high = container.size() - 1;
-		while (low <= high)
+		while (low <= high && high != SIZE_MAX)
 		{
 			const std::size_t mid = low + ((high - low) / 2);
-			const ElemType elementAtMidPosition = optionalContainerIndirection.has_value() ? container.at(optionalContainerIndirection->at(mid)) : container.at(mid);
+			const ElemType elementAtMidPosition = container.at(mid);;
 			if (elementAtMidPosition == element)
 				return mid;
 			if (sortOrderOfContainer == SortOrder::Descending ? elementAtMidPosition > element : elementAtMidPosition < element)
@@ -41,15 +41,18 @@ namespace bSearchUtils {
 	}
 
 	template<typename ElemType>
-	std::size_t bSearchForIndexOfLargestElementInSetOfElementsInLargerOrEqualThanXInDescendinglySortedContainer(const std::vector<ElemType>& container, const std::vector<std::size_t>& containerIndexIndirections, ElemType element)
+	std::size_t bSearchForIndexOfLargestElementInSetOfElementsInLargerOrEqualThanXInDescendinglySortedContainer(const std::vector<ElemType>& container, ElemType element)
 	{
+		if (container.empty())
+			return 0;
+
 		std::size_t low = 0;
 		std::size_t high = container.size() - 1;
-		while (low <= high)
+		while (low <= high && high != SIZE_MAX)
 		{
 			const std::size_t mid = low + ((high - low) / 2);
-			const ElemType elementAtMidPosition = container.at(containerIndexIndirections.at(mid));
-			if (elementAtMidPosition >= element)
+			const ElemType elementAtMidPosition = container.at(mid);
+			if (element >= elementAtMidPosition)
 				high = mid - 1;
 			else
 				low = mid + 1;
@@ -58,15 +61,18 @@ namespace bSearchUtils {
 	}
 
 	template<typename ElemType>
-	std::size_t bSearchForIndexOfSmallestElementInSetOfElementsSmallerOrEqualThanXInAscendinglySortedContainer(const std::vector<ElemType>& container, const std::vector<std::size_t>& containerIndexIndirections, ElemType element)
+	std::size_t bSearchForIndexOfSmallestElementInSetOfElementsSmallerOrEqualThanXInAscendinglySortedContainer(const std::vector<ElemType>& container, ElemType element)
 	{
+		if (container.empty())
+			return 0;
+
 		std::size_t low = 0;
 		std::size_t high = container.size() - 1;
-		while (low <= high)
+		while (low <= high && high != SIZE_MAX)
 		{
 			const std::size_t mid = low + ((high - low) / 2);
-			const ElemType elementAtMidPosition = container.at(containerIndexIndirections.at(mid));
-			if (elementAtMidPosition <= element)
+			const ElemType elementAtMidPosition = container.at(mid);
+			if (element <= elementAtMidPosition)
 				high = mid - 1;
 			else
 				low = mid + 1;

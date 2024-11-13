@@ -30,58 +30,119 @@ std::unordered_set<std::size_t> AvlIntervalTree::determineIndicesOfClausesContai
 
 bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::ProblemDefinition::Clause& clause)
 {
-	return false;
-}
+	if (clause.literals.empty())
+		return false;
 
-// BEGIN NON-PUBLIC INTERFACE IMPLEMENTATION
-bool AvlIntervalTree::AvlIntervalTreeNode::ClauseBoundsAndIndices::insertClause(std::size_t clauseIndex, long literalBound)
-{
-	literalBounds.emplace_back(literalBound);
-	clauseIndices.emplace_back(clauseIndex);
-	if (sortedAccessKeys.empty())
+	const long clauseLiteralsMidpoint = determineLiteralBoundsMidPoint(clause);
+	auto newTreeNode = std::make_shared<AvlIntervalTreeNode>(clauseLiteralsMidpoint, nullptr);
+	newTreeNode->overlappingIntervalsLowerBoundsData.insertClause(clauseIndex, *clause.getSmallestLiteralOfClause());
+	newTreeNode->overlappingIntervalsUpperBoundsData.insertClause(clauseIndex, *clause.getLargestLiteralOfClause());
+
+	if (!avlTreeRoot)
 	{
-		sortedAccessKeys.emplace_back(0);
+		avlTreeRoot = newTreeNode;
 		return true;
 	}
 
-	const std::size_t insertPosition = literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending
-		? bSearchUtils::bSearchForIndexOfSmallestElementInSetOfElementsSmallerOrEqualThanXInAscendinglySortedContainer(literalBounds, sortedAccessKeys, literalBound)
-		: bSearchUtils::bSearchForIndexOfLargestElementInSetOfElementsInLargerOrEqualThanXInDescendinglySortedContainer(literalBounds, sortedAccessKeys, literalBound);
-	
-	sortedAccessKeys.emplace(sortedAccessKeys.begin() + insertPosition, literalBound);
+	AvlIntervalTreeNode::ptr traversalNode = avlTreeRoot;
+	while (traversalNode)
+	{
+		if (clauseLiteralsMidpoint >= traversalNode->getSmallestLiteralBoundOfOverlappedClauses() && clauseLiteralsMidpoint <= traversalNode->getLargestLiteralBoundOfOverlappedClauses())
+		{
+			traversalNode->overlappingIntervalsLowerBoundsData.insertClause(clauseIndex, *clause.getSmallestLiteralOfClause());
+			traversalNode->overlappingIntervalsUpperBoundsData.insertClause(clauseIndex, *clause.getLargestLiteralOfClause());
+			return true;
+		}
+
+		if (clauseLiteralsMidpoint < traversalNode->intervalMidPoint)
+		{
+			if (!traversalNode->left)
+			{
+				traversalNode->left = newTreeNode;
+				newTreeNode->parent = traversalNode;
+				traversalNode = nullptr;
+			}
+			else
+			{
+				traversalNode = traversalNode->left;
+			}
+		}
+		else
+		{
+			if (!traversalNode->right)
+			{
+				traversalNode->right = newTreeNode;
+				newTreeNode->parent = traversalNode;
+				traversalNode = nullptr;
+			}
+			else
+			{
+				traversalNode = traversalNode->right;
+			}
+		}
+	}
+
+	traversalNode = newTreeNode;
+	for (AvlIntervalTreeNode::ptr parentNode = traversalNode->parent; parentNode; parentNode = traversalNode->parent)
+	{
+		AvlIntervalTreeNode::ptr grandParentNode = parentNode->parent;
+		AvlIntervalTreeNode::ptr subTreeRootAfterRotation = nullptr;
+		if (traversalNode == parentNode->left)
+		{
+			if (parentNode->balancingFactor == AvlIntervalTreeNode::BalancingFactor::LeftHeavy)
+			{
+				if (traversalNode->balancingFactor == AvlIntervalTreeNode::BalancingFactor::RightHeavy)
+					subTreeRootAfterRotation = rotateLeftRight(parentNode, traversalNode);
+				else
+					subTreeRootAfterRotation = rotateRight(parentNode, traversalNode);
+			}
+			else
+			{
+				--parentNode->balancingFactor;
+				if (parentNode->balancingFactor == AvlIntervalTreeNode::BalancingFactor::Balanced)
+					break;
+
+				traversalNode = parentNode;
+				continue;
+			}
+		}
+		else
+		{
+			if (parentNode->balancingFactor == AvlIntervalTreeNode::BalancingFactor::RightHeavy)
+			{
+				if (traversalNode->balancingFactor == AvlIntervalTreeNode::BalancingFactor::LeftHeavy)
+					subTreeRootAfterRotation = rotateRightLeft(parentNode, traversalNode);
+				else
+					subTreeRootAfterRotation = rotateLeft(parentNode, traversalNode);
+			}
+			else
+			{
+				++parentNode->balancingFactor;
+				if (parentNode->balancingFactor == AvlIntervalTreeNode::BalancingFactor::Balanced)
+					break;
+
+				traversalNode = parentNode;
+				continue;
+			}
+		}
+
+		subTreeRootAfterRotation->parent = grandParentNode;
+		if (grandParentNode)
+		{
+			if (grandParentNode->left == parentNode)
+				grandParentNode->left = subTreeRootAfterRotation;
+			else
+				grandParentNode->right = subTreeRootAfterRotation;
+		}
+		else
+			avlTreeRoot = subTreeRootAfterRotation;
+
+		break;
+	}
 	return true;
 }
 
-std::optional<std::size_t> AvlIntervalTree::AvlIntervalTreeNode::ClauseBoundsAndIndices::getClauseIndex(std::size_t accessKey) const
-{
-	return accessKey < sortedAccessKeys.size() && sortedAccessKeys[accessKey] < clauseIndices.size()
-		? std::make_optional(clauseIndices[sortedAccessKeys[accessKey]])
-		: std::nullopt;
-}
-
-std::optional<long> AvlIntervalTree::AvlIntervalTreeNode::ClauseBoundsAndIndices::getLiteralBound(std::size_t accessKey) const
-{
-	return accessKey < sortedAccessKeys.size() && sortedAccessKeys[accessKey] < literalBounds.size()
-		? std::make_optional(literalBounds[sortedAccessKeys[accessKey]])
-		: std::nullopt;
-}
-
-std::vector<std::size_t> AvlIntervalTree::AvlIntervalTreeNode::ClauseBoundsAndIndices::getIndicesOfClausesOverlappingLiteralBound(long literalBound) const
-{
-	const std::size_t searchStopIndex = literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending
-		? bSearchUtils::bSearchForIndexOfSmallestElementInSetOfElementsSmallerOrEqualThanXInAscendinglySortedContainer(literalBounds, sortedAccessKeys, literalBound)
-		: bSearchUtils::bSearchForIndexOfLargestElementInSetOfElementsInLargerOrEqualThanXInDescendinglySortedContainer(literalBounds, sortedAccessKeys, literalBound);
-
-	const std::size_t numOverlappingIntervalsStoredInCurrentNode = (literalBounds.size() - searchStopIndex) + 1;
-
-	std::vector<std::size_t> clauseIndices;
-	clauseIndices.reserve(numOverlappingIntervalsStoredInCurrentNode);
-	for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
-		clauseIndices[i] = clauseIndices[sortedAccessKeys[searchStopIndex + i]];
-
-	return clauseIndices;
-}
-
+// BEGIN NON-PUBLIC INTERFACE IMPLEMENTATION
 bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const std::vector<std::size_t>& clauseIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral)
 {
 	for (const std::size_t clauseIndex : clauseIndices)
@@ -91,9 +152,139 @@ bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefini
 			return false;
 
 		const std::vector<long>& clauseLiterals = referenceClause.value()->literals;
-		if (!bSearchUtils::bSearchInSortedContainer(clauseLiterals, std::nullopt, literal, bSearchUtils::SortOrder::Ascending))
+		if (!bSearchInSortedContainer(clauseLiterals, literal, bSearchUtils::SortOrder::Ascending))
 			continue;
 		aggregatorOfClauseIndicesContainingLiteral.emplace(clauseIndex);
 	}
 	return true;
+}
+
+long AvlIntervalTree::determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause& clause)
+{
+	const long smallestLiteralOfClause = clause.getSmallestLiteralOfClause().value();
+	const long largestLiteralOfClause = clause.getLargestLiteralOfClause().value();
+
+	return smallestLiteralOfClause + ((largestLiteralOfClause - smallestLiteralOfClause) / 2);
+}
+
+
+AvlIntervalTreeNode::ptr AvlIntervalTree::rotateLeft(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& rightChild)
+{
+	parentNode->right = rightChild->left;
+	if (rightChild->left)
+		rightChild->left->parent = parentNode;
+
+	parentNode->parent = rightChild;
+	rightChild->left = parentNode;
+
+	rightChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+
+	return rightChild;
+}
+
+AvlIntervalTreeNode::ptr AvlIntervalTree::rotateRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild)
+{
+	parentNode->left = leftChild->right;
+	if (leftChild->right)
+		leftChild->right->parent = parentNode;
+
+	parentNode->parent = leftChild;
+	leftChild->right = parentNode;
+
+	leftChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+
+	return leftChild;
+}
+
+AvlIntervalTreeNode::ptr AvlIntervalTree::rotateLeftRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild)
+{
+	AvlIntervalTreeNode::ptr nodeZ = leftChild->right;
+	const AvlIntervalTreeNode::ptr leftChildOfNodeZ = nodeZ->left;
+	const AvlIntervalTreeNode::ptr rightChildOfNodeZ = nodeZ->right;
+
+	nodeZ->left = leftChild;
+	nodeZ->right = parentNode;
+
+	leftChild->parent = nodeZ;
+	leftChild->right = leftChildOfNodeZ;
+	if (leftChildOfNodeZ)
+		leftChildOfNodeZ->parent = leftChild;
+
+	parentNode->parent = nodeZ;
+	parentNode->left = rightChildOfNodeZ;
+	if (rightChildOfNodeZ)
+		rightChildOfNodeZ->parent = parentNode;
+
+
+	if (nodeZ->balancingFactor == AvlIntervalTreeNode::BalancingFactor::Balanced)
+	{
+		parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+		leftChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	}
+	else if (nodeZ->balancingFactor == AvlIntervalTreeNode::BalancingFactor::LeftHeavy)
+	{
+		parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::RightHeavy;
+		leftChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	}
+	else
+	{
+		parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+		leftChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::LeftHeavy;
+	}
+	nodeZ->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	return nodeZ;
+}
+
+AvlIntervalTreeNode::ptr AvlIntervalTree::rotateRightLeft(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& rightChild)
+{
+	AvlIntervalTreeNode::ptr nodeZ = rightChild->left;
+	const AvlIntervalTreeNode::ptr leftChildOfNodeZ = nodeZ->left;
+	const AvlIntervalTreeNode::ptr rightChildOfNodeZ = nodeZ->right;
+
+	nodeZ->right = rightChild;
+	nodeZ->left = parentNode;
+
+	rightChild->parent = nodeZ;
+	rightChild->left = rightChildOfNodeZ;
+	if (rightChildOfNodeZ)
+		rightChildOfNodeZ->parent = rightChild;
+
+	parentNode->right = leftChildOfNodeZ;
+	if (leftChildOfNodeZ)
+		leftChildOfNodeZ->parent = parentNode;
+
+	parentNode->parent = nodeZ;
+
+	if (nodeZ->balancingFactor == AvlIntervalTreeNode::BalancingFactor::Balanced)
+	{
+		parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+		rightChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	}
+	else if (nodeZ->balancingFactor == AvlIntervalTreeNode::BalancingFactor::LeftHeavy)
+	{
+		rightChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::RightHeavy;
+		parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	}
+	else
+	{
+		parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::LeftHeavy;
+		rightChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	}
+	nodeZ->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
+	return nodeZ;
+}
+
+AvlIntervalTreeNode::ptr AvlIntervalTree::findInorderSuccessorOfNode(const AvlIntervalTreeNode::ptr& node)
+{
+	if (!node)
+		return node;
+
+	AvlIntervalTreeNode::ptr currProcessedNode = node;
+	while (currProcessedNode->left)
+	{
+		currProcessedNode = currProcessedNode->left;
+	}
+	return currProcessedNode;
 }

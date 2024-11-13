@@ -11,7 +11,7 @@ void ProblemDefinition::Clause::sortLiteralsAscendingly()
 
 bool ProblemDefinition::Clause::doesClauseContainLiteral(long literal) const
 {
-	return bSearchUtils::bSearchInSortedContainer<long>(literals, std::nullopt, literal, bSearchUtils::SortOrder::Ascending).has_value();
+	return bSearchUtils::bSearchInSortedContainer<long>(literals, literal, bSearchUtils::SortOrder::Ascending).has_value();
 }
 
 bool ProblemDefinition::Clause::isTautology() const

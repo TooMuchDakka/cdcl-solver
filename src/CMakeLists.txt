@@ -27,6 +27,21 @@ target_include_directories(DimacsParser
 )
 target_link_libraries(DimacsParser INTERFACE DimacsAbstractions)
 
+add_library(AvlIntervalTree "")
+target_sources(AvlIntervalTree
+	PRIVATE
+		${CMAKE_SOURCE_DIR}/include/optimizations/utils/avlIntervalTreeNode.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/avlIntervalTreeNode.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/avlIntervalTree.cpp
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include/optimizations/utils/avlIntervalTree.hpp
+)
+target_include_directories(AvlIntervalTree
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(AvlIntervalTree INTERFACE DimacsAbstractions)
+
 add_library(SetBlockedClauseElimination "")
 target_sources(SetBlockedClauseElimination
 	PRIVATE
@@ -36,8 +51,6 @@ target_sources(SetBlockedClauseElimination
 		
 		${CMAKE_SOURCE_DIR}/include/optimizations/utils/clauseCandidateSelector.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/clauseCandidateSelector.cpp
-		${CMAKE_SOURCE_DIR}/include/optimizations/utils/avlIntervalTree.hpp
-		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/avlIntervalTree.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/setBlockedClauseElimination/baseSetBlockedClauseEliminator.hpp
 )
@@ -45,7 +58,7 @@ target_include_directories(SetBlockedClauseElimination
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include
 )
-target_link_libraries(SetBlockedClauseElimination PRIVATE DimacsAbstractions)
+target_link_libraries(SetBlockedClauseElimination PRIVATE DimacsAbstractions AvlIntervalTree)
 
 if(BUILD_SOLVER_EXECUTABLE)
 	add_executable(SolverExecutable main.cpp)

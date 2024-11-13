@@ -3,6 +3,7 @@
 
 #include <unordered_set>
 #include <dimacs/problemDefinition.hpp>
+#include <optimizations/utils/avlIntervalTreeNode.hpp>
 
 // https://arxiv.org/ftp/arxiv/papers/1509/1509.05053.pdf
 // https://stackoverflow.com/questions/11360831/about-the-branchless-binary-search
@@ -13,48 +14,73 @@ namespace avl {
 		using ptr = std::shared_ptr<AvlIntervalTree>;
 
 		[[nodiscard]] std::unordered_set<std::size_t> determineIndicesOfClausesContainingLiteral(long literal) const;
-		[[maybe_unsed]] bool insertClause(std::size_t clauseIndex, const dimacs::ProblemDefinition::Clause& clause);
+		[[maybe_unused]] bool insertClause(std::size_t clauseIndex, const dimacs::ProblemDefinition::Clause& clause);
 	protected:
-		struct AvlIntervalTreeNode
-		{
-			using ptr = std::shared_ptr<AvlIntervalTreeNode>;
-			struct ClauseBoundsAndIndices
-			{
-				enum LiteralBoundsSortOrder
-				{
-					Ascending,
-					Descending
-				};
-
-				explicit ClauseBoundsAndIndices(LiteralBoundsSortOrder literalBoundsSortOrder)
-					: literalBoundsSortOrder(literalBoundsSortOrder) {}
-
-				LiteralBoundsSortOrder literalBoundsSortOrder;
-				std::vector<long> literalBounds;
-				std::vector<std::size_t> clauseIndices;
-				std::vector<std::size_t> sortedAccessKeys;
-
-				[[maybe_unused]] bool insertClause(std::size_t clauseIndex, long literalBound);
-				[[nodiscard]] std::optional<std::size_t> getClauseIndex(std::size_t accessKey) const;
-				[[nodiscard]] std::optional<long> getLiteralBound(std::size_t accessKey) const;
-				[[nodiscard]] std::vector<std::size_t> getIndicesOfClausesOverlappingLiteralBound(long literalBound) const;
-			};
-
-			explicit AvlIntervalTreeNode(long intervalMidPoint, AvlIntervalTreeNode::ptr parent)
-				: intervalMidPoint(intervalMidPoint), parent(std::move(parent)), left(nullptr), right(nullptr),
-					overlappingIntervalsLowerBoundsData(ClauseBoundsAndIndices(ClauseBoundsAndIndices::LiteralBoundsSortOrder::Ascending)),
-					overlappingIntervalsUpperBoundsData(ClauseBoundsAndIndices(ClauseBoundsAndIndices::LiteralBoundsSortOrder::Descending)) {}
-
-			long intervalMidPoint;
-			AvlIntervalTreeNode::ptr parent;
-			AvlIntervalTreeNode::ptr left;
-			AvlIntervalTreeNode::ptr right;
-			ClauseBoundsAndIndices overlappingIntervalsLowerBoundsData;
-			ClauseBoundsAndIndices overlappingIntervalsUpperBoundsData;
-		};
-		using AvlIntervalTreeNodePointer = std::shared_ptr<AvlIntervalTreeNode>;
-
 		[[maybe_unused]] static bool recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const std::vector<std::size_t>& clauseIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral);
+		[[nodiscard]] static long determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause& clause);
+
+		/*
+		 *			P
+		 *		X		Y
+		 *			T1		T2
+		 *
+		 *
+		 *			Y
+		 *		P		T2
+		 *	X		T1
+		 */
+		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateLeft(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& rightChild);
+
+		/*
+		 *			P
+		 *		X		Y
+		 *	T1		T2
+		 *
+		 *
+		 *			X
+		 *		T1		P
+		 *			T2		Y
+		 */
+		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild);
+
+		/*
+		 *			P
+		 *		X		Y
+		 *	t1		Z		t4
+		 *		t2		t3
+		 *
+		 *			P
+		 *		X		Z
+		 *	t1		t2		Y
+		 *				t3		t4
+		 *
+		 *				Z
+		 *			P			Y
+		 *		X		t2	t3		t4
+		 *	t1
+		 */
+		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateRightLeft(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& rightChild);
+
+		/*
+		 *			P
+		 *		X		Y
+		 *	t1		Z		t4
+		 *		t2		t3
+		 *
+		 *				P
+		 *			Z		Y
+		 *		X		t3		t4
+		 *	t1		t2
+		 *
+		 *
+		 *				Z
+		 *		X			P
+		 *	t1		t2	t3		Y
+		 *							t4
+		 *
+		 */
+		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateLeftRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild);
+		[[nodiscard]] static AvlIntervalTreeNode::ptr findInorderSuccessorOfNode(const AvlIntervalTreeNode::ptr& node);
 
 		dimacs::ProblemDefinition::ptr formula;
 		AvlIntervalTreeNode::ptr avlTreeRoot;
