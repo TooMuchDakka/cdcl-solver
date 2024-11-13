@@ -7,6 +7,6 @@ add_executable(
   ${CDCL_TEST_HEADERS}
 )
 # link the Google test infrastructure and a default main function to the test executable.
-target_link_libraries(cdclTests PRIVATE gmock gtest_main SetBlockedClauseElimination DimacsAbstractions DimacsParser)
+target_link_libraries(cdclTests PRIVATE gmock gtest_main SetBlockedClauseElimination DimacsAbstractions DimacsParser AvlIntervalTree)
 
 gtest_discover_tests(cdclTests)
