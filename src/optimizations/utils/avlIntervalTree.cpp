@@ -10,19 +10,17 @@ std::unordered_set<std::size_t> AvlIntervalTree::determineIndicesOfClausesContai
 	AvlIntervalTreeNode::ptr currNode = avlTreeRoot;
 	while (currNode)
 	{
-		if (currNode->intervalMidPoint <= literal)
+		if (literal <= currNode->intervalMidPoint)
 		{
-			const std::vector<std::size_t>& overlappingIndicesOfCurrNode = currNode->overlappingIntervalsLowerBoundsData.getIndicesOfClausesOverlappingLiteralBound(literal);
-			currNode = currNode->intervalMidPoint == literal ? nullptr : currNode->left;
-			if (!recordClausesContainingLiteral(*formula, literal, overlappingIndicesOfCurrNode, aggregateOfOVerlappingClauseIndices))
+			if (!recordClausesContainingLiteral(*formula, literal, currNode->overlappingIntervalsLowerBoundsData, aggregateOfOVerlappingClauseIndices))
 				return {};
+			currNode = literal == currNode->intervalMidPoint ? nullptr : currNode->left;
 		}
 		else
 		{
-			const std::vector<std::size_t>& overlappingIndicesOfCurrNode = currNode->overlappingIntervalsUpperBoundsData.getIndicesOfClausesOverlappingLiteralBound(literal);
-			currNode = currNode->right;
-			if (!recordClausesContainingLiteral(*formula, literal, overlappingIndicesOfCurrNode, aggregateOfOVerlappingClauseIndices))
+			if (!recordClausesContainingLiteral(*formula, literal, currNode->overlappingIntervalsUpperBoundsData, aggregateOfOVerlappingClauseIndices))
 				return {};
+			currNode = literal == currNode->intervalMidPoint ? nullptr : currNode->right;
 		}
 	}
 	return aggregateOfOVerlappingClauseIndices;
@@ -47,7 +45,7 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::Proble
 	AvlIntervalTreeNode::ptr traversalNode = avlTreeRoot;
 	while (traversalNode)
 	{
-		if (clauseLiteralsMidpoint >= traversalNode->getSmallestLiteralBoundOfOverlappedClauses() && clauseLiteralsMidpoint <= traversalNode->getLargestLiteralBoundOfOverlappedClauses())
+		if (clause.getSmallestLiteralOfClause().value() <= traversalNode->intervalMidPoint && traversalNode->intervalMidPoint <= clause.getLargestLiteralOfClause().value())
 		{
 			traversalNode->overlappingIntervalsLowerBoundsData.insertClause(clauseIndex, *clause.getSmallestLiteralOfClause());
 			traversalNode->overlappingIntervalsUpperBoundsData.insertClause(clauseIndex, *clause.getLargestLiteralOfClause());
@@ -143,10 +141,21 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::Proble
 }
 
 // BEGIN NON-PUBLIC INTERFACE IMPLEMENTATION
-bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const std::vector<std::size_t>& clauseIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral)
+bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const AvlIntervalTreeNode::ClauseBoundsAndIndices& clauseBoundsAndIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral)
 {
-	for (const std::size_t clauseIndex : clauseIndices)
+	const std::optional<std::size_t> stopIndexForClausesContainingBound = AvlIntervalTreeNode::ClauseBoundsAndIndices::getStopIndexForClausesOverlappingLiteral(clauseBoundsAndIndices.literalBounds, clauseBoundsAndIndices.literalBoundsSortOrder, literal);
+	if (!stopIndexForClausesContainingBound.has_value())
+		return true;
+
+	//if ((!stopIndexForClausesContainingBound && clauseBoundsAndIndices.literalBounds.size() > 1) || stopIndexForClausesContainingBound == clauseBoundsAndIndices.literalBounds.size())
+	//	return true;
+
+	//const std::size_t numOverlappingIntervalsStoredInCurrentNode = stopIndexForClausesContainingBound + 1;
+	const std::size_t numOverlappingIntervalsStoredInCurrentNode = std::min(clauseBoundsAndIndices.literalBounds.size(), *stopIndexForClausesContainingBound + 1);
+	for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
 	{
+		//const std::size_t clauseIndex = clauseBoundsAndIndices.clauseIndices.at(stopIndexForClausesContainingBound + i);
+		const std::size_t clauseIndex = clauseBoundsAndIndices.clauseIndices.at(i);
 		const std::optional<const dimacs::ProblemDefinition::Clause*> referenceClause = formula.getClauseByIndexInFormula(clauseIndex);
 		if (!referenceClause)
 			return false;
@@ -161,10 +170,10 @@ bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefini
 
 long AvlIntervalTree::determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause& clause)
 {
-	const long smallestLiteralOfClause = clause.getSmallestLiteralOfClause().value();
-	const long largestLiteralOfClause = clause.getLargestLiteralOfClause().value();
+	if (const long literalBoundsSum = clause.getLargestLiteralOfClause().value() + clause.getSmallestLiteralOfClause().value())
+		return static_cast<long>(std::round(literalBoundsSum / static_cast<double>(2)));
 
-	return smallestLiteralOfClause + ((largestLiteralOfClause - smallestLiteralOfClause) / 2);
+	return 0;
 }
 
 
@@ -287,4 +296,16 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::findInorderSuccessorOfNode(const AvlIn
 		currProcessedNode = currProcessedNode->left;
 	}
 	return currProcessedNode;
+}
+
+std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds> AvlIntervalTreeNode::removeClauseBoundsOverlappingLiteral(long literal)
+{
+	std::unordered_map<std::size_t, ClauseBounds> removedClauseBounds;
+	for (const ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex extractedLowerBoundData : overlappingIntervalsLowerBoundsData.removeClausesOverlappingLiteralBound(literal))
+		removedClauseBounds.emplace(extractedLowerBoundData.index, ClauseBounds(extractedLowerBoundData.bound, 0));
+
+	for (const ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex extractedUpperBoundData : overlappingIntervalsUpperBoundsData.removeClausesOverlappingLiteralBound(literal))
+		removedClauseBounds.at(extractedUpperBoundData.index).upperBound = extractedUpperBoundData.bound;
+
+	return removedClauseBounds;
 }

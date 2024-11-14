@@ -31,22 +31,74 @@ std::optional<long> AvlIntervalTreeNode::ClauseBoundsAndIndices::getLiteralBound
 	return accessKey < literalBounds.size() ? std::make_optional(literalBounds[accessKey]) : std::nullopt;
 }
 
+
+std::optional<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getStopIndexForClausesOverlappingLiteral(const std::vector<long>& literalBounds, LiteralBoundsSortOrder literalBoundsSortOrder, long literal)
+{
+	if (literalBounds.empty())
+		return std::nullopt;
+
+	std::size_t searchStopIndex = literalBounds.size() - 1;
+	if (literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending)
+	{
+		if (literal > literalBounds.back())
+			return  literalBounds.size() > 1 ? std::nullopt : std::make_optional(0);
+
+		if (literal < literalBounds.front())
+			return searchStopIndex;
+	}
+	else
+	{
+		if (literal < literalBounds.back())
+			return literalBounds.size() > 1 ? std::nullopt : std::make_optional(0);
+
+		if (literal > literalBounds.front())
+			return searchStopIndex;
+	}
+
+	for (std::size_t i = 0; i < literalBounds.size(); ++i)
+	{
+		if (literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending
+			? literalBounds.at(i) > literal
+			: literalBounds.at(i) < literal)
+			return i;
+	}
+	return searchStopIndex;
+}
+
 std::vector<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getIndicesOfClausesOverlappingLiteralBound(long literalBound) const
 {
-	const std::size_t searchStopIndex = literalBoundsSortOrder == Ascending
-		? bSearchUtils::bSearchForIndexOfSmallestElementInSetOfElementsSmallerOrEqualThanXInAscendinglySortedContainer(literalBounds, literalBound)
-		: bSearchUtils::bSearchForIndexOfLargestElementInSetOfElementsInLargerOrEqualThanXInDescendinglySortedContainer(literalBounds, literalBound);
-
-	const std::size_t numOverlappingIntervalsStoredInCurrentNode = literalBounds.size() - searchStopIndex;
-	if (!numOverlappingIntervalsStoredInCurrentNode)
+	const std::optional<std::size_t> searchStopIndex = getStopIndexForClausesOverlappingLiteral(literalBounds, literalBoundsSortOrder, literalBound);
+	if (!searchStopIndex.has_value())
 		return {};
 
+	/*if ((!searchStopIndex && literalBounds.size() > 1) || searchStopIndex == literalBounds.size())
+		return {};*/
+
+	const std::size_t numOverlappingIntervalsStoredInCurrentNode = std::min(literalBounds.size(), *searchStopIndex+ 1);
 	std::vector<std::size_t> indicesOfClausesOverlappingLiteral;
 	indicesOfClausesOverlappingLiteral.resize(numOverlappingIntervalsStoredInCurrentNode);
 
 	for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
-		indicesOfClausesOverlappingLiteral[i] = clauseIndices[searchStopIndex + i];
+		indicesOfClausesOverlappingLiteral[i] = clauseIndices[i];
 	return indicesOfClausesOverlappingLiteral;
+}
+
+std::vector<AvlIntervalTreeNode::ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex> AvlIntervalTreeNode::ClauseBoundsAndIndices::removeClausesOverlappingLiteralBound(long literalBound)
+{
+	const std::optional<std::size_t> searchStopIndex = getStopIndexForClausesOverlappingLiteral(literalBounds, literalBoundsSortOrder, literalBound);
+	if (!searchStopIndex.has_value())
+		return {};
+
+	const std::size_t numOverlappingIntervalsStoredInCurrentNode = std::min(literalBounds.size(), *searchStopIndex + 1);
+	std::vector<ExtractedClauseBoundAndIndex> extractedClauseBoundsAndIndices(numOverlappingIntervalsStoredInCurrentNode, ExtractedClauseBoundAndIndex(0,0));
+
+	for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
+	{
+		extractedClauseBoundsAndIndices[i].index = clauseIndices.at(i);
+		extractedClauseBoundsAndIndices[i].bound = literalBounds.at(i);
+	}
+	literalBounds.erase(literalBounds.begin(), std::next(literalBounds.begin() + numOverlappingIntervalsStoredInCurrentNode));
+	return extractedClauseBoundsAndIndices;
 }
 
 long AvlIntervalTreeNode::getSmallestLiteralBoundOfOverlappedClauses() const

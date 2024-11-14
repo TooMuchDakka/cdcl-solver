@@ -13,10 +13,13 @@ namespace avl {
 	public:
 		using ptr = std::shared_ptr<AvlIntervalTree>;
 
+		explicit AvlIntervalTree(dimacs::ProblemDefinition::ptr formula)
+			: formula(std::move(formula)) {}
+
 		[[nodiscard]] std::unordered_set<std::size_t> determineIndicesOfClausesContainingLiteral(long literal) const;
 		[[maybe_unused]] bool insertClause(std::size_t clauseIndex, const dimacs::ProblemDefinition::Clause& clause);
 	protected:
-		[[maybe_unused]] static bool recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const std::vector<std::size_t>& clauseIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral);
+		[[maybe_unused]] static bool recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const AvlIntervalTreeNode::ClauseBoundsAndIndices& clauseBoundsAndIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral);
 		[[nodiscard]] static long determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause& clause);
 
 		/*

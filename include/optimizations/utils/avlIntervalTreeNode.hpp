@@ -35,7 +35,27 @@ namespace avl {
 			[[maybe_unused]] bool insertClause(std::size_t clauseIndex, long literalBound);
 			[[nodiscard]] std::optional<std::size_t> getClauseIndex(std::size_t accessKey) const;
 			[[nodiscard]] std::optional<long> getLiteralBound(std::size_t accessKey) const;
+
+			/// The index of the first bound larger than the given literal (if sorted ascendingly) otherwise, the bound smaller than the given literal.
+			/// @param literalBounds The searched through literal bounds
+			/// @param literalBoundsSortOrder The sort order of the literals in the container
+			/// @param literalBound The literal for which overlaps shall be determined
+			///	@note The return value of 0 only indicates no overlap for a container with more than one element.
+			/// @return 
+			/// * No bound of the container overlapped the provided literal => 0
+			/// * All bounds overlapped => container.size()
+			/// * Else => [1, container.size())
+			[[nodiscard]] static std::optional<std::size_t> getStopIndexForClausesOverlappingLiteral(const std::vector<long>& literalBounds, LiteralBoundsSortOrder literalBoundsSortOrder, long literalBound);
 			[[nodiscard]] std::vector<std::size_t> getIndicesOfClausesOverlappingLiteralBound(long literalBound) const;
+
+			struct ExtractedClauseBoundAndIndex
+			{
+				std::size_t index;
+				long bound;
+				explicit  ExtractedClauseBoundAndIndex(std::size_t index, long bound)
+					: index(index), bound(bound) {}
+			};
+			[[nodiscard]] std::vector<ExtractedClauseBoundAndIndex> removeClausesOverlappingLiteralBound(long literal);
 		};
 
 		explicit AvlIntervalTreeNode(long intervalMidPoint, AvlIntervalTreeNode::ptr parent)
@@ -55,6 +75,17 @@ namespace avl {
 		[[nodiscard]] long getLargestLiteralBoundOfOverlappedClauses() const;
 		friend AvlIntervalTreeNode::BalancingFactor& operator++(AvlIntervalTreeNode::BalancingFactor& factor);
 		friend AvlIntervalTreeNode::BalancingFactor& operator--(AvlIntervalTreeNode::BalancingFactor& factor);
+
+		struct ClauseBounds
+		{
+			long lowerBound;
+			long upperBound;
+
+			explicit ClauseBounds(long lowerBound, long upperBound)
+				: lowerBound(lowerBound), upperBound(upperBound) {}
+		};
+
+		[[nodiscard]] std::unordered_map<std::size_t, ClauseBounds> removeClauseBoundsOverlappingLiteral(long literal);
 
 	};
 }
