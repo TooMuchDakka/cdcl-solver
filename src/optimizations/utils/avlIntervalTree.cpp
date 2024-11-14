@@ -143,19 +143,9 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::Proble
 // BEGIN NON-PUBLIC INTERFACE IMPLEMENTATION
 bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const AvlIntervalTreeNode::ClauseBoundsAndIndices& clauseBoundsAndIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral)
 {
-	const std::optional<std::size_t> stopIndexForClausesContainingBound = AvlIntervalTreeNode::ClauseBoundsAndIndices::getStopIndexForClausesOverlappingLiteral(clauseBoundsAndIndices.literalBounds, clauseBoundsAndIndices.literalBoundsSortOrder, literal);
-	if (!stopIndexForClausesContainingBound.has_value())
-		return true;
-
-	//if ((!stopIndexForClausesContainingBound && clauseBoundsAndIndices.literalBounds.size() > 1) || stopIndexForClausesContainingBound == clauseBoundsAndIndices.literalBounds.size())
-	//	return true;
-
-	//const std::size_t numOverlappingIntervalsStoredInCurrentNode = stopIndexForClausesContainingBound + 1;
-	const std::size_t numOverlappingIntervalsStoredInCurrentNode = std::min(clauseBoundsAndIndices.literalBounds.size(), *stopIndexForClausesContainingBound + 1);
-	for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
+	const std::vector<std::size_t>& overlappingClauseIndices = clauseBoundsAndIndices.getIndicesOfClausesOverlappingLiteralBound(literal);
+	for (const std::size_t clauseIndex : overlappingClauseIndices)
 	{
-		//const std::size_t clauseIndex = clauseBoundsAndIndices.clauseIndices.at(stopIndexForClausesContainingBound + i);
-		const std::size_t clauseIndex = clauseBoundsAndIndices.clauseIndices.at(i);
 		const std::optional<const dimacs::ProblemDefinition::Clause*> referenceClause = formula.getClauseByIndexInFormula(clauseIndex);
 		if (!referenceClause)
 			return false;
@@ -188,7 +178,7 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::rotateLeft(const AvlIntervalTreeNode::
 
 	rightChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
 	parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-
+	moveIntervalsOverlappingParentFromChildToParent(*parentNode, *rightChild);
 	return rightChild;
 }
 
@@ -203,7 +193,7 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::rotateRight(const AvlIntervalTreeNode:
 
 	leftChild->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
 	parentNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-
+	moveIntervalsOverlappingParentFromChildToParent(*parentNode, *leftChild);
 	return leftChild;
 }
 
@@ -218,14 +208,21 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::rotateLeftRight(const AvlIntervalTreeN
 
 	leftChild->parent = nodeZ;
 	leftChild->right = leftChildOfNodeZ;
+	moveIntervalsOverlappingParentFromChildToParent(*leftChild, *nodeZ);
 	if (leftChildOfNodeZ)
+	{
 		leftChildOfNodeZ->parent = leftChild;
+		moveIntervalsOverlappingParentFromChildToParent(*leftChildOfNodeZ, *parentNode);
+	}
 
 	parentNode->parent = nodeZ;
 	parentNode->left = rightChildOfNodeZ;
+	moveIntervalsOverlappingParentFromChildToParent(*parentNode, *nodeZ);
 	if (rightChildOfNodeZ)
+	{
 		rightChildOfNodeZ->parent = parentNode;
-
+		moveIntervalsOverlappingParentFromChildToParent(*rightChildOfNodeZ, *parentNode);
+	}
 
 	if (nodeZ->balancingFactor == AvlIntervalTreeNode::BalancingFactor::Balanced)
 	{
@@ -257,14 +254,22 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::rotateRightLeft(const AvlIntervalTreeN
 
 	rightChild->parent = nodeZ;
 	rightChild->left = rightChildOfNodeZ;
+	moveIntervalsOverlappingParentFromChildToParent(*rightChild, *nodeZ);
 	if (rightChildOfNodeZ)
+	{
 		rightChildOfNodeZ->parent = rightChild;
+		moveIntervalsOverlappingParentFromChildToParent(*rightChildOfNodeZ, *parentNode);
+	}
 
 	parentNode->right = leftChildOfNodeZ;
-	if (leftChildOfNodeZ)
-		leftChildOfNodeZ->parent = parentNode;
-
 	parentNode->parent = nodeZ;
+
+	moveIntervalsOverlappingParentFromChildToParent(*parentNode, *nodeZ);
+	if (leftChildOfNodeZ)
+	{
+		leftChildOfNodeZ->parent = parentNode;
+		moveIntervalsOverlappingParentFromChildToParent(*leftChildOfNodeZ, *parentNode);
+	}
 
 	if (nodeZ->balancingFactor == AvlIntervalTreeNode::BalancingFactor::Balanced)
 	{
@@ -298,14 +303,13 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::findInorderSuccessorOfNode(const AvlIn
 	return currProcessedNode;
 }
 
-std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds> AvlIntervalTreeNode::removeClauseBoundsOverlappingLiteral(long literal)
+// TODO: Remove empty nodes
+void AvlIntervalTree::moveIntervalsOverlappingParentFromChildToParent(AvlIntervalTreeNode& child, AvlIntervalTreeNode& parent)
 {
-	std::unordered_map<std::size_t, ClauseBounds> removedClauseBounds;
-	for (const ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex extractedLowerBoundData : overlappingIntervalsLowerBoundsData.removeClausesOverlappingLiteralBound(literal))
-		removedClauseBounds.emplace(extractedLowerBoundData.index, ClauseBounds(extractedLowerBoundData.bound, 0));
-
-	for (const ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex extractedUpperBoundData : overlappingIntervalsUpperBoundsData.removeClausesOverlappingLiteralBound(literal))
-		removedClauseBounds.at(extractedUpperBoundData.index).upperBound = extractedUpperBoundData.bound;
-
-	return removedClauseBounds;
+	const std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds>& overlappingClausesFromChild = child.removeClauseBoundsOverlappingLiteral(parent.intervalMidPoint);
+	for (const auto& [clauseIndex, clauseBounds] : overlappingClausesFromChild)
+	{
+		parent.overlappingIntervalsLowerBoundsData.insertClause(clauseIndex, clauseBounds.lowerBound);
+		parent.overlappingIntervalsUpperBoundsData.insertClause(clauseIndex, clauseBounds.upperBound);
+	}
 }

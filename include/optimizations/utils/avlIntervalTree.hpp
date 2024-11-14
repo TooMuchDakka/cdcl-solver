@@ -84,6 +84,7 @@ namespace avl {
 		 */
 		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateLeftRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild);
 		[[nodiscard]] static AvlIntervalTreeNode::ptr findInorderSuccessorOfNode(const AvlIntervalTreeNode::ptr& node);
+		static void moveIntervalsOverlappingParentFromChildToParent(AvlIntervalTreeNode& child, AvlIntervalTreeNode& parent);
 
 		dimacs::ProblemDefinition::ptr formula;
 		AvlIntervalTreeNode::ptr avlTreeRoot;

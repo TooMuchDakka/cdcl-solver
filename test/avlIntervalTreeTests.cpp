@@ -582,11 +582,11 @@ TEST_F(AvlIntervalTreeTests, DetermineIntersectingClausesInNodeAndSubnodes)
 
 	auto expectedLChildNode = std::make_shared<AvlIntervalTreeNode>(-6, expectedRootNode);
 	expectedLChildNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-	expectedLChildNode->overlappingIntervalsLowerBoundsData.clauseIndices = { 7 };
-	expectedLChildNode->overlappingIntervalsLowerBoundsData.literalBounds = { -6 };
+	expectedLChildNode->overlappingIntervalsLowerBoundsData.clauseIndices = { 5,3,7 };
+	expectedLChildNode->overlappingIntervalsLowerBoundsData.literalBounds = { -10,-6,-6 };
 
-	expectedLChildNode->overlappingIntervalsUpperBoundsData.clauseIndices = { 7 };
-	expectedLChildNode->overlappingIntervalsUpperBoundsData.literalBounds = { -5 };
+	expectedLChildNode->overlappingIntervalsUpperBoundsData.clauseIndices = { 3,7,5 };
+	expectedLChildNode->overlappingIntervalsUpperBoundsData.literalBounds = { -2,-5,-6 };
 
 	auto expectedRChildNode = std::make_shared<AvlIntervalTreeNode>(6, expectedRootNode);
 	expectedRChildNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
@@ -598,19 +598,19 @@ TEST_F(AvlIntervalTreeTests, DetermineIntersectingClausesInNodeAndSubnodes)
 
 	auto expectedLLChildNode = std::make_shared<AvlIntervalTreeNode>(-8, expectedLChildNode);
 	expectedLLChildNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-	expectedLLChildNode->overlappingIntervalsLowerBoundsData.clauseIndices = { 6,5 };
-	expectedLLChildNode->overlappingIntervalsLowerBoundsData.literalBounds = { -11,-10 };
+	expectedLLChildNode->overlappingIntervalsLowerBoundsData.clauseIndices = { 6 };
+	expectedLLChildNode->overlappingIntervalsLowerBoundsData.literalBounds = { -11 };
 
-	expectedLLChildNode->overlappingIntervalsUpperBoundsData.clauseIndices = { 5,6 };
-	expectedLLChildNode->overlappingIntervalsUpperBoundsData.literalBounds = { -6,-7 };
+	expectedLLChildNode->overlappingIntervalsUpperBoundsData.clauseIndices = { 6 };
+	expectedLLChildNode->overlappingIntervalsUpperBoundsData.literalBounds = { -7 };
 
 	auto expectedLRChildNode = std::make_shared<AvlIntervalTreeNode>(-4, expectedLChildNode);
 	expectedLRChildNode->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-	expectedLRChildNode->overlappingIntervalsLowerBoundsData.clauseIndices = { 3 };
-	expectedLRChildNode->overlappingIntervalsLowerBoundsData.literalBounds = { -6 };
+	expectedLRChildNode->overlappingIntervalsLowerBoundsData.clauseIndices = { };
+	expectedLRChildNode->overlappingIntervalsLowerBoundsData.literalBounds = { };
 
-	expectedLRChildNode->overlappingIntervalsUpperBoundsData.clauseIndices = { 3 };
-	expectedLRChildNode->overlappingIntervalsUpperBoundsData.literalBounds = { -2 };
+	expectedLRChildNode->overlappingIntervalsUpperBoundsData.clauseIndices = { };
+	expectedLRChildNode->overlappingIntervalsUpperBoundsData.literalBounds = { };
 
 	expectedRootNode->left = expectedLChildNode;
 	expectedRootNode->right = expectedRChildNode;

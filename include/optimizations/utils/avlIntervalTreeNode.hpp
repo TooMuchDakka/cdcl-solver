@@ -35,6 +35,7 @@ namespace avl {
 			[[maybe_unused]] bool insertClause(std::size_t clauseIndex, long literalBound);
 			[[nodiscard]] std::optional<std::size_t> getClauseIndex(std::size_t accessKey) const;
 			[[nodiscard]] std::optional<long> getLiteralBound(std::size_t accessKey) const;
+			[[nodiscard]] bool isEmpty() const noexcept { return literalBounds.empty(); }
 
 			/// The index of the first bound larger than the given literal (if sorted ascendingly) otherwise, the bound smaller than the given literal.
 			/// @param literalBounds The searched through literal bounds
@@ -86,6 +87,7 @@ namespace avl {
 		};
 
 		[[nodiscard]] std::unordered_map<std::size_t, ClauseBounds> removeClauseBoundsOverlappingLiteral(long literal);
+		[[nodiscard]] bool isEmpty() const noexcept { return overlappingIntervalsLowerBoundsData.isEmpty(); }
 
 	};
 }

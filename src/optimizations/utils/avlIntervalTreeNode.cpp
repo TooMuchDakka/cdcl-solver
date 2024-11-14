@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include <optimizations/utils/avlIntervalTreeNode.hpp>
 #include <optimizations/utils/binarySearchUtils.hpp>
 
@@ -37,32 +38,31 @@ std::optional<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getStopI
 	if (literalBounds.empty())
 		return std::nullopt;
 
-	std::size_t searchStopIndex = literalBounds.size() - 1;
+	const std::size_t numElementsToCheck = literalBounds.size();
+	std::size_t currIdx = numElementsToCheck - 1;
 	if (literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending)
 	{
-		if (literal > literalBounds.back())
-			return  literalBounds.size() > 1 ? std::nullopt : std::make_optional(0);
-
+		if (literal >= literalBounds.back())
+			return currIdx;
 		if (literal < literalBounds.front())
-			return searchStopIndex;
+			return std::nullopt;
+
+		for (std::size_t i = 0; i < numElementsToCheck; ++i)
+			if (literalBounds[i] > literal)
+				return i;
 	}
 	else
 	{
-		if (literal < literalBounds.back())
-			return literalBounds.size() > 1 ? std::nullopt : std::make_optional(0);
-
 		if (literal > literalBounds.front())
-			return searchStopIndex;
-	}
+			return std::nullopt;
+		if (literal <= literalBounds.back())
+			return currIdx;
 
-	for (std::size_t i = 0; i < literalBounds.size(); ++i)
-	{
-		if (literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending
-			? literalBounds.at(i) > literal
-			: literalBounds.at(i) < literal)
-			return i;
+		for (std::size_t i = 0; i < numElementsToCheck; ++i)
+			if (literalBounds[i] < literal)
+				return i;
 	}
-	return searchStopIndex;
+	return numElementsToCheck - 1;
 }
 
 std::vector<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getIndicesOfClausesOverlappingLiteralBound(long literalBound) const
@@ -71,34 +71,105 @@ std::vector<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getIndices
 	if (!searchStopIndex.has_value())
 		return {};
 
-	/*if ((!searchStopIndex && literalBounds.size() > 1) || searchStopIndex == literalBounds.size())
-		return {};*/
-
-	const std::size_t numOverlappingIntervalsStoredInCurrentNode = std::min(literalBounds.size(), *searchStopIndex+ 1);
 	std::vector<std::size_t> indicesOfClausesOverlappingLiteral;
-	indicesOfClausesOverlappingLiteral.resize(numOverlappingIntervalsStoredInCurrentNode);
+	if (literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending)
+	{
+		const std::size_t numOverlappingIntervalsStoredInCurrentNode = *searchStopIndex + 1;
+		indicesOfClausesOverlappingLiteral.resize(numOverlappingIntervalsStoredInCurrentNode);
 
-	for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
-		indicesOfClausesOverlappingLiteral[i] = clauseIndices[i];
+		for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
+			indicesOfClausesOverlappingLiteral[i] = clauseIndices[i];
+	}
+	else
+	{
+		const std::size_t numOverlappingIntervalsStoredInCurrentNode = *searchStopIndex + 1;
+		indicesOfClausesOverlappingLiteral.resize(numOverlappingIntervalsStoredInCurrentNode);
+
+		for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
+			indicesOfClausesOverlappingLiteral[i] = clauseIndices[i];
+	}
 	return indicesOfClausesOverlappingLiteral;
 }
 
 std::vector<AvlIntervalTreeNode::ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex> AvlIntervalTreeNode::ClauseBoundsAndIndices::removeClausesOverlappingLiteralBound(long literalBound)
 {
-	const std::optional<std::size_t> searchStopIndex = getStopIndexForClausesOverlappingLiteral(literalBounds, literalBoundsSortOrder, literalBound);
-	if (!searchStopIndex.has_value())
+	std::vector<ExtractedClauseBoundAndIndex> extractedClauseBoundsAndIndices;
+	if (literalBoundsSortOrder == LiteralBoundsSortOrder::Ascending)
+	{
+		if (literalBound < literalBounds.front())
+			return {};
+
+		for (std::size_t i = 0; i < literalBounds.size() && literalBounds[i] <= literalBound; ++i)
+			extractedClauseBoundsAndIndices.emplace_back(clauseIndices[i], literalBounds[i]);
+	}
+	else
+	{
+		if (literalBound > literalBounds.front())
+			return {};
+
+		for (std::size_t i = 0; i < literalBounds.size() && literalBounds[i] >= literalBound; ++i)
+			extractedClauseBoundsAndIndices.emplace_back(clauseIndices[i], literalBounds[i]);
+	}
+
+	if (extractedClauseBoundsAndIndices.empty())
 		return {};
 
-	const std::size_t numOverlappingIntervalsStoredInCurrentNode = std::min(literalBounds.size(), *searchStopIndex + 1);
-	std::vector<ExtractedClauseBoundAndIndex> extractedClauseBoundsAndIndices(numOverlappingIntervalsStoredInCurrentNode, ExtractedClauseBoundAndIndex(0,0));
-
-	for (std::size_t i = 0; i < numOverlappingIntervalsStoredInCurrentNode; ++i)
-	{
-		extractedClauseBoundsAndIndices[i].index = clauseIndices.at(i);
-		extractedClauseBoundsAndIndices[i].bound = literalBounds.at(i);
-	}
-	literalBounds.erase(literalBounds.begin(), std::next(literalBounds.begin() + numOverlappingIntervalsStoredInCurrentNode));
+	const std::size_t numElementsToRemove = extractedClauseBoundsAndIndices.size() - 1;
+	literalBounds.erase(literalBounds.begin(), std::next(literalBounds.begin() + numElementsToRemove));
+	clauseIndices.erase(clauseIndices.begin(), std::next(clauseIndices.begin() + numElementsToRemove));
 	return extractedClauseBoundsAndIndices;
+}
+
+std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds> AvlIntervalTreeNode::removeClauseBoundsOverlappingLiteral(long literal)
+{
+	if (overlappingIntervalsLowerBoundsData.isEmpty())
+		return {};
+
+	std::unordered_map<std::size_t, ClauseBounds> removedClauseBounds;
+	const bool targettingLowerBounds = literal < intervalMidPoint;
+	if (targettingLowerBounds)
+	{
+		for (const ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex extractedLowerBoundData : overlappingIntervalsLowerBoundsData.removeClausesOverlappingLiteralBound(literal))
+			removedClauseBounds.emplace(extractedLowerBoundData.index, ClauseBounds(extractedLowerBoundData.bound, 0));
+	}
+	else
+	{
+		for (const ClauseBoundsAndIndices::ExtractedClauseBoundAndIndex extractedUpperBoundData : overlappingIntervalsUpperBoundsData.removeClausesOverlappingLiteralBound(literal))
+			removedClauseBounds.emplace(extractedUpperBoundData.index, ClauseBounds(0,extractedUpperBoundData.bound));
+	}
+
+	const std::size_t numEntriesToRemoveInOtherNodeHalf = removedClauseBounds.size();
+	std::vector<std::size_t> indicesOfMatchingClauseInOtherHalf(numEntriesToRemoveInOtherNodeHalf, 0);
+	if (!numEntriesToRemoveInOtherNodeHalf)
+		return {};
+
+	AvlIntervalTreeNode::ClauseBoundsAndIndices& clauseBoundsAndIndicesOfOtherHalf = targettingLowerBounds
+		? overlappingIntervalsUpperBoundsData
+		: overlappingIntervalsLowerBoundsData;
+
+	auto clauseBoundsIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.literalBounds.begin();
+	auto clauseIndicesIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.clauseIndices.begin();
+
+	while (clauseBoundsIteratorForOtherHalf != clauseBoundsAndIndicesOfOtherHalf.literalBounds.end())
+	{
+		const std::size_t clauseIndex = *clauseIndicesIteratorForOtherHalf;
+		if (!removedClauseBounds.count(clauseIndex))
+		{
+			++clauseIndicesIteratorForOtherHalf;
+			++clauseBoundsIteratorForOtherHalf;
+			continue;
+		}
+			
+		if (targettingLowerBounds)
+			removedClauseBounds.at(clauseIndex).upperBound = *clauseBoundsIteratorForOtherHalf;
+		else
+			removedClauseBounds.at(clauseIndex).lowerBound = *clauseBoundsIteratorForOtherHalf;
+
+		clauseBoundsIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.literalBounds.erase(clauseBoundsIteratorForOtherHalf);
+		clauseIndicesIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.clauseIndices.erase(clauseIndicesIteratorForOtherHalf);
+	}
+
+	return removedClauseBounds;
 }
 
 long AvlIntervalTreeNode::getSmallestLiteralBoundOfOverlappedClauses() const

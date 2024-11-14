@@ -222,7 +222,7 @@ TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnUpperBo
 		ClauseIndexAndLiterals(0, {-4, 4}),
 	};
 	ASSERT_NO_FATAL_FAILURE(insertClauseIndicesAndLiteralsOrThrow(*avlIntervalTreeNode, toBeInsertedClauses));
-	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsUpperBoundsData, -1, {}));
+	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsUpperBoundsData, -1, { 0,1,2,3,4 }));
 }
 
 TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnUpperBoundsWithAllUpperBoundsBeingLarger)
@@ -236,7 +236,7 @@ TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnUpperBo
 		ClauseIndexAndLiterals(0, {-4, 4}),
 	};
 	ASSERT_NO_FATAL_FAILURE(insertClauseIndicesAndLiteralsOrThrow(*avlIntervalTreeNode, toBeInsertedClauses));
-	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsUpperBoundsData, 5, { 0,1,2,3,4 }));
+	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsUpperBoundsData, 5, { }));
 }
 
 TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnUpperBoundsWithOnlySomeOverlapping)
@@ -264,7 +264,7 @@ TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnLowerBo
 		ClauseIndexAndLiterals(0, {-4, 4}),
 	};
 	ASSERT_NO_FATAL_FAILURE(insertClauseIndicesAndLiteralsOrThrow(*avlIntervalTreeNode, toBeInsertedClauses));
-	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsLowerBoundsData, 1, {}));
+	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsLowerBoundsData, 1, {0,1,2,3,4}));
 }
 
 TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnLowerBoundsWithAllLowerBoundsBeingSmaller)
@@ -278,7 +278,7 @@ TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnLowerBo
 		ClauseIndexAndLiterals(0, {-4, 4}),
 	};
 	ASSERT_NO_FATAL_FAILURE(insertClauseIndicesAndLiteralsOrThrow(*avlIntervalTreeNode, toBeInsertedClauses));
-	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsLowerBoundsData, -5, {0,1,2,3,4}));
+	ASSERT_NO_FATAL_FAILURE(assertIndicesOfClausesPotentiallyOverlappingMatchInAnyOrder(avlIntervalTreeNode->overlappingIntervalsLowerBoundsData, -5, {}));
 }
 
 TEST_F(AvlIntervalTreeNodeTests, DetermineOverlappingClauseIndicesBasedOnLowerBoundsWithOnlySomeOverlapping)
