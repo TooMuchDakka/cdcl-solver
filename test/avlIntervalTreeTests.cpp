@@ -309,27 +309,27 @@ TEST_F(AvlIntervalTreeTests, RotateLeftRight)
 
 	auto expectedLeftChildOfRootAfterRotations = std::make_shared<AvlIntervalTreeNode>(expectedMidPointOfRightChildOfLeftChildOfLeftChildOfRootNodePriorToRotation, expectedRootAfterRotations);
 	expectedLeftChildOfRootAfterRotations->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-	expectedLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.clauseIndices = { 5,4 };
-	expectedLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.literalBounds = { -8,-6 };
+	expectedLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.clauseIndices = { 3,5,4,1 };
+	expectedLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.literalBounds = { -10,-8,-6,-5 };
 
-	expectedLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.clauseIndices = { 4,5 };
-	expectedLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.literalBounds = { -4,-5 };
+	expectedLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.clauseIndices = { 1,3,4,5 };
+	expectedLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.literalBounds = { -1,-4,-4,-5 };
 
 	auto expectedLeftChildOfLeftChildOfRootAfterRotations = std::make_shared<AvlIntervalTreeNode>(expectedMidPointOfLeftChildOfLeftChildOfRootNodePriorToRotation, expectedLeftChildOfRootAfterRotations);
 	expectedLeftChildOfLeftChildOfRootAfterRotations->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.clauseIndices = { 3 };
-	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.literalBounds = { -10 };
+	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.clauseIndices = { };
+	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.literalBounds = { };
 
-	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.clauseIndices = { 3 };
-	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.literalBounds = { -4 };
+	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.clauseIndices = { };
+	expectedLeftChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.literalBounds = { };
 
 	auto expectedRightChildOfLeftChildOfRootAfterRotations = std::make_shared<AvlIntervalTreeNode>(expectedMidPointOfLeftChildOfRootNodePriorToRotation, expectedLeftChildOfRootAfterRotations);
 	expectedRightChildOfLeftChildOfRootAfterRotations->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
-	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.clauseIndices = { 1 };
-	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.literalBounds = { -5 };
+	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.clauseIndices = { };
+	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsLowerBoundsData.literalBounds = { };
 
-	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.clauseIndices = { 1 };
-	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.literalBounds = { -1 };
+	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.clauseIndices = { };
+	expectedRightChildOfLeftChildOfRootAfterRotations->overlappingIntervalsUpperBoundsData.literalBounds = { };
 
 	auto expectedRightChildOfRootAfterRotations = std::make_shared<AvlIntervalTreeNode>(expectedMidPointOfRightChildOfRootNodePriorToRotation, expectedRootAfterRotations);
 	expectedRightChildOfRootAfterRotations->balancingFactor = AvlIntervalTreeNode::BalancingFactor::Balanced;
@@ -418,6 +418,7 @@ TEST_F(AvlIntervalTreeTests, RotateRightLeft)
 	ASSERT_NO_FATAL_FAILURE(assertAvlIntervalTreeNodesMatch(*expectedRootNodeAfterRotations, *actualRootNodeData));
 }
 
+// TODO: Fix tests failing due to merging of intervals during rebalancing not considered
 TEST_F(AvlIntervalTreeTests, MultipleRotations)
 {
 	auto avlIntervalTree = OpaqueAvlIntervalTree(nullptr);
@@ -550,7 +551,6 @@ TEST_F(AvlIntervalTreeTests, DetermineIntersectingClausesInNode)
 	ASSERT_NO_FATAL_FAILURE(assertClauseIndicesContainingLiteralMatch(avlIntervalTree, 2, { 0,1,2 }));
 }
 
-// TODO:
 TEST_F(AvlIntervalTreeTests, DetermineIntersectingClausesInNodeAndSubnodes)
 {
 	auto formula = std::make_shared<dimacs::ProblemDefinition>(11, 9);
@@ -628,3 +628,5 @@ TEST_F(AvlIntervalTreeTests, DetermineIntersectingClausesInNodeAndSubnodes)
 	// Match in only one node
 	ASSERT_NO_FATAL_FAILURE(assertClauseIndicesContainingLiteralMatch(avlIntervalTree, -10, { 5 }));
 }
+
+// TODO: Further tests for merging of intervals during rebalancing 
