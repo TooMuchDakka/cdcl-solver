@@ -5,6 +5,9 @@ using namespace avl;
 
 std::unordered_set<std::size_t> AvlIntervalTree::determineIndicesOfClausesContainingLiteral(long literal) const
 {
+	if (!literal)
+		return {};
+
 	std::unordered_set<std::size_t> aggregateOfOVerlappingClauseIndices;
 
 	AvlIntervalTreeNode::ptr currNode = avlTreeRoot;

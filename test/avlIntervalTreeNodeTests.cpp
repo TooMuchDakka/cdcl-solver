@@ -481,27 +481,27 @@ TEST_F(AvlIntervalTreeNodeTests, RemoveLiteralBoundsForLiteralInMiddleOfUpperBou
 TEST_F(AvlIntervalTreeNodeTests, RemoveLiteralFromLiteralBoundsContainingOnlyOneElement)
 {
 	auto avlIntervalTreeNode = std::make_shared<AvlIntervalTreeNode>(0, nullptr);
-	const std::vector toBeInsertedClauses = { ClauseIndexAndLiterals(0, {-1, 1}) };
+	const std::vector toBeInsertedClauses = { ClauseIndexAndLiterals(0, {-2, 2}) };
 	ASSERT_NO_FATAL_FAILURE(insertClauseIndicesAndLiteralsOrThrow(*avlIntervalTreeNode, toBeInsertedClauses));
 
-	constexpr long literalLargerThanStoredBound = 2;
+	constexpr long literalLargerThanStoredBound = 3;
 	std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds> expectedLookupOfRemovedClauseIndicesAndBounds = {};
 	std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds> actualLookupOfRemovedClauseIndicesAndBounds = avlIntervalTreeNode->removeClauseBoundsOverlappingLiteral(literalLargerThanStoredBound);
 	ASSERT_NO_FATAL_FAILURE(assertRemovedClauseIndicesAndBoundsMatchOrThrow(expectedLookupOfRemovedClauseIndicesAndBounds, actualLookupOfRemovedClauseIndicesAndBounds));
 
 	auto expectedLowerClauseBoundsAndIndices = AvlIntervalTreeNode::ClauseBoundsAndIndices(AvlIntervalTreeNode::ClauseBoundsAndIndices::LiteralBoundsSortOrder::Ascending);
 	expectedLowerClauseBoundsAndIndices.clauseIndices = { 0 };
-	expectedLowerClauseBoundsAndIndices.literalBounds = { -1 };
+	expectedLowerClauseBoundsAndIndices.literalBounds = { -2 };
 
 	auto expectedUpperClauseBoundsAndIndices = AvlIntervalTreeNode::ClauseBoundsAndIndices(AvlIntervalTreeNode::ClauseBoundsAndIndices::LiteralBoundsSortOrder::Descending);
 	expectedUpperClauseBoundsAndIndices.clauseIndices = { 0 };
-	expectedUpperClauseBoundsAndIndices.literalBounds = { 1 };
+	expectedUpperClauseBoundsAndIndices.literalBounds = { 2 };
 
 	ASSERT_NO_FATAL_FAILURE(assertClauseBoundsAndIndicesMatch(expectedLowerClauseBoundsAndIndices, avlIntervalTreeNode->overlappingIntervalsLowerBoundsData));
 	ASSERT_NO_FATAL_FAILURE(assertClauseBoundsAndIndicesMatch(expectedUpperClauseBoundsAndIndices, avlIntervalTreeNode->overlappingIntervalsUpperBoundsData));
 
-	constexpr long literalLargerThanStoredLowerBound = 0;
-	expectedLookupOfRemovedClauseIndicesAndBounds.emplace(0, AvlIntervalTreeNode::ClauseBounds(-1, 1));
+	constexpr long literalLargerThanStoredLowerBound = -1;
+	expectedLookupOfRemovedClauseIndicesAndBounds.emplace(0, AvlIntervalTreeNode::ClauseBounds(-2, 2));
 	actualLookupOfRemovedClauseIndicesAndBounds = avlIntervalTreeNode->removeClauseBoundsOverlappingLiteral(literalLargerThanStoredLowerBound);
 	ASSERT_NO_FATAL_FAILURE(assertRemovedClauseIndicesAndBoundsMatchOrThrow(expectedLookupOfRemovedClauseIndicesAndBounds, actualLookupOfRemovedClauseIndicesAndBounds));
 
@@ -514,7 +514,7 @@ TEST_F(AvlIntervalTreeNodeTests, RemoveLiteralFromLiteralBoundsContainingOnlyOne
 	ASSERT_NO_FATAL_FAILURE(assertClauseBoundsAndIndicesMatch(expectedLowerClauseBoundsAndIndices, avlIntervalTreeNode->overlappingIntervalsLowerBoundsData));
 	ASSERT_NO_FATAL_FAILURE(assertClauseBoundsAndIndicesMatch(expectedUpperClauseBoundsAndIndices, avlIntervalTreeNode->overlappingIntervalsUpperBoundsData));
 
-	constexpr long literalEqualToNoLongerStoredBound = -1;
+	constexpr long literalEqualToNoLongerStoredBound = -2;
 	expectedLookupOfRemovedClauseIndicesAndBounds.clear();
 
 	actualLookupOfRemovedClauseIndicesAndBounds = avlIntervalTreeNode->removeClauseBoundsOverlappingLiteral(literalEqualToNoLongerStoredBound);

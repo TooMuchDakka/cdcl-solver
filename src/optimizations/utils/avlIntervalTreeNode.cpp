@@ -35,7 +35,7 @@ std::optional<long> AvlIntervalTreeNode::ClauseBoundsAndIndices::getLiteralBound
 
 std::optional<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getStopIndexForClausesOverlappingLiteral(const std::vector<long>& literalBounds, LiteralBoundsSortOrder literalBoundsSortOrder, long literal)
 {
-	if (literalBounds.empty())
+	if (!literal || literalBounds.empty())
 		return std::nullopt;
 
 	const std::size_t numElementsToCheck = literalBounds.size();
@@ -122,7 +122,7 @@ std::vector<AvlIntervalTreeNode::ClauseBoundsAndIndices::ExtractedClauseBoundAnd
 
 std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds> AvlIntervalTreeNode::removeClauseBoundsOverlappingLiteral(long literal)
 {
-	if (overlappingIntervalsLowerBoundsData.isEmpty())
+	if (!literal || overlappingIntervalsLowerBoundsData.isEmpty())
 		return {};
 
 	std::unordered_map<std::size_t, ClauseBounds> removedClauseBounds;

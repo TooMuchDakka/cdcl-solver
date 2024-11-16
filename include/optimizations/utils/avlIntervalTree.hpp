@@ -8,6 +8,7 @@
 // https://arxiv.org/ftp/arxiv/papers/1509/1509.05053.pdf
 // https://stackoverflow.com/questions/11360831/about-the-branchless-binary-search
 // https://devblogs.microsoft.com/oldnewthing/20230522-00/?p=108226
+// https://www.cs.csub.edu/~msarr/visualizations/AVLtree.html
 namespace avl {
 	class AvlIntervalTree {
 	public:
