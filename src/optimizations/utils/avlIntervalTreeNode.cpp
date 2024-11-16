@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <unordered_set>
 #include <optimizations/utils/avlIntervalTreeNode.hpp>
 #include <optimizations/utils/binarySearchUtils.hpp>
 
@@ -143,32 +144,51 @@ std::unordered_map<std::size_t, AvlIntervalTreeNode::ClauseBounds> AvlIntervalTr
 	if (!numEntriesToRemoveInOtherNodeHalf)
 		return {};
 
+	std::unordered_set<std::size_t> toBeRemovedElementIndicesInOtherHalf;
+	toBeRemovedElementIndicesInOtherHalf.reserve(numEntriesToRemoveInOtherNodeHalf);
+
 	AvlIntervalTreeNode::ClauseBoundsAndIndices& clauseBoundsAndIndicesOfOtherHalf = targettingLowerBounds
 		? overlappingIntervalsUpperBoundsData
 		: overlappingIntervalsLowerBoundsData;
 
-	auto clauseBoundsIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.literalBounds.begin();
-	auto clauseIndicesIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.clauseIndices.begin();
+	std::vector<long>& toBeModifiedLiteralBounds = clauseBoundsAndIndicesOfOtherHalf.literalBounds;
+	std::vector<std::size_t>& toBeModifiedClauseIndices = clauseBoundsAndIndicesOfOtherHalf.clauseIndices;
 
-	while (clauseBoundsIteratorForOtherHalf != clauseBoundsAndIndicesOfOtherHalf.literalBounds.end())
+	const std::size_t numElementsToCheck = toBeModifiedLiteralBounds.size();
+	for (std::size_t i = 0; i < numElementsToCheck; ++i)
 	{
-		const std::size_t clauseIndex = *clauseIndicesIteratorForOtherHalf;
+		const std::size_t clauseIndex = toBeModifiedClauseIndices.at(i);
 		if (!removedClauseBounds.count(clauseIndex))
-		{
-			++clauseIndicesIteratorForOtherHalf;
-			++clauseBoundsIteratorForOtherHalf;
 			continue;
-		}
-			
-		if (targettingLowerBounds)
-			removedClauseBounds.at(clauseIndex).upperBound = *clauseBoundsIteratorForOtherHalf;
-		else
-			removedClauseBounds.at(clauseIndex).lowerBound = *clauseBoundsIteratorForOtherHalf;
 
-		clauseBoundsIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.literalBounds.erase(clauseBoundsIteratorForOtherHalf);
-		clauseIndicesIteratorForOtherHalf = clauseBoundsAndIndicesOfOtherHalf.clauseIndices.erase(clauseIndicesIteratorForOtherHalf);
+		toBeRemovedElementIndicesInOtherHalf.emplace(i);
+		if (targettingLowerBounds)
+			removedClauseBounds.at(clauseIndex).upperBound = toBeModifiedLiteralBounds.at(i);
+		else
+			removedClauseBounds.at(clauseIndex).lowerBound = toBeModifiedLiteralBounds.at(i);
 	}
 
+	toBeModifiedLiteralBounds.erase(
+		removeIndexesIf(
+			toBeModifiedLiteralBounds.begin(),
+			toBeModifiedLiteralBounds.end(),
+			[&toBeRemovedElementIndicesInOtherHalf](const std::size_t indexInContainer)
+			{
+				return toBeRemovedElementIndicesInOtherHalf.count(indexInContainer);
+			}),
+		toBeModifiedLiteralBounds.end()
+	);
+
+	toBeModifiedClauseIndices.erase(
+		removeIndexesIf(
+			toBeModifiedClauseIndices.begin(),
+			toBeModifiedClauseIndices.end(),
+			[&toBeRemovedElementIndicesInOtherHalf](const std::size_t indexInContainer)
+			{
+				return toBeRemovedElementIndicesInOtherHalf.count(indexInContainer);
+			}),
+		toBeModifiedClauseIndices.end()
+	);
 	return removedClauseBounds;
 }
 

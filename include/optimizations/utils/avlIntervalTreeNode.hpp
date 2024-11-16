@@ -88,7 +88,17 @@ namespace avl {
 
 		[[nodiscard]] std::unordered_map<std::size_t, ClauseBounds> removeClauseBoundsOverlappingLiteral(long literal);
 		[[nodiscard]] bool isEmpty() const noexcept { return overlappingIntervalsLowerBoundsData.isEmpty(); }
-
+	protected:
+		// Taken from: https://stackoverflow.com/a/59643357 
+		template<class ForwardIt, class UnaryPredicate>
+		ForwardIt removeIndexesIf(ForwardIt first, ForwardIt last, UnaryPredicate p)
+		{
+			ForwardIt dest = first;
+			for (ForwardIt i = first; i != last; ++i)
+				if (!p(std::distance(first, i)))
+					*dest++ = std::move(*i);
+			return dest;
+		}
 	};
 }
 
