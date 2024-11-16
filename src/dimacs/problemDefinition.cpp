@@ -48,6 +48,14 @@ std::optional<long> ProblemDefinition::Clause::getLargestLiteralOfClause() const
 	return literals.empty() ? std::nullopt : std::make_optional(literals.back());
 }
 
+long ProblemDefinition::Clause::determineLiteralMidpoint() const
+{
+	if (const long literalBoundsSum = getLargestLiteralOfClause().value() + getSmallestLiteralOfClause().value())
+		return static_cast<long>(std::round(literalBoundsSum / static_cast<double>(2)));
+
+	return 0;
+}
+
 bool ProblemDefinition::removeClause(std::size_t index)
 {
 	const Clause* accessedClause = getClauseByIndexInFormula(index);

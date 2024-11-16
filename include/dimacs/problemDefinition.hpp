@@ -43,6 +43,7 @@ namespace dimacs
 			[[nodiscard]] bool isTautology() const;
 			[[nodiscard]] std::optional<long> getSmallestLiteralOfClause() const;
 			[[nodiscard]] std::optional<long> getLargestLiteralOfClause() const;
+			[[nodiscard]] long determineLiteralMidpoint() const;
 
 			std::vector<long> literals;
 			bool satisified;

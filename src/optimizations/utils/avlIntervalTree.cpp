@@ -34,7 +34,7 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::Proble
 	if (clause.literals.empty())
 		return false;
 
-	const long clauseLiteralsMidpoint = determineLiteralBoundsMidPoint(clause);
+	const long clauseLiteralsMidpoint = clause.determineLiteralMidpoint();
 	auto newTreeNode = std::make_shared<AvlIntervalTreeNode>(clauseLiteralsMidpoint, nullptr);
 	newTreeNode->overlappingIntervalsLowerBoundsData.insertClause(clauseIndex, *clause.getSmallestLiteralOfClause());
 	newTreeNode->overlappingIntervalsUpperBoundsData.insertClause(clauseIndex, *clause.getLargestLiteralOfClause());
@@ -160,15 +160,6 @@ bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefini
 	}
 	return true;
 }
-
-long AvlIntervalTree::determineLiteralBoundsMidPoint(const dimacs::ProblemDefinition::Clause& clause)
-{
-	if (const long literalBoundsSum = clause.getLargestLiteralOfClause().value() + clause.getSmallestLiteralOfClause().value())
-		return static_cast<long>(std::round(literalBoundsSum / static_cast<double>(2)));
-
-	return 0;
-}
-
 
 AvlIntervalTreeNode::ptr AvlIntervalTree::rotateLeft(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& rightChild)
 {

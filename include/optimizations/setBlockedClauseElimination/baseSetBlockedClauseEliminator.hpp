@@ -1,6 +1,8 @@
 #ifndef BASE_SET_BLOCKED_CLAUSE_ELIMINATOR_HPP
 #define BASE_SET_BLOCKED_CLAUSE_ELIMINATOR_HPP
 
+#include <set>
+
 #include "dimacs/problemDefinition.hpp"
 #include "optimizations/setBlockedClauseElimination/baseBlockingSetCandidateGenerator.hpp"
 

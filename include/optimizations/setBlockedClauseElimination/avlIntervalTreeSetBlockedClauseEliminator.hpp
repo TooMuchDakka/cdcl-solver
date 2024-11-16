@@ -13,7 +13,7 @@ namespace setBlockedClauseElimination {
 		explicit AvlIntervalTreeSetBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
 			: BaseSetBlockedClauseEliminator(std::move(problemDefinition)) {}
 
-		void initializeAvlTree();
+		[[nodiscard]] bool initializeAvlTree();
 	protected:
 		avl::AvlIntervalTree::ptr avlIntervalTree;
 
