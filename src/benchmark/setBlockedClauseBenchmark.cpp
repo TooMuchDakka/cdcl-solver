@@ -447,7 +447,7 @@ int main(int argc, char* argv[])
 		{
 			remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
 			++percentThresholdReachedCounter;
-			std::cout << "Handled [" << std::to_string(percentThresholdReachedCounter * percentageThreshold) << "%] of all candidate clauses, current duration of blocked set check: " << std::to_string(setBlockedClauseCheckDuration.count()) << " current benchmark duration : " << std::to_string(totalBenchmarkExecutionTime.count()) + "ms\n";
+			std::cout << "Handled [" << std::to_string(percentThresholdReachedCounter * percentageThreshold) << "%] of all candidate clauses, current duration of blocked set check: " << std::to_string(setBlockedClauseCheckDuration.count()) << "ms | current benchmark duration : " << std::to_string(totalBenchmarkExecutionTime.count()) + "ms\n";
 		}
 	}
 	std::cout << "=== END - BLOCKING SET CANDIDATE SEARCH ===\n";
