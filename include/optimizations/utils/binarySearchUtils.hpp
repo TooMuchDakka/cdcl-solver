@@ -11,9 +11,6 @@ namespace bSearchUtils {
 	template<typename ElemType>
 	bool isElementOutsideOfRange(const std::vector<ElemType>& container, ElemType element, SortOrder sortOrderOfContainer)
 	{
-		if (container.empty())
-			return true;
-
 		return container.empty()
 			|| (sortOrderOfContainer == SortOrder::Descending && (container.front() < element || container.back() > element))
 				|| (sortOrderOfContainer == SortOrder::Ascending && (container.front() > element || container.back() < element));

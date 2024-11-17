@@ -1,4 +1,4 @@
-#include <optimizations/setBlockedClauseElimination/avlIntervalTreeSetBlockedClauseEliminator.hpp>
+#include "optimizations/setBlockedClauseElimination/avlIntervalTreeSetBlockedClauseEliminator.hpp"
 
 using namespace setBlockedClauseElimination;
 
@@ -21,12 +21,12 @@ bool AvlIntervalTreeSetBlockedClauseEliminator::initializeAvlTree() {
 			const dimacs::ProblemDefinition::Clause* lClause = problemDefinition->getClauseByIndexInFormula(lClauseIndex);
 			const dimacs::ProblemDefinition::Clause* rClause = problemDefinition->getClauseByIndexInFormula(rClauseIndex);
 
-			const long lClauseMidpoint = lClause->determineLiteralMidpoint();
-			const long rClauseMidpoint = rClause->determineLiteralMidpoint();
-			if (lClauseMidpoint == rClauseMidpoint)
-				return lClauseIndex < rClauseIndex;
+			const long lClauseBoundsDistance = determineClauseBoundsDistance(*lClause);
+			const long rClauseBoundsDistance = determineClauseBoundsDistance(*rClause);
 
-			return lClauseMidpoint < rClauseMidpoint;
+			if (lClauseBoundsDistance == rClauseBoundsDistance)
+				return lClauseIndex < rClauseIndex;
+			return lClauseBoundsDistance < rClauseBoundsDistance;
 		});
 
 	return std::all_of(
@@ -41,4 +41,11 @@ bool AvlIntervalTreeSetBlockedClauseEliminator::initializeAvlTree() {
 
 std::unordered_set<std::size_t> AvlIntervalTreeSetBlockedClauseEliminator::determineIndicesOfOverlappingClausesForLiteral(long literal) const {
 	return avlIntervalTree->determineIndicesOfClausesContainingLiteral(literal);
+}
+
+inline long AvlIntervalTreeSetBlockedClauseEliminator::determineClauseBoundsDistance(const dimacs::ProblemDefinition::Clause& clause) noexcept
+{
+	const long lowerBound = clause.getSmallestLiteralOfClause().value_or(0);
+	const long upperBound = clause.getLargestLiteralOfClause().value_or(0);
+	return upperBound - lowerBound;
 }
