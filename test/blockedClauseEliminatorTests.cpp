@@ -43,9 +43,10 @@ public:
 			problemDefinition->addClause(clauseIdx++, dimacs::ProblemDefinition::Clause(std::vector(literalsOfClause.begin(), literalsOfClause.end())));
 	}
 
-	static void initializeBlockedLiteralGeneratorInstance(BlockingLiteralGenerator& blockingLiteralGenerator, const std::initializer_list<long>& clauseLiterals, const dimacs::ProblemDefinition& problemDefinition)
+	static void initializeBlockedLiteralGeneratorInstance(BlockingLiteralGenerator::ptr& blockingLiteralGenerator, const std::initializer_list<long>& clauseLiterals, const dimacs::ProblemDefinition& problemDefinition)
 	{
-		ASSERT_NO_FATAL_FAILURE(blockingLiteralGenerator.init(clauseLiterals, problemDefinition.getLiteralOccurrenceLookup()));
+		blockingLiteralGenerator = BlockingLiteralGenerator::usingSequentialLiteralSelectionHeuristic();
+		ASSERT_NO_FATAL_FAILURE(blockingLiteralGenerator->init(clauseLiterals, problemDefinition.getLiteralOccurrenceLookup()));
 	}
 
 	static void initializeBlockedClauseEliminatorInstance(dimacs::ProblemDefinition::ptr problemDefinition, BlockedClauseEliminatorInstance& blockedClauseEliminatorInstance)
@@ -76,14 +77,14 @@ TYPED_TEST(BlockedClauseEliminatorTests, CheckingBlockingLiteralForNotExistingCl
 		{1,2,3}
 	}, problemDefinition));
 
-	auto blockedLiteralGeneratorInstance = BlockingLiteralGenerator::usingSequentialLiteralSelectionHeuristic();
+	BlockingLiteralGenerator::ptr blockedLiteralGeneratorInstance;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedLiteralGeneratorInstance(blockedLiteralGeneratorInstance, { 1,2,3 }, *problemDefinition));
 
 	BlockedClauseEliminatorInstance blockedClauseEliminator;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedClauseEliminatorInstance(problemDefinition, blockedClauseEliminator));
 
 	constexpr std::size_t indexOfClausesCheckedForBlockingLiteral = 3;
-	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, blockedLiteralGeneratorInstance, *blockedClauseEliminator, std::nullopt));
+	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, *blockedLiteralGeneratorInstance, *blockedClauseEliminator, std::nullopt));
 }
 
 TYPED_TEST(BlockedClauseEliminatorTests, NotAllClausesInResolutionEnvironmentTautologyFailsBlockedClauseConditionForChosenLiteral)
@@ -96,14 +97,14 @@ TYPED_TEST(BlockedClauseEliminatorTests, NotAllClausesInResolutionEnvironmentTau
 		{1,2,3}
 		}, problemDefinition));
 
-	auto blockedLiteralGeneratorInstance = BlockingLiteralGenerator::usingSequentialLiteralSelectionHeuristic();
+	BlockingLiteralGenerator::ptr blockedLiteralGeneratorInstance;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedLiteralGeneratorInstance(blockedLiteralGeneratorInstance, { 1,2,3 }, *problemDefinition));
 
 	BlockedClauseEliminatorInstance blockedClauseEliminator;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedClauseEliminatorInstance(problemDefinition, blockedClauseEliminator));
 
 	constexpr std::size_t indexOfClausesCheckedForBlockingLiteral = 2;
-	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, blockedLiteralGeneratorInstance, *blockedClauseEliminator, std::nullopt));
+	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, *blockedLiteralGeneratorInstance, *blockedClauseEliminator, std::nullopt));
 }
 
 TYPED_TEST(BlockedClauseEliminatorTests, AllClausesInResolutionEnvironmentTautologyFullfillsBlockedClauseConditionsForChosenLiteral)
@@ -116,14 +117,14 @@ TYPED_TEST(BlockedClauseEliminatorTests, AllClausesInResolutionEnvironmentTautol
 		{1,-2,3}
 	}, problemDefinition));
 
-	auto blockedLiteralGeneratorInstance = BlockingLiteralGenerator::usingSequentialLiteralSelectionHeuristic();
+	BlockingLiteralGenerator::ptr blockedLiteralGeneratorInstance;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedLiteralGeneratorInstance(blockedLiteralGeneratorInstance, { 1,-2,3 }, *problemDefinition));
 
 	BlockedClauseEliminatorInstance blockedClauseEliminator;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedClauseEliminatorInstance(problemDefinition, blockedClauseEliminator));
 
 	constexpr std::size_t indexOfClausesCheckedForBlockingLiteral = 2;
-	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, blockedLiteralGeneratorInstance, *blockedClauseEliminator, -2));
+	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, *blockedLiteralGeneratorInstance, *blockedClauseEliminator, -2));
 }
 
 TYPED_TEST(BlockedClauseEliminatorTests, AllClausesInResolutionEnvironmentTautologyFullfillsBlockedClauseConditionsForChosenLiteralNotFirstInCandidateSequence)
@@ -136,12 +137,12 @@ TYPED_TEST(BlockedClauseEliminatorTests, AllClausesInResolutionEnvironmentTautol
 		{1,-2,3}
 	}, problemDefinition));
 
-	auto blockedLiteralGeneratorInstance = BlockingLiteralGenerator::usingSequentialLiteralSelectionHeuristic();
+	BlockingLiteralGenerator::ptr blockedLiteralGeneratorInstance;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedLiteralGeneratorInstance(blockedLiteralGeneratorInstance, { -1,2,3 }, *problemDefinition));
 
 	BlockedClauseEliminatorInstance blockedClauseEliminator;
 	ASSERT_NO_FATAL_FAILURE(TestFixture::initializeBlockedClauseEliminatorInstance(problemDefinition, blockedClauseEliminator));
 
 	constexpr std::size_t indexOfClausesCheckedForBlockingLiteral = 1;
-	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, blockedLiteralGeneratorInstance, *blockedClauseEliminator, 2));
+	ASSERT_NO_FATAL_FAILURE(TestFixture::assertFoundBlockingLiteralMatches(indexOfClausesCheckedForBlockingLiteral, *blockedLiteralGeneratorInstance, *blockedClauseEliminator, 2));
 }

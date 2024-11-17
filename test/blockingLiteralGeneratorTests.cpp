@@ -46,8 +46,8 @@ TEST_F(BlockingLiteralGeneratorTests, SequentialCandidateSelectionHeuristic)
 	}, problemDefinition));
 
 	auto blockingLiteralGenerator = blockedClauseElimination::BlockingLiteralGenerator::usingSequentialLiteralSelectionHeuristic();
-	blockingLiteralGenerator.init({ -3,-2,1 }, problemDefinition->getLiteralOccurrenceLookup());
-	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSequenceMatches({ -3,-2,1 }, blockingLiteralGenerator));
+	blockingLiteralGenerator->init({ -3,-2,1 }, problemDefinition->getLiteralOccurrenceLookup());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSequenceMatches({ -3,-2,1 }, *blockingLiteralGenerator));
 }
 
 TEST_F(BlockingLiteralGeneratorTests, MinimalClauseOverlapCandidateSelectionHeuristic)
@@ -63,8 +63,8 @@ TEST_F(BlockingLiteralGeneratorTests, MinimalClauseOverlapCandidateSelectionHeur
 		}, problemDefinition));
 
 	auto blockingLiteralGenerator = blockedClauseElimination::BlockingLiteralGenerator::usingMinimumClauseOverlapForLiteralSelection();
-	blockingLiteralGenerator.init({ -3,-2,1,-5 }, problemDefinition->getLiteralOccurrenceLookup());
-	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSequenceMatches({ 1,-2,-5,-3 }, blockingLiteralGenerator));
+	blockingLiteralGenerator->init({ -3,-2,1,-5 }, problemDefinition->getLiteralOccurrenceLookup());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSequenceMatches({ 1,-2,-5,-3 }, *blockingLiteralGenerator));
 }
 
 TEST_F(BlockingLiteralGeneratorTests, MaximumlClauseOverlapCandidateSelectionHeuristic)
@@ -80,6 +80,6 @@ TEST_F(BlockingLiteralGeneratorTests, MaximumlClauseOverlapCandidateSelectionHeu
 		}, problemDefinition));
 
 	auto blockingLiteralGenerator = blockedClauseElimination::BlockingLiteralGenerator::usingMaximumClauseOverlapForLiteralSelection();
-	blockingLiteralGenerator.init({ -3,-2,1,-5 }, problemDefinition->getLiteralOccurrenceLookup());
-	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSequenceMatches({ -3,-2,-5,1 }, blockingLiteralGenerator));
+	blockingLiteralGenerator->init({ -3,-2,1,-5 }, problemDefinition->getLiteralOccurrenceLookup());
+	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSequenceMatches({ -3,-2,-5,1 }, *blockingLiteralGenerator));
 }

@@ -72,6 +72,9 @@ target_sources(BlockedClauseElimination
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.cpp
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/literalOccurrenceBlockedClauseEliminator.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/literalOccurrenceBlockedClauseEliminator.cpp
+
+		${CMAKE_SOURCE_DIR}/include/optimizations/utils/clauseCandidateSelector.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/utils/clauseCandidateSelector.cpp
 	PUBLIC
 		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/baseBlockedClauseEliminator.hpp
 )

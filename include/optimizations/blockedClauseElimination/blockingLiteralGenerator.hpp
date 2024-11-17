@@ -11,6 +11,7 @@ namespace blockedClauseElimination
 {
 	class BlockingLiteralGenerator {
 	public:
+		using ptr = std::unique_ptr<BlockingLiteralGenerator>;
 		enum BlockingLiteralSelectionHeuristic
 		{
 			Sequential,
@@ -30,24 +31,24 @@ namespace blockedClauseElimination
 			}
 		}
 
-		[[nodiscard]] static BlockingLiteralGenerator usingRandomLiteralSelectionHeuristic(unsigned int rngSeed)
+		[[nodiscard]] static BlockingLiteralGenerator::ptr usingRandomLiteralSelectionHeuristic(unsigned int rngSeed)
 		{
-			return { BlockingLiteralSelectionHeuristic::Random, rngSeed };
+			return std::make_unique<BlockingLiteralGenerator>(BlockingLiteralSelectionHeuristic::Random, rngSeed);
 		}
 
-		[[nodiscard]] static BlockingLiteralGenerator usingSequentialLiteralSelectionHeuristic()
+		[[nodiscard]] static BlockingLiteralGenerator::ptr usingSequentialLiteralSelectionHeuristic()
 		{
-			return { BlockingLiteralSelectionHeuristic::Sequential, std::nullopt };
+			return std::make_unique<BlockingLiteralGenerator>(BlockingLiteralSelectionHeuristic::Sequential, std::nullopt);
 		}
 
-		[[nodiscard]] static BlockingLiteralGenerator usingMinimumClauseOverlapForLiteralSelection()
+		[[nodiscard]] static BlockingLiteralGenerator::ptr usingMinimumClauseOverlapForLiteralSelection()
 		{
-			return { BlockingLiteralSelectionHeuristic::MinClauseOverlap, std::nullopt };
+			return std::make_unique<BlockingLiteralGenerator>(BlockingLiteralSelectionHeuristic::MinClauseOverlap, std::nullopt);
 		}
 
-		[[nodiscard]] static BlockingLiteralGenerator usingMaximumClauseOverlapForLiteralSelection()
+		[[nodiscard]] static BlockingLiteralGenerator::ptr usingMaximumClauseOverlapForLiteralSelection()
 		{
-			return { BlockingLiteralSelectionHeuristic::MaxClauseOverlap, std::nullopt };
+			return std::make_unique<BlockingLiteralGenerator>(BlockingLiteralSelectionHeuristic::MaxClauseOverlap, std::nullopt);
 		}
 
 		void init(std::vector<long> literals, const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup);
