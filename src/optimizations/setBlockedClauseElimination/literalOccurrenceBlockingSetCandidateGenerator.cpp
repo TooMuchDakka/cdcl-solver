@@ -95,7 +95,6 @@ void LiteralOccurrenceBlockingSetCandidateGenerator::init(const std::vector<long
 	lastGeneratedCandidate.clear();
 	requiredWrapAroundBeforeCandidateResize.clear();
 
-	assertThatClauseContainsAtleastTwoLiterals(clauseLiterals);
 	filterNoneOverlappingLiteralsFromClause(clauseLiterals, literalOccurrenceLookup);
 
 	if (clauseLiterals.empty() || candidateSizeRestriction.minAllowedSize == 0 || candidateSizeRestriction.minAllowedSize > clauseLiterals.size())

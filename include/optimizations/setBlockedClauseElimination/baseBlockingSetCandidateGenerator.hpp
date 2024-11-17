@@ -56,12 +56,6 @@ namespace setBlockedClauseElimination {
 		 * Due to our assumption that literals without overlap are not considered as candidates for the blocking set, the blocking set {1, -2, 3} would not be detected.
 		 *
 		 */
-
-		static void assertThatClauseContainsAtleastTwoLiterals(const std::vector<long>& clauseLiterals)
-		{
-			if (clauseLiterals.size() < 2)
-				throw std::invalid_argument("Blocking set candidate generator can only be used for clause with at least two literals");
-		}
 	};
 }
 
