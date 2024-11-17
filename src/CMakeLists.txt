@@ -62,6 +62,25 @@ target_include_directories(SetBlockedClauseElimination
 )
 target_link_libraries(SetBlockedClauseElimination PRIVATE DimacsAbstractions AvlIntervalTree)
 
+add_library(BlockedClauseElimination "")
+target_sources(BlockedClauseElimination
+	PRIVATE
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/blockingLiteralGenerator.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/blockingLiteralGenerator.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/baseBlockedClauseEliminator.cpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/avlIntervalTreeBlockedClauseEliminator.cpp
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/literalOccurrenceBlockedClauseEliminator.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/optimizations/blockedClauseElimination/literalOccurrenceBlockedClauseEliminator.cpp
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include/optimizations/blockedClauseElimination/baseBlockedClauseEliminator.hpp
+)
+target_include_directories(BlockedClauseElimination
+	PUBLIC
+		${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(BlockedClauseElimination PRIVATE DimacsAbstractions AvlIntervalTree)
+
 if(BUILD_SOLVER_EXECUTABLE)
 	add_executable(SolverExecutable main.cpp)
 	target_link_libraries(SolverExecutable PRIVATE DimacsParser SetBlockedClauseElimination)
