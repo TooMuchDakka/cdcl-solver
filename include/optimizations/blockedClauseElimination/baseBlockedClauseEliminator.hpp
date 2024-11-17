@@ -11,7 +11,7 @@ namespace blockedClauseElimination
 {
 	class BaseBlockedClauseEliminator {
 	public:
-		virtual ~BaseBlockedClauseEliminator() = 0;
+		virtual ~BaseBlockedClauseEliminator() = default;
 		BaseBlockedClauseEliminator(dimacs::ProblemDefinition::ptr problemDefinition)
 			: problemDefinition(std::move(problemDefinition)) {}
 
@@ -22,7 +22,7 @@ namespace blockedClauseElimination
 
 		[[nodiscard]] virtual std::unordered_set<std::size_t> determineIndicesOfOverlappingClausesForLiteral(long literal) const = 0;
 		[[nodiscard]] bool doesEveryClauseInResolutionEnvironmentFullfillLiteralBlockedCondition(const std::vector<long>& clauseLiterals, long potentiallyBlockingLiteral) const;
-		[[nodiscard]] static bool checkLiteralBlockedCondition(const std::unordered_set<long >& differenceSetBetweenBlockingLiteralAndClauseToCheck, long potentiallyBlockingLiteral, const std::vector<long>& literalOfClauseInResolutionEnvironment);
+		[[nodiscard]] static bool checkLiteralBlockedCondition(const std::unordered_set<long >& literalLookupToClauseToCheck, long potentiallyBlockingLiteral, const std::vector<long>& literalOfClauseInResolutionEnvironment);
 		[[nodiscard]] static std::unordered_set<long> constructDifferenceSetBetweenClauseAndPotentiallyBlockingLiteral(const std::vector<long>& clauseLiterals, long potentiallyBlockingLiteral);
 	};
 }
