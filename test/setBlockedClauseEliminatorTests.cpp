@@ -9,7 +9,7 @@ using namespace setBlockedClauseElimination;
 // Usage of static functions of test fixture class in test: https://google.github.io/googletest/advanced.html#typed-tests
 // Initialization of typed instance in test fixture: https://www.codingwiththomas.com/blog/typed-tests-for-interfaces-with-googletest
 
-using SetBlockedClauseEliminatorTypes = ::testing::Types<LiteralOccurrenceSetBlockedClauseEliminator, AvlIntervalTreeSetBlockedClauseEliminator>;
+using SetBlockedClauseEliminatorTypes = testing::Types<LiteralOccurrenceSetBlockedClauseEliminator, AvlIntervalTreeSetBlockedClauseEliminator>;
 using BaseSetBlockedClauseEliminatorInstance = std::shared_ptr<BaseSetBlockedClauseEliminator>;
 
 template<typename T>
