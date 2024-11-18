@@ -16,17 +16,13 @@ bool ProblemDefinition::Clause::doesClauseContainLiteral(long literal) const
 
 bool ProblemDefinition::Clause::isTautology() const
 {
-	if (literals.size() < 2)
-		return false;
-
-	std::unordered_set<long> processedLiteralsSet;
-	for (long literal : literals)
-	{
-		if (processedLiteralsSet.count(-literal))
-			return true;
-		processedLiteralsSet.emplace(literal);
-	}
-	return false;
+	return std::any_of(
+		literals.cbegin(),
+		literals.cend(),
+		[&](const long literal)
+		{
+			return bSearchUtils::bSearchInSortedContainer(literals, -literal, bSearchUtils::SortOrder::Ascending).has_value();
+		});
 }
 
 [[maybe_unused]] bool ProblemDefinition::addClause(std::size_t index, Clause clause)
