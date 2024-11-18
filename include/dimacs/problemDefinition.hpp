@@ -39,7 +39,7 @@ namespace dimacs
 			}
 
 			void sortLiteralsAscendingly();
-			[[nodiscard]] bool doesClauseContainLiteral(long literal) const;
+			[[nodiscard]] bool containsLiteral(long literal) const;
 			[[nodiscard]] bool isTautology() const;
 			[[nodiscard]] std::optional<long> getSmallestLiteralOfClause() const;
 			[[nodiscard]] std::optional<long> getLargestLiteralOfClause() const;

@@ -26,7 +26,7 @@ namespace bSearchUtils {
 		while (low <= high && high != SIZE_MAX)
 		{
 			const std::size_t mid = low + ((high - low) / 2);
-			const ElemType elementAtMidPosition = container.at(mid);;
+			const ElemType elementAtMidPosition = container.at(mid);
 			if (elementAtMidPosition == element)
 				return mid;
 			if (sortOrderOfContainer == SortOrder::Descending ? elementAtMidPosition > element : elementAtMidPosition < element)

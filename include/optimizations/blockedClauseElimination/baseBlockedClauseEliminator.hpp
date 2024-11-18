@@ -21,9 +21,8 @@ namespace blockedClauseElimination
 		dimacs::ProblemDefinition::ptr problemDefinition;
 
 		[[nodiscard]] virtual std::unordered_set<std::size_t> determineIndicesOfOverlappingClausesForLiteral(long literal) const = 0;
-		[[nodiscard]] bool doesEveryClauseInResolutionEnvironmentFullfillLiteralBlockedCondition(const std::vector<long>& clauseLiterals, long potentiallyBlockingLiteral) const;
-		[[nodiscard]] static bool checkLiteralBlockedCondition(const std::unordered_set<long >& literalLookupToClauseToCheck, long potentiallyBlockingLiteral, const std::vector<long>& literalOfClauseInResolutionEnvironment);
-		[[nodiscard]] static std::unordered_set<long> constructDifferenceSetBetweenClauseAndPotentiallyBlockingLiteral(const std::vector<long>& clauseLiterals, long potentiallyBlockingLiteral);
+		[[nodiscard]] bool doesEveryClauseInResolutionEnvironmentFullfillLiteralBlockedCondition(const dimacs::ProblemDefinition::Clause& clauseToCheck, long potentiallyBlockingLiteral) const;
+		[[nodiscard]] static bool checkLiteralBlockedCondition(const dimacs::ProblemDefinition::Clause& clauseToCheck, long potentiallyBlockingLiteral, const std::vector<long>& literalOfClauseInResolutionEnvironment);
 	};
 }
 

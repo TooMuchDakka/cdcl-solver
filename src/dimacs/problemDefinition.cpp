@@ -9,7 +9,7 @@ void ProblemDefinition::Clause::sortLiteralsAscendingly()
 	std::stable_sort(literals.begin(), literals.end(), std::less_equal<>());
 }
 
-bool ProblemDefinition::Clause::doesClauseContainLiteral(long literal) const
+bool ProblemDefinition::Clause::containsLiteral(long literal) const
 {
 	return bSearchUtils::bSearchInSortedContainer<long>(literals, literal, bSearchUtils::SortOrder::Ascending).has_value();
 }
