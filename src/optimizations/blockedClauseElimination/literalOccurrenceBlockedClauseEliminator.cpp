@@ -2,11 +2,8 @@
 
 using namespace blockedClauseElimination;
 
-std::unordered_set<std::size_t> LiteralOccurrenceBlockedClauseEliminator::determineIndicesOfOverlappingClausesForLiteral(long literal) const
+bool LiteralOccurrenceBlockedClauseEliminator::doesEveryClauseInResolutionEnvironmentFullfillLiteralBlockedCondition(const dimacs::ProblemDefinition::Clause& clauseToCheck, long potentiallyBlockingLiteral) const
 {
-	const std::optional<const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*> overlappingClausesForLiteral = problemDefinition->getLiteralOccurrenceLookup()[literal];
-	if (!overlappingClausesForLiteral.has_value() || !*overlappingClausesForLiteral)
-		return {};
-
-	return **overlappingClausesForLiteral;
+	const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* overlappingClausesForLiteral = problemDefinition->getLiteralOccurrenceLookup()[-potentiallyBlockingLiteral].value_or(nullptr);
+	return overlappingClausesForLiteral && doesEveryClauseInGenericResolutionEnvironmentContainerFullfillLiteralBlockedCondition(clauseToCheck, potentiallyBlockingLiteral, *overlappingClausesForLiteral);
 }

@@ -21,22 +21,6 @@ std::optional<long> BaseBlockedClauseEliminator::determineBlockingLiteralOfClaus
 	return std::nullopt;
 }
 
-bool BaseBlockedClauseEliminator::doesEveryClauseInResolutionEnvironmentFullfillLiteralBlockedCondition(const dimacs::ProblemDefinition::Clause& clauseToCheck, long potentiallyBlockingLiteral) const
-{
-	const std::unordered_set<std::size_t>& clausesContainingBlockingLiteral = determineIndicesOfOverlappingClausesForLiteral(-potentiallyBlockingLiteral);
-	if (clausesContainingBlockingLiteral.empty())
-		return false;
-
-	return std::all_of(
-		clausesContainingBlockingLiteral.cbegin(),
-		clausesContainingBlockingLiteral.cend(),
-		[&](const std::size_t clauseIndex)
-		{
-			const dimacs::ProblemDefinition::Clause* referencedClause = problemDefinition->getClauseByIndexInFormula(clauseIndex);
-			return referencedClause && checkLiteralBlockedCondition(clauseToCheck, potentiallyBlockingLiteral, referencedClause->literals);
-		});
-}
-
 bool BaseBlockedClauseEliminator::checkLiteralBlockedCondition(const dimacs::ProblemDefinition::Clause& clauseToCheck, long potentiallyBlockingLiteral, const std::vector<long>& literalOfClauseInResolutionEnvironment)
 {
 	// A clause C is blocked by a literal l iff for every C' with -l \in C': C \union C' \{-l} is a tautology

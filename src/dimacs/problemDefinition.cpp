@@ -11,12 +11,15 @@ void ProblemDefinition::Clause::sortLiteralsAscendingly()
 
 bool ProblemDefinition::Clause::containsLiteral(long literal) const
 {
-	return bSearchUtils::bSearchInSortedContainer<long>(literals, literal, bSearchUtils::SortOrder::Ascending).has_value();
+	return !literals.empty()
+		&& literal >= getSmallestLiteralOfClause().value()
+		&& literal <= getLargestLiteralOfClause().value()
+		&& bSearchUtils::bSearchInSortedContainer<long>(literals, literal, bSearchUtils::SortOrder::Ascending).has_value();
 }
 
 bool ProblemDefinition::Clause::isTautology() const
 {
-	return std::any_of(
+	return literals.size() > 1 && std::any_of(
 		literals.cbegin(),
 		literals.cend(),
 		[&](const long literal)

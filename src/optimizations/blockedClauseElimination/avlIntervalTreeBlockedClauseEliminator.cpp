@@ -39,8 +39,9 @@ bool AvlIntervalTreeBlockedClauseEliminator::initializeAvlTree() {
 		});
 }
 
-std::unordered_set<std::size_t> AvlIntervalTreeBlockedClauseEliminator::determineIndicesOfOverlappingClausesForLiteral(long literal) const {
-	return avlIntervalTree->determineIndicesOfClausesContainingLiteral(literal);
+bool AvlIntervalTreeBlockedClauseEliminator::doesEveryClauseInResolutionEnvironmentFullfillLiteralBlockedCondition(const dimacs::ProblemDefinition::Clause& clauseToCheck, long potentiallyBlockingLiteral) const
+{
+	return doesEveryClauseInGenericResolutionEnvironmentContainerFullfillLiteralBlockedCondition(clauseToCheck, potentiallyBlockingLiteral, avlIntervalTree->determineIndicesOfClausesContainingLiteral(-potentiallyBlockingLiteral));
 }
 
 inline long AvlIntervalTreeBlockedClauseEliminator::determineClauseBoundsDistance(const dimacs::ProblemDefinition::Clause& clause) noexcept

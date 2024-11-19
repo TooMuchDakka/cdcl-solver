@@ -11,7 +11,7 @@ namespace blockedClauseElimination {
 			: BaseBlockedClauseEliminator(std::move(problemDefinition)) {}
 
 	protected:
-		[[nodiscard]] std::unordered_set<std::size_t> determineIndicesOfOverlappingClausesForLiteral(long literal) const override;
+		[[nodiscard]] bool doesEveryClauseInResolutionEnvironmentFullfillLiteralBlockedCondition(const dimacs::ProblemDefinition::Clause& clauseToCheck, long potentiallyBlockingLiteral) const override;
 	};
 }
 
