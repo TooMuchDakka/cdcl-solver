@@ -76,5 +76,86 @@ namespace bSearchUtils {
 		}
 		return low;
 	}
+
+	//template<typename ElemType>
+	//std::size_t bSearchForIndexOfFirstElementSmallerThanXInAscendinglySortedContainer(const std::vector<ElemType>& container, ElemType element)
+	//{
+	//	if (container.empty())
+	//		return 0;
+
+	//	std::size_t low = 0;
+	//	std::size_t high = container.size() - 1;
+	//	while (low <= high && high != SIZE_MAX)
+	//	{
+	//		const std::size_t mid = low + ((high - low) / 2);
+	//		const ElemType elementAtMidPosition = container.at(mid);
+	//		if (element < elementAtMidPosition)
+	//			low = mid + 1;
+	//		else
+	//			high = mid - 1;
+	//	}
+	//	return low;
+	//}
+
+	//template<typename ElemType>
+	//std::size_t bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(const std::vector<ElemType>& container, ElemType element)
+	//{
+	//	if (container.empty())
+	//		return 0;
+
+	//	std::size_t low = 0;
+	//	std::size_t high = container.size() - 1;
+	//	while (low <= high && high != SIZE_MAX)
+	//	{
+	//		const std::size_t mid = low + ((high - low) / 2);
+	//		const ElemType elementAtMidPosition = container.at(mid);
+	//		if (element > elementAtMidPosition)
+	//			high = mid - 1;
+	//		else
+	//			low = mid + 1;
+	//	}
+	//	return low;
+	//}
+
+
+	template<typename ElemType>
+	std::size_t bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(const std::vector<ElemType>& container, ElemType element)
+	{
+		if (container.empty())
+			return 0;
+
+		std::size_t low = 0;
+		std::size_t high = container.size() - 1;
+		while (low <= high && high != SIZE_MAX)
+		{
+			const std::size_t mid = low + ((high - low) / 2);
+			const ElemType elementAtMidPosition = container.at(mid);
+			if (element >= elementAtMidPosition)
+				low = mid + 1;
+			else
+				high = mid - 1;
+		}
+		return low;
+	}
+
+	template<typename ElemType>
+	std::size_t bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(const std::vector<ElemType>& container, ElemType element)
+	{
+		if (container.empty())
+			return 0;
+
+		std::size_t low = 0;
+		std::size_t high = container.size() - 1;
+		while (low <= high && high != SIZE_MAX)
+		{
+			const std::size_t mid = low + ((high - low) / 2);
+			const ElemType elementAtMidPosition = container.at(mid);
+			if (element > elementAtMidPosition)
+				high = mid - 1;
+			else
+				low = mid + 1;
+		}
+		return low;
+	}
 }
 #endif

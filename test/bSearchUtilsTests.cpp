@@ -65,3 +65,70 @@ TEST_F(BSearchUtilsTests, SearchForElementInContainerContainingOneElementDescend
 TEST_F(BSearchUtilsTests, SearchForElementInEmptyContainerInDescendinglySortedContainer) {
 	ASSERT_NO_FATAL_FAILURE(assertBinarySearchResultMatchesExpectedOne({ }, -3, std::nullopt, bSearchUtils::SortOrder::Descending));
 }
+
+
+TEST_F(BSearchUtilsTests, SearchForFirstElementLargerThanXInAscendinglySortedContainer)
+{
+	const std::vector<long> containerToSearchThrough = { -3,-2,-2,-1,-1,1 };
+
+	constexpr std::size_t expectedIndexOfElementLargerThanLargestElementInContainer = 6;
+	constexpr std::size_t expectedIndexOfElementSmallerThanSmallestElementInContainer = 0;
+	constexpr std::size_t expectedIndexOfIntermediateElementEqualToElementInContainer = 5;
+	constexpr std::size_t expectedIndexOfIntermediateElementNotEqualToElementInContainer = 5;
+	constexpr std::size_t expectedIndexOfElementEqualToLowestBound = 1;
+	constexpr std::size_t expectedIndexOfElementEqualToLargestBound = 6;
+
+	std::size_t actualIndexOfElementLargerThanLargestElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfElementSmallerThanSmallestElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfIntermediateElementEqualToElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfIntermediateElementNotEqualToElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfElementEqualToLowestBound = SIZE_MAX;
+	std::size_t actualIndexOfElementEqualToLargestBound = SIZE_MAX;
+
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementSmallerThanSmallestElementInContainer = bSearchUtils::bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(containerToSearchThrough, static_cast<long>(-5)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementLargerThanLargestElementInContainer = bSearchUtils::bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(containerToSearchThrough, static_cast<long>(3)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfIntermediateElementEqualToElementInContainer = bSearchUtils::bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(containerToSearchThrough, static_cast<long>(-1)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfIntermediateElementNotEqualToElementInContainer = bSearchUtils::bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(containerToSearchThrough, static_cast<long>(0)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementEqualToLowestBound = bSearchUtils::bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(containerToSearchThrough, static_cast<long>(-3)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementEqualToLargestBound = bSearchUtils::bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(containerToSearchThrough, static_cast<long>(1)));
+
+	ASSERT_EQ(expectedIndexOfElementLargerThanLargestElementInContainer, actualIndexOfElementLargerThanLargestElementInContainer);
+	ASSERT_EQ(expectedIndexOfElementSmallerThanSmallestElementInContainer, actualIndexOfElementSmallerThanSmallestElementInContainer);
+	ASSERT_EQ(expectedIndexOfIntermediateElementEqualToElementInContainer, actualIndexOfIntermediateElementEqualToElementInContainer);
+	ASSERT_EQ(expectedIndexOfIntermediateElementNotEqualToElementInContainer, actualIndexOfIntermediateElementNotEqualToElementInContainer);
+	ASSERT_EQ(expectedIndexOfElementEqualToLowestBound, actualIndexOfElementEqualToLowestBound);
+	ASSERT_EQ(expectedIndexOfElementEqualToLargestBound, actualIndexOfElementEqualToLargestBound);
+}
+
+TEST_F(BSearchUtilsTests, SearchForFirstElementSmallerThanXInDescendinglySortedContainer)
+{
+	const std::vector<long> containerToSearchThrough = { 3,2,2,1,1,-1 };
+
+	constexpr std::size_t expectedIndexOfElementLargerThanLargestElementInContainer = 0;
+	constexpr std::size_t expectedIndexOfElementSmallerThanSmallestElementInContainer = 6;
+	constexpr std::size_t expectedIndexOfIntermediateElementEqualToElementInContainer = 5;
+	constexpr std::size_t expectedIndexOfIntermediateElementNotEqualToElementInContainer = 5;
+	constexpr std::size_t expectedIndexOfElementEqualToLowestBound = 6;
+	constexpr std::size_t expectedIndexOfElementEqualToLargestBound = 1;
+
+	std::size_t actualIndexOfElementLargerThanLargestElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfElementSmallerThanSmallestElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfIntermediateElementEqualToElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfIntermediateElementNotEqualToElementInContainer = SIZE_MAX;
+	std::size_t actualIndexOfElementEqualToLowestBound = SIZE_MAX;
+	std::size_t actualIndexOfElementEqualToLargestBound = SIZE_MAX;
+
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementLargerThanLargestElementInContainer = bSearchUtils::bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(containerToSearchThrough, static_cast<long>(5)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementSmallerThanSmallestElementInContainer = bSearchUtils::bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(containerToSearchThrough, static_cast<long>(-3)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfIntermediateElementEqualToElementInContainer = bSearchUtils::bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(containerToSearchThrough, static_cast<long>(1)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfIntermediateElementNotEqualToElementInContainer = bSearchUtils::bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(containerToSearchThrough, static_cast<long>(0)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementEqualToLowestBound = bSearchUtils::bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(containerToSearchThrough, static_cast<long>(-1)));
+	ASSERT_NO_FATAL_FAILURE(actualIndexOfElementEqualToLargestBound = bSearchUtils::bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(containerToSearchThrough, static_cast<long>(3)));
+
+	ASSERT_EQ(expectedIndexOfElementLargerThanLargestElementInContainer, actualIndexOfElementLargerThanLargestElementInContainer);
+	ASSERT_EQ(expectedIndexOfElementSmallerThanSmallestElementInContainer, actualIndexOfElementSmallerThanSmallestElementInContainer);
+	ASSERT_EQ(expectedIndexOfIntermediateElementEqualToElementInContainer, actualIndexOfIntermediateElementEqualToElementInContainer);
+	ASSERT_EQ(expectedIndexOfIntermediateElementNotEqualToElementInContainer, actualIndexOfIntermediateElementNotEqualToElementInContainer);
+	ASSERT_EQ(expectedIndexOfElementEqualToLowestBound, actualIndexOfElementEqualToLowestBound);
+	ASSERT_EQ(expectedIndexOfElementEqualToLargestBound, actualIndexOfElementEqualToLargestBound);
+}

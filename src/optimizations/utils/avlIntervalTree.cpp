@@ -1,5 +1,4 @@
 #include "optimizations/utils/avlIntervalTree.hpp"
-#include "optimizations/utils/binarySearchUtils.hpp"
 
 using namespace avl;
 
@@ -11,22 +10,21 @@ std::unordered_set<std::size_t> AvlIntervalTree::determineIndicesOfClausesContai
 	std::unordered_set<std::size_t> aggregateOfOVerlappingClauseIndices;
 
 	AvlIntervalTreeNode::ptr currNode = avlTreeRoot;
-	while (currNode)
+	bool errorDuringRecordingOfOverlappingClauses = false;
+	while (currNode && !errorDuringRecordingOfOverlappingClauses)
 	{
 		if (literal <= currNode->intervalMidPoint)
 		{
-			if (!recordClausesContainingLiteral(*formula, literal, currNode->overlappingIntervalsLowerBoundsData, aggregateOfOVerlappingClauseIndices))
-				return {};
+			errorDuringRecordingOfOverlappingClauses = !recordClausesContainingLiteral(*formula, literal, currNode->overlappingIntervalsLowerBoundsData, aggregateOfOVerlappingClauseIndices);
 			currNode = literal == currNode->intervalMidPoint ? nullptr : currNode->left;
 		}
 		else
 		{
-			if (!recordClausesContainingLiteral(*formula, literal, currNode->overlappingIntervalsUpperBoundsData, aggregateOfOVerlappingClauseIndices))
-				return {};
+			errorDuringRecordingOfOverlappingClauses = !recordClausesContainingLiteral(*formula, literal, currNode->overlappingIntervalsUpperBoundsData, aggregateOfOVerlappingClauseIndices);
 			currNode = literal == currNode->intervalMidPoint ? nullptr : currNode->right;
 		}
 	}
-	return aggregateOfOVerlappingClauseIndices;
+	return errorDuringRecordingOfOverlappingClauses ? std::unordered_set<std::size_t>() : aggregateOfOVerlappingClauseIndices;
 }
 
 bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::ProblemDefinition::Clause& clause)
@@ -149,14 +147,9 @@ bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefini
 	const std::vector<std::size_t>& overlappingClauseIndices = clauseBoundsAndIndices.getIndicesOfClausesOverlappingLiteralBound(literal);
 	for (const std::size_t clauseIndex : overlappingClauseIndices)
 	{
-		const std::optional<const dimacs::ProblemDefinition::Clause*> referenceClause = formula.getClauseByIndexInFormula(clauseIndex);
-		if (!referenceClause)
-			return false;
-
-		const std::vector<long>& clauseLiterals = referenceClause.value()->literals;
-		if (!bSearchInSortedContainer(clauseLiterals, literal, bSearchUtils::SortOrder::Ascending))
-			continue;
-		aggregatorOfClauseIndicesContainingLiteral.emplace(clauseIndex);
+		const dimacs::ProblemDefinition::Clause* referenceClause = formula.getClauseByIndexInFormula(clauseIndex);
+		if (referenceClause && referenceClause->containsLiteral(literal))
+			aggregatorOfClauseIndicesContainingLiteral.emplace(clauseIndex);
 	}
 	return true;
 }

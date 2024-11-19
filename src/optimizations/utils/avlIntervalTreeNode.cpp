@@ -48,22 +48,14 @@ std::optional<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getStopI
 		if (literal < literalBounds.front())
 			return std::nullopt;
 
-		for (std::size_t i = 0; i < numElementsToCheck; ++i)
-			if (literalBounds[i] > literal)
-				return i;
+		return bSearchUtils::bSearchForIndexOfLastElementLargerThanXInAscendinglySortedContainer(literalBounds, literal);
 	}
-	else
-	{
-		if (literal > literalBounds.front())
-			return std::nullopt;
-		if (literal <= literalBounds.back())
-			return currIdx;
 
-		for (std::size_t i = 0; i < numElementsToCheck; ++i)
-			if (literalBounds[i] < literal)
-				return i;
-	}
-	return numElementsToCheck - 1;
+	if (literal > literalBounds.front())
+		return std::nullopt;
+	if (literal <= literalBounds.back())
+		return currIdx;
+	return bSearchUtils::bSearchForIndexOfFirstElementSmallerThanXInDescendinglySortedContainer(literalBounds, literal);
 }
 
 std::vector<std::size_t> AvlIntervalTreeNode::ClauseBoundsAndIndices::getIndicesOfClausesOverlappingLiteralBound(long literalBound) const
