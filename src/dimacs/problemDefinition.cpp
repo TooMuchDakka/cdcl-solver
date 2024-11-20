@@ -47,7 +47,7 @@ std::optional<long> ProblemDefinition::Clause::getLargestLiteralOfClause() const
 	return literals.empty() ? std::nullopt : std::make_optional(literals.back());
 }
 
-long ProblemDefinition::Clause::determineLiteralMidpoint() const
+long ProblemDefinition::Clause::determineLiteralsMidpoint() const
 {
 	if (const long literalBoundsSum = getLargestLiteralOfClause().value() + getSmallestLiteralOfClause().value())
 		return static_cast<long>(std::round(literalBoundsSum / static_cast<double>(2)));

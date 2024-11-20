@@ -19,6 +19,7 @@ namespace avl {
 
 		[[nodiscard]] std::unordered_set<std::size_t> determineIndicesOfClausesContainingLiteral(long literal) const;
 		[[maybe_unused]] bool insertClause(std::size_t clauseIndex, const dimacs::ProblemDefinition::Clause& clause);
+		[[nodiscard]] static AvlIntervalTree::ptr createFromCnfFormula(const dimacs::ProblemDefinition::ptr& cnfFormula);
 	protected:
 		[[maybe_unused]] static bool recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const AvlIntervalTreeNode::ClauseBoundsAndIndices& clauseBoundsAndIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral);
 
@@ -84,7 +85,10 @@ namespace avl {
 		 */
 		[[maybe_unused]] static AvlIntervalTreeNode::ptr rotateLeftRight(const AvlIntervalTreeNode::ptr& parentNode, const AvlIntervalTreeNode::ptr& leftChild);
 		[[nodiscard]] static AvlIntervalTreeNode::ptr findInorderSuccessorOfNode(const AvlIntervalTreeNode::ptr& node);
+		[[nodiscard]] bool performDividingInsertOfClausesSortedAccordingToLiteralsMidpoint(const std::vector<std::size_t>& sortedClauseIndices);
+		[[nodiscard]] bool tryPerformInsertOfClauseFromSortedClauseIndexContainer(const std::vector<std::size_t>& sortedClauseIndices, std::size_t indexInSortedContainer);
 		static void moveIntervalsOverlappingParentFromChildToParent(AvlIntervalTreeNode& child, AvlIntervalTreeNode& parent);
+		
 
 		dimacs::ProblemDefinition::ptr formula;
 		AvlIntervalTreeNode::ptr avlTreeRoot;

@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 #include <ostream>
-#include <unordered_map>
 
 #include "literalOccurrenceLookup.hpp"
 
@@ -43,7 +43,7 @@ namespace dimacs
 			[[nodiscard]] bool isTautology() const;
 			[[nodiscard]] std::optional<long> getSmallestLiteralOfClause() const;
 			[[nodiscard]] std::optional<long> getLargestLiteralOfClause() const;
-			[[nodiscard]] long determineLiteralMidpoint() const;
+			[[nodiscard]] long determineLiteralsMidpoint() const;
 
 			std::vector<long> literals;
 			bool satisified;
@@ -164,7 +164,7 @@ namespace dimacs
 		std::vector<PastAssignment> pastAssignments;
 	};
 
-	inline std::ostream& operator<<(std::ostream& os, const dimacs::ProblemDefinition::Clause& clause)
+	inline std::ostream& operator<<(std::ostream& os, const ProblemDefinition::Clause& clause)
 	{
 		if (clause.literals.empty())
 			return os;

@@ -32,7 +32,7 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::Proble
 	if (clause.literals.empty())
 		return false;
 
-	const long clauseLiteralsMidpoint = clause.determineLiteralMidpoint();
+	const long clauseLiteralsMidpoint = clause.determineLiteralsMidpoint();
 	auto newTreeNode = std::make_shared<AvlIntervalTreeNode>(clauseLiteralsMidpoint, nullptr);
 	newTreeNode->overlappingIntervalsLowerBoundsData.insertClause(clauseIndex, *clause.getSmallestLiteralOfClause());
 	newTreeNode->overlappingIntervalsUpperBoundsData.insertClause(clauseIndex, *clause.getLargestLiteralOfClause());
@@ -140,6 +140,33 @@ bool AvlIntervalTree::insertClause(std::size_t clauseIndex, const dimacs::Proble
 	}
 	return true;
 }
+
+AvlIntervalTree::ptr AvlIntervalTree::createFromCnfFormula(const dimacs::ProblemDefinition::ptr& cnfFormula)
+{
+	const std::size_t numClausesInFormula = cnfFormula->getNumClausesAfterOptimizations();
+	auto avlIntervalTreeInstance = std::make_shared<AvlIntervalTree>(cnfFormula);
+
+	std::vector<std::size_t> clauseIndicesOrderedByClauseMidpoint(numClausesInFormula, 0);
+	for (std::size_t i = 0; i < numClausesInFormula; ++i)
+		clauseIndicesOrderedByClauseMidpoint[i] = i;
+
+	std::sort(
+		clauseIndicesOrderedByClauseMidpoint.begin(),
+		clauseIndicesOrderedByClauseMidpoint.end(),
+		[&](const std::size_t lClauseIndex, const std::size_t rClauseIndex)
+		{
+			const dimacs::ProblemDefinition::Clause* lClause = cnfFormula->getClauseByIndexInFormula(lClauseIndex);
+			const dimacs::ProblemDefinition::Clause* rClause = cnfFormula->getClauseByIndexInFormula(rClauseIndex);
+
+			const long lClauseLiteralsMidpoint = lClause ? lClause->determineLiteralsMidpoint() : LONG_MAX;
+			const long rClauseLiteralsMidpoint = rClause ? rClause->determineLiteralsMidpoint() : LONG_MAX;
+			return lClauseLiteralsMidpoint == rClauseLiteralsMidpoint ? lClauseIndex < rClauseIndex : lClauseLiteralsMidpoint < rClauseLiteralsMidpoint;
+		});
+	if (!avlIntervalTreeInstance->performDividingInsertOfClausesSortedAccordingToLiteralsMidpoint(clauseIndicesOrderedByClauseMidpoint))
+		return nullptr;
+	return avlIntervalTreeInstance;
+}
+
 
 // BEGIN NON-PUBLIC INTERFACE IMPLEMENTATION
 bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefinition& formula, long literal, const AvlIntervalTreeNode::ClauseBoundsAndIndices& clauseBoundsAndIndices, std::unordered_set<std::size_t>& aggregatorOfClauseIndicesContainingLiteral)
@@ -289,6 +316,65 @@ AvlIntervalTreeNode::ptr AvlIntervalTree::findInorderSuccessorOfNode(const AvlIn
 	}
 	return currProcessedNode;
 }
+
+bool AvlIntervalTree::performDividingInsertOfClausesSortedAccordingToLiteralsMidpoint(const std::vector<std::size_t>& sortedClauseIndices)
+{
+	const std::size_t virtualClauseContainerPadding = sortedClauseIndices.size() % 2 == 0;
+	const std::size_t initialMidpointIndex = std::round((sortedClauseIndices.size() + virtualClauseContainerPadding) / 2);
+	if (!tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, initialMidpointIndex))
+		return false;
+
+	std::size_t lHalfMidpointIdx = std::round(initialMidpointIndex / 2);
+	std::size_t rHalfMidpointIdx = initialMidpointIndex + lHalfMidpointIdx;
+
+	bool creationSuccessful = true;
+	switch (sortedClauseIndices.size())
+	{
+		case 1:
+			break;
+		case 2:
+			return tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, 0);
+		case 3:
+			return tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, 0)
+				&& tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, 2);
+		default:
+			creationSuccessful = tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, lHalfMidpointIdx)
+				&& tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, rHalfMidpointIdx);
+			break;
+	}
+
+	constexpr std::size_t offsetStepsize = 2;
+	std::size_t offset = offsetStepsize;
+
+	lHalfMidpointIdx--;
+	rHalfMidpointIdx++;
+	const std::size_t numIterations = lHalfMidpointIdx;
+	for (std::size_t i = 0; creationSuccessful && i < numIterations; ++i) {
+		creationSuccessful &= tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, lHalfMidpointIdx)
+			&& tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, rHalfMidpointIdx)
+			&& tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, lHalfMidpointIdx + offset)
+			&& tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, rHalfMidpointIdx - offset);
+
+		lHalfMidpointIdx--;
+		rHalfMidpointIdx++;
+		offset += offsetStepsize;
+	}
+
+	return creationSuccessful
+		&& tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, lHalfMidpointIdx)
+		&& (!virtualClauseContainerPadding ? tryPerformInsertOfClauseFromSortedClauseIndexContainer(sortedClauseIndices, rHalfMidpointIdx) : true);
+}
+
+bool AvlIntervalTree::tryPerformInsertOfClauseFromSortedClauseIndexContainer(const std::vector<std::size_t>& sortedClauseIndices, std::size_t indexInSortedContainer)
+{
+	const std::size_t clauseIndex = sortedClauseIndices.at(indexInSortedContainer);
+	const dimacs::ProblemDefinition::Clause* accessedClauseForIndex = formula->getClauseByIndexInFormula(clauseIndex);
+	if (!accessedClauseForIndex)
+		return false;
+
+	return insertClause(clauseIndex, *accessedClauseForIndex);
+}
+
 
 // TODO: Remove empty nodes
 void AvlIntervalTree::moveIntervalsOverlappingParentFromChildToParent(AvlIntervalTreeNode& child, AvlIntervalTreeNode& parent)
