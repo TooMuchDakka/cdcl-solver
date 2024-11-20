@@ -333,14 +333,14 @@ int main(int argc, char* argv[])
 	std::cout << "Duration for generation of clause candidate generator duration: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
 	std::cout << "=== END - CLAUSE CANDIDATE GENERATOR INITIALIZATION ===\n\n";
 
-	std::cout << "=== START - BLOCKED CLAUSE CANDIDATE GENERATOR INITALIZATION ===\n";
+	std::cout << "=== START - BLOCKED CLAUSE LITERAL CANDIDATE GENERATOR INITALIZATION ===\n";
 	const TimePoint blockedClauseCandidateGeneratorInitStartTime = getCurrentTime();
 	blockedClauseElimination::BlockingLiteralGenerator::ptr blockingLiteralCandiateGenerator = initializeBlockedClauseCandidateGenerator(blockedClauseCandidateGeneratorConfiguration);
 	const TimePoint blockedClauseCandidateGeneratorInitEndTime = getCurrentTime();
 
 	const std::chrono::milliseconds blockedClauseCandidateGeneratorInitDuration = getDurationBetweenTimestamps(blockedClauseCandidateGeneratorInitEndTime, blockedClauseCandidateGeneratorInitStartTime);
 	std::cout << "Duration for generation of clause candidate generator duration: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
-	std::cout << "=== END - BLOCKED CLAUSE CANDIDATE GENERATOR INITALIZATION ===\n\n";
+	std::cout << "=== END - BLOCKED CLAUSE LITERAL CANDIDATE GENERATOR INITALIZATION ===\n\n";
 
 	std::cout << "=== START - BLOCKED CLAUSE ELIMINATOR INITIALIZATION ===\n";
 	const BlockedClauseEliminatorType blockedClauseEliminatorType = determineTypeOfBlockingSetEliminatorFromCommandLine(commandLineArgumentParser);
