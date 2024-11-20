@@ -19,33 +19,40 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 	case CandidateSelectionHeuristic::Random:
 		break;
 	case CandidateSelectionHeuristic::MinimumClauseOverlap:
-		std::sort(
-			candidateClauseIndexQueue.begin(),
-			candidateClauseIndexQueue.end(),
-			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
-			{
-				return determineOrderingOfElementAccordingToHeuristic(
-					lClauseIdx, determineNumberOfOverlapsBetweenClauses(lClauseIdx, problemDefinition).value_or(SIZE_MAX),
-					rClauseIdx, determineNumberOfOverlapsBetweenClauses(rClauseIdx, problemDefinition).value_or(SIZE_MAX),
-					false
-				);
-			}
-		);
-		break;
-	case CandidateSelectionHeuristic::MaximumClauseOverlap:
-		std::sort(
-			candidateClauseIndexQueue.begin(),
-			candidateClauseIndexQueue.end(),
-			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
-			{
-				return determineOrderingOfElementAccordingToHeuristic(
-					lClauseIdx, determineNumberOfOverlapsBetweenClauses(lClauseIdx, problemDefinition).value_or(0),
-					rClauseIdx, determineNumberOfOverlapsBetweenClauses(rClauseIdx, problemDefinition).value_or(0),
-					true
-				);
-			}
-		);
-		break;
+		{
+			const auto& overlapCachePerClause = buildOverlapCacheForClauses(problemDefinition, false);
+			std::sort(
+				candidateClauseIndexQueue.begin(),
+				candidateClauseIndexQueue.end(),
+				[&problemDefinition, &overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
+				{
+					return determineOrderingOfElementAccordingToHeuristic(
+						lClauseIdx, overlapCachePerClause.at(lClauseIdx),
+						rClauseIdx, overlapCachePerClause.at(rClauseIdx),
+						false
+					);
+				}
+			);
+			break;
+		}
+		
+		case CandidateSelectionHeuristic::MaximumClauseOverlap:
+		{
+			const auto& overlapCachePerClause = buildOverlapCacheForClauses(problemDefinition, true);
+			std::sort(
+				candidateClauseIndexQueue.begin(),
+				candidateClauseIndexQueue.end(),
+				[&problemDefinition, &overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
+				{
+					return determineOrderingOfElementAccordingToHeuristic(
+						lClauseIdx,  overlapCachePerClause.at(lClauseIdx),
+						rClauseIdx, overlapCachePerClause.at(rClauseIdx),
+						true
+					);
+				}
+			);
+			break;
+		}
 	case CandidateSelectionHeuristic::MinimumClauseLength:
 		std::sort(
 			candidateClauseIndexQueue.begin(),
@@ -124,3 +131,14 @@ std::optional<std::size_t> ClauseCandidateSelector::determineLengthOfClause(std:
 		return clauseLiterals->size();
 	return std::nullopt;
 }
+
+
+std::unordered_map<std::size_t, std::size_t> ClauseCandidateSelector::buildOverlapCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxOverlapAsSelectionHeuristic)
+{
+	std::unordered_map<std::size_t, std::size_t> overlapCache;
+	const std::size_t numClausesInFormula = problemDefinition.getNumClausesAfterOptimizations();
+	for (std::size_t i = 0; i < numClausesInFormula; ++i)
+		overlapCache.emplace(i, determineNumberOfOverlapsBetweenClauses(i, problemDefinition).value_or(usingMaxOverlapAsSelectionHeuristic ? 0 : SIZE_MAX));
+	return overlapCache;
+}
+

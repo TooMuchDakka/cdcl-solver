@@ -100,6 +100,7 @@ namespace clauseCandidateSelection {
 
 			return sortedDescendingly ? (lElementHeuristicValue > rElementHeuristicValue) : (lElementHeuristicValue < rElementHeuristicValue);
 		}
+		[[nodiscard]] static std::unordered_map<std::size_t, std::size_t> buildOverlapCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxOverlapAsSelectionHeuristic);
 	};
 }
 
