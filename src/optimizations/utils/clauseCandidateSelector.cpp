@@ -92,37 +92,18 @@ std::optional<std::size_t> ClauseCandidateSelector::determineNumberOfOverlapsBet
 	if (!dataOfAccessedClause)
 		return std::nullopt;
 
-	std::size_t overlapCount = 0;
-	const std::vector<long>& clauseLiterals = dataOfAccessedClause->literals;
 	const dimacs::LiteralOccurrenceLookup& literalOccurrenceLookup = problemDefinition.getLiteralOccurrenceLookup();
 	std::unordered_set<std::size_t> recordedOverlappingClauseIndices;
 
-	for (const long literal : clauseLiterals)
+	for (const long literal : dataOfAccessedClause->literals)
 	{
-		const std::optional<const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry*>& literalOccurrenceLookupEntry = literalOccurrenceLookup[-literal];
-		if (!literalOccurrenceLookupEntry.has_value())
-			return std::nullopt;
-
-		if (!*literalOccurrenceLookupEntry)
+		const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry* literalOccurrenceLookupEntry = literalOccurrenceLookup[-literal].value_or(nullptr);
+		if (!literalOccurrenceLookupEntry)
 			continue;
 
-		std::size_t notRecordedOverlapsOfClause = 0;
-
-		const dimacs::LiteralOccurrenceLookup::LiteralOccurrenceLookupEntry& overlappedClausesForLiteral = **literalOccurrenceLookupEntry;
-		for (std::size_t clauseIndex : overlappedClausesForLiteral)
-		{
-			notRecordedOverlapsOfClause += recordedOverlappingClauseIndices.count(clauseIndex) == 0;
-			recordedOverlappingClauseIndices.emplace(clauseIndex);
-		}
-
-		if (SIZE_MAX - overlapCount < notRecordedOverlapsOfClause)
-		{
-			overlapCount = SIZE_MAX;
-			break;
-		}
-		overlapCount += notRecordedOverlapsOfClause;
+		recordedOverlappingClauseIndices.insert(literalOccurrenceLookupEntry->cbegin(), literalOccurrenceLookupEntry->cend());
 	}
-	return overlapCount;
+	return recordedOverlappingClauseIndices.size();
 }
 
 std::optional<std::size_t> ClauseCandidateSelector::determineLengthOfClause(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition)
@@ -132,11 +113,12 @@ std::optional<std::size_t> ClauseCandidateSelector::determineLengthOfClause(std:
 	return std::nullopt;
 }
 
-
 std::unordered_map<std::size_t, std::size_t> ClauseCandidateSelector::buildOverlapCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxOverlapAsSelectionHeuristic)
 {
-	std::unordered_map<std::size_t, std::size_t> overlapCache;
 	const std::size_t numClausesInFormula = problemDefinition.getNumClausesAfterOptimizations();
+	std::unordered_map<std::size_t, std::size_t> overlapCache;
+	overlapCache.reserve(numClausesInFormula);
+
 	for (std::size_t i = 0; i < numClausesInFormula; ++i)
 		overlapCache.emplace(i, determineNumberOfOverlapsBetweenClauses(i, problemDefinition).value_or(usingMaxOverlapAsSelectionHeuristic ? 0 : SIZE_MAX));
 	return overlapCache;
