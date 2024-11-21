@@ -339,7 +339,7 @@ int main(int argc, char* argv[])
 	const TimePoint blockedClauseCandidateGeneratorInitEndTime = getCurrentTime();
 
 	const std::chrono::milliseconds blockedClauseCandidateGeneratorInitDuration = getDurationBetweenTimestamps(blockedClauseCandidateGeneratorInitEndTime, blockedClauseCandidateGeneratorInitStartTime);
-	std::cout << "Duration for generation of clause candidate generator duration: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
+	std::cout << "Duration for generation of clause candidate generator duration: " + std::to_string(blockedClauseCandidateGeneratorInitDuration.count()) + "ms\n";
 	std::cout << "=== END - BLOCKED CLAUSE LITERAL CANDIDATE GENERATOR INITALIZATION ===\n\n";
 
 	std::cout << "=== START - BLOCKED CLAUSE ELIMINATOR INITIALIZATION ===\n";
@@ -359,7 +359,7 @@ int main(int argc, char* argv[])
 	}
 	const TimePoint blockedClauseEliminatorInitEndTime = getCurrentTime();
 	const std::chrono::milliseconds blockedClauseEliminatorInitDuration = getDurationBetweenTimestamps(blockedClauseEliminatorInitEndTime, blockedClauseEliminatorInitStartTime);
-	std::cout << "Duration for initialization of the blocking set eliminator " + std::to_string(blockedClauseEliminatorInitDuration.count()) + "ms\n";
+	std::cout << "Duration for initialization of the blocked clause eliminator " + std::to_string(blockedClauseEliminatorInitDuration.count()) + "ms\n";
 	std::cout << "=== END - BLOCKED CLAUSE ELIMINATOR INITIALIZATION ===\n\n";
 
 	std::cout << "=== START - BLOCKED CLAUSE CANDIDATE SEARCH ===\n";
@@ -428,6 +428,7 @@ int main(int argc, char* argv[])
 	std::cout << std::to_string(identifiersOfBlockedClauses.size()) + " clauses out of " + std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) + " were blocked!\n\n";
 
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(dimacsFormulaParsingDuration.count()) + "ms\n";
+	std::cout << "Duration for initialization of candidate clause generator: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
 	std::cout << "Duration for initialization of blocked clause eliminator: " + std::to_string(blockedClauseCandidateGeneratorInitDuration.count()) + "ms\n";
 	std::cout << "BCE check duration: " + std::to_string(setBlockedClauseCheckDuration.count()) + "ms\n";
 	std::cout << "BCE result verification duration: " + std::to_string(resultVerificationDuration.count()) + "ms\n";
