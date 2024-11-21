@@ -15,16 +15,16 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 {
 	switch (candidateSelectionHeuristic)
 	{
-	case CandidateSelectionHeuristic::Sequential:
-	case CandidateSelectionHeuristic::Random:
-		break;
-	case CandidateSelectionHeuristic::MinimumClauseOverlap:
+		case CandidateSelectionHeuristic::Sequential:
+		case CandidateSelectionHeuristic::Random:
+			break;
+		case CandidateSelectionHeuristic::MinimumClauseOverlap:
 		{
 			const auto& overlapCachePerClause = buildOverlapCacheForClauses(problemDefinition, false);
 			std::sort(
 				candidateClauseIndexQueue.begin(),
 				candidateClauseIndexQueue.end(),
-				[&problemDefinition, &overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
+				[&overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 				{
 					return determineOrderingOfElementAccordingToHeuristic(
 						lClauseIdx, overlapCachePerClause.at(lClauseIdx),
@@ -35,14 +35,13 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 			);
 			break;
 		}
-		
 		case CandidateSelectionHeuristic::MaximumClauseOverlap:
 		{
 			const auto& overlapCachePerClause = buildOverlapCacheForClauses(problemDefinition, true);
 			std::sort(
 				candidateClauseIndexQueue.begin(),
 				candidateClauseIndexQueue.end(),
-				[&problemDefinition, &overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
+				[&overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 				{
 					return determineOrderingOfElementAccordingToHeuristic(
 						lClauseIdx,  overlapCachePerClause.at(lClauseIdx),
@@ -53,34 +52,40 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 			);
 			break;
 		}
-	case CandidateSelectionHeuristic::MinimumClauseLength:
-		std::sort(
-			candidateClauseIndexQueue.begin(),
-			candidateClauseIndexQueue.end(),
-			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
-			{
-				return determineOrderingOfElementAccordingToHeuristic(
-					lClauseIdx, determineLengthOfClause(lClauseIdx, problemDefinition).value_or(SIZE_MAX),
-					rClauseIdx, determineLengthOfClause(rClauseIdx, problemDefinition).value_or(SIZE_MAX),
-					false
-				);
-			}
-		);
-		break;
-	case CandidateSelectionHeuristic::MaximumClauseLength:
-		std::sort(
-			candidateClauseIndexQueue.begin(),
-			candidateClauseIndexQueue.end(),
-			[&problemDefinition](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
-			{
-				return determineOrderingOfElementAccordingToHeuristic(
-					lClauseIdx, determineLengthOfClause(lClauseIdx, problemDefinition).value_or(0),
-					rClauseIdx, determineLengthOfClause(rClauseIdx, problemDefinition).value_or(0),
-					true
-				);
-			}
-		);
-		break;
+		case CandidateSelectionHeuristic::MinimumClauseLength:
+		{
+			const auto& clauseLengthCachePerClause = buildLengthCacheForClauses(problemDefinition, false);
+			std::sort(
+				candidateClauseIndexQueue.begin(),
+				candidateClauseIndexQueue.end(),
+				[&clauseLengthCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
+				{
+					return determineOrderingOfElementAccordingToHeuristic(
+						lClauseIdx, clauseLengthCachePerClause.at(lClauseIdx),
+						rClauseIdx, clauseLengthCachePerClause.at(rClauseIdx),
+						false
+					);
+				}
+			);
+			break;
+		}
+		case CandidateSelectionHeuristic::MaximumClauseLength:
+		{
+			const auto& clauseLengthCachePerClause = buildLengthCacheForClauses(problemDefinition, true);
+			std::sort(
+				candidateClauseIndexQueue.begin(),
+				candidateClauseIndexQueue.end(),
+				[&clauseLengthCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
+				{
+					return determineOrderingOfElementAccordingToHeuristic(
+						lClauseIdx, clauseLengthCachePerClause.at(lClauseIdx),
+						rClauseIdx, clauseLengthCachePerClause.at(rClauseIdx),
+						true
+					);
+				}
+			);
+			break;
+		}
 	default:
 		throw std::invalid_argument("Clause candidate selector does not support the chosen heuristic: " + std::to_string(candidateSelectionHeuristic));
 	}
@@ -124,3 +129,17 @@ std::unordered_map<std::size_t, std::size_t> ClauseCandidateSelector::buildOverl
 	return overlapCache;
 }
 
+std::unordered_map<std::size_t, std::size_t> ClauseCandidateSelector::buildLengthCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxLengthAsSelectionHeuristic)
+{
+	const std::size_t numClausesInFormula = problemDefinition.getNumClausesAfterOptimizations();
+	std::unordered_map<std::size_t, std::size_t> overlapCache;
+	overlapCache.reserve(numClausesInFormula);
+
+	for (std::size_t i = 0; i < numClausesInFormula; ++i)
+	{
+		const dimacs::ProblemDefinition::Clause* accessedClauseForIndex = problemDefinition.getClauseByIndexInFormula(i);
+		const std::size_t clauseLength = accessedClauseForIndex ? accessedClauseForIndex->literals.size() : (usingMaxLengthAsSelectionHeuristic ? 0 : SIZE_MAX);
+		overlapCache.emplace(i, clauseLength);
+	}
+	return overlapCache;
+}
