@@ -71,7 +71,7 @@ namespace utils {
 						break;
 				}
 			}
-			os << "KEY: " + key + " | OPTIONAL: " + std::to_string(registration.isOptional) + " | TYPE: " + stringifiedArgumentType + "\n";
+			os << "KEY: " + key + " | OPTIONAL: " + std::to_string(registration.isOptional) + " | TYPE: " + stringifiedArgumentType + " | VALUE: " + registration.optionalArgumentValue.value_or("") + "\n" ;
 		}
 		return os;
 	}

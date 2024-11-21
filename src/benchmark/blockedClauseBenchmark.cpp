@@ -280,6 +280,10 @@ int main(int argc, char* argv[])
 	if (!cnfFileCommandRegistration.has_value() || !cnfFileCommandRegistration->wasFoundInCommandLineArgument || !cnfFileCommandRegistration->optionalArgumentValue.has_value())
 		std::cerr << "Required cnf file path was no defined" << "\n";
 
+	std::cout << "=== START - USER PROVIDED COMMAND LINE ARGUMENTS ===" << "\n";
+	std::cout << commandLineArgumentParser << "\n";
+	std::cout << "=== END - USER PROVIDED COMMAND LINE ARGUMENTS ===" << "\n";
+
 	//const std::string dimacsSatFormulaFile = argv[1];
 	const std::string dimacsSatFormulaFile = cnfFileCommandRegistration->optionalArgumentValue.value();
 
@@ -327,6 +331,17 @@ int main(int argc, char* argv[])
 	std::cout << "=== START - CLAUSE CANDIDATE GENERATION INITIALIZATION ===\n";
 	const TimePoint clauseCandidateGeneratorInitStartTime = getCurrentTime();
 	clauseCandidateSelection::ClauseCandidateSelector::ptr clauseCandidateSelector = initializeClauseCandidateSelector(*cnfFormula, clauseCandidateGeneratorConfiguration);
+	std::vector<std::size_t> indicesOfCandidateClauses(clauseCandidateGeneratorConfiguration.numCandidateClauses, 0);
+	for (std::size_t i = 0; i < indicesOfCandidateClauses.size(); ++i)
+	{
+		const std::optional<std::size_t> candidateClauseIndex = clauseCandidateSelector->selectNextCandidate();
+		if (!candidateClauseIndex.has_value())
+		{
+			std::cerr << "Failed to generate candiate #" << std::to_string(i) << "\n";
+			return EXIT_FAILURE;
+		}
+		indicesOfCandidateClauses[i] = *candidateClauseIndex;
+	}
 	const TimePoint clauseCandidateGeneratorInitEndTime = getCurrentTime();
 
 	const std::chrono::milliseconds clauseCandidateGeneratorInitDuration = getDurationBetweenTimestamps(clauseCandidateGeneratorInitEndTime, clauseCandidateGeneratorInitStartTime);
@@ -366,8 +381,6 @@ int main(int argc, char* argv[])
 	std::cout << "Search for blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor) << " blocked clauses were found...\n";
 	std::cout << "Search for blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) << " candidates where considered...\n";
 
-	const std::vector<std::size_t>& identifiersOfClausesToCheck = cnfFormula->getIdentifiersOfClauses();
-
 	constexpr std::size_t percentageThreshold = 5;
 	std::size_t numClausesToProcessUntilPercentageThresholdIsReached = clauseCandidateGeneratorConfiguration.numCandidateClauses / (100 / percentageThreshold);
 	if (numClausesToProcessUntilPercentageThresholdIsReached == 0)
@@ -383,7 +396,7 @@ int main(int argc, char* argv[])
 	std::chrono::milliseconds setBlockedClauseCheckDuration = std::chrono::milliseconds(0);
 
 	std::cout << "Progress will be logged every time " << std::to_string(numClausesToProcessUntilPercentageThresholdIsReached) << " candidates where processed...\n\n";
-	for (const std::size_t clauseIdentifier : identifiersOfClausesToCheck)
+	for (const std::size_t clauseIdentifier : indicesOfCandidateClauses)
 	{
 		if (identifiersOfBlockedClauses.size() >= clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor)
 		{
