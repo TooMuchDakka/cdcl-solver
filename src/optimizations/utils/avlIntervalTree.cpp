@@ -174,9 +174,9 @@ bool AvlIntervalTree::recordClausesContainingLiteral(const dimacs::ProblemDefini
 	const std::vector<std::size_t>& overlappingClauseIndices = clauseBoundsAndIndices.getIndicesOfClausesOverlappingLiteralBound(literal);
 	for (const std::size_t clauseIndex : overlappingClauseIndices)
 	{
-		const dimacs::ProblemDefinition::Clause* referenceClause = formula.getClauseByIndexInFormula(clauseIndex);
-		if (referenceClause && referenceClause->containsLiteral(literal))
+		if (const dimacs::ProblemDefinition::Clause* referenceClause = formula.getClauseByIndexInFormula(clauseIndex); referenceClause && referenceClause->containsLiteral(literal))
 			aggregatorOfClauseIndicesContainingLiteral.emplace(clauseIndex);
+			
 	}
 	return true;
 }
