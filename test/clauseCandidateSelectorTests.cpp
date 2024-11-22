@@ -33,7 +33,7 @@ TEST_F(ClauseCandidateSelectorTests, SequentialClauseSelectionHeuristic)
 	dimacs::ProblemDefinition problemDefinition(numVariablesInFormula, numClausesInFormula);
 	ASSERT_NO_FATAL_FAILURE(addClausesToFormula(problemDefinition, { {1,2,3}, {1,2}, {-2, -3}, {-1,2} }));
 
-	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingSequentialCandidateSelection(problemDefinition.getNumClausesAfterOptimizations());
+	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingSequentialCandidateSelection(problemDefinition, problemDefinition.getNumClausesAfterOptimizations(), std::nullopt);
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSeqeuenceMatches(*clauseCandidateSelector, { 0,1,2,3 }));
 }
 
@@ -45,7 +45,7 @@ TEST_F(ClauseCandidateSelectorTests, MinimumClauseOverlapCandidateSelectionHeuri
 	ASSERT_NO_FATAL_FAILURE(addClausesToFormula(problemDefinition, { {1,2,3}, {1,2}, {-2, -3}, {1,2,-3} }));
 	// 0: 2 | 1: 1 | 2: 3 | 3: 2
 
-	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMinimalClauseOverlapForCandidateSelection(problemDefinition);
+	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMinimalClauseOverlapForCandidateSelection(problemDefinition, std::nullopt);
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSeqeuenceMatches(*clauseCandidateSelector, { 1,0,3,2 }));
 }
 
@@ -57,7 +57,7 @@ TEST_F(ClauseCandidateSelectorTests, MaximumClauseOverlapCandidateSelectionHeuri
 	ASSERT_NO_FATAL_FAILURE(addClausesToFormula(problemDefinition, { {1,2}, {-1, -2, -3}, {-1,-2,3}, {1,2,-3}, {2, 3} }));
 	// 0: 2 | 1: 4 | 2: 4 | 3: 4 | 4: 3
 
-	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMaximalClauseOverlapForCandidateSelection(problemDefinition);
+	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMaximalClauseOverlapForCandidateSelection(problemDefinition, std::nullopt);
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSeqeuenceMatches(*clauseCandidateSelector, { 1, 2, 3, 4, 0 }));
 }
 
@@ -68,7 +68,7 @@ TEST_F(ClauseCandidateSelectorTests, MinimumClauseLengthCandidateSelectionHeuris
 	dimacs::ProblemDefinition problemDefinition(numVariablesInFormula, numClausesInFormula);
 	ASSERT_NO_FATAL_FAILURE(addClausesToFormula(problemDefinition, { {1,2,3}, {1,2}, {1,2,3,4}, { -2, -3 }, {1,2,-3} }));
 
-	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMinimumClauseLenghtForCandidateSelection(problemDefinition);
+	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMinimumClauseLenghtForCandidateSelection(problemDefinition, std::nullopt);
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSeqeuenceMatches(*clauseCandidateSelector, { 1,3,0,4,2 }));
 }
 
@@ -79,6 +79,6 @@ TEST_F(ClauseCandidateSelectorTests, MaximumClauseLengthCandidateSelectionHeuris
 	dimacs::ProblemDefinition problemDefinition(numVariablesInFormula, numClausesInFormula);
 	ASSERT_NO_FATAL_FAILURE(addClausesToFormula(problemDefinition, { {1,2,3}, {1,2}, {1,2,3,4}, { -2, -3 }, {1,2,-3} }));
 
-	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMaximumClauseLengthForCandidateSelection(problemDefinition);
+	auto clauseCandidateSelector = ClauseCandidateSelector::initUsingMaximumClauseLengthForCandidateSelection(problemDefinition, std::nullopt);
 	ASSERT_NO_FATAL_FAILURE(assertGeneratedCandidateSeqeuenceMatches(*clauseCandidateSelector, { 2,0,4,1,3 }));
 }

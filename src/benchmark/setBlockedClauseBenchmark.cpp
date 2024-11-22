@@ -13,6 +13,7 @@
 
 const std::string clauseSelectionHeuristicCommandLineKey = "-clauseSelectionHeuristic";
 const std::string clauseSelectionRngSeedCommandLineKey = "-clauseSelectionRngSeed";
+const std::string clauseSelectionMaxAllowedClauseSizeCommandLineKey = "-clauseSelectionMaxAllowedClauseLength";
 const std::string blockingSetLiteralCandidateSelectionHeuristicCommandLineKey = "-blockingSetClauseLiteralCandiateSelectionHeuristic";
 const std::string blockingSetLiteralCandidateSelectionRngSeedCommandLineKey = "-blockingSetClauseLiteralCandiateSelectionRngSeed";
 const std::string blockingSetMinimumSizeRestrictionCommandLineKey = "-blockingSetMinimumSize";
@@ -58,6 +59,7 @@ struct ClauseCandidateGeneratorConfiguration
 	std::size_t numCandidateClauseMatchesToSearchFor;
 	std::optional<clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic> optionalCandidateSelectionHeuristic;
 	std::optional<long> optionalRngSeed;
+	std::optional<clauseCandidateSelection::ClauseCandidateSelector::ClauseLengthRestriction> optionalClauseLengthRestriction;
 };
 
 struct BlockingSetCandidateGeneratorConfiguration
@@ -84,25 +86,26 @@ setBlockedClauseElimination::BaseBlockingSetCandidateGenerator::ptr initializeBl
 clauseCandidateSelection::ClauseCandidateSelector::ptr initializeClauseCandidateSelector(const dimacs::ProblemDefinition& parsedCnfFormula, const ClauseCandidateGeneratorConfiguration& clauseCandidateGeneratorConfiguration)
 {
 	if (clauseCandidateGeneratorConfiguration.optionalRngSeed.has_value())
-		return clauseCandidateSelection::ClauseCandidateSelector::initUsingRandomCandidateSelection(clauseCandidateGeneratorConfiguration.numCandidateClauses, *clauseCandidateGeneratorConfiguration.optionalRngSeed);
+		return clauseCandidateSelection::ClauseCandidateSelector::initUsingRandomCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.numCandidateClauses, *clauseCandidateGeneratorConfiguration.optionalRngSeed, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 	if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.has_value())
 	{
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseOverlap)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimalClauseOverlapForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimalClauseOverlapForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseOverlap)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximalClauseOverlapForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximalClauseOverlapForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseLength)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimumClauseLenghtForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimumClauseLenghtForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseLength)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximumClauseLengthForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximumClauseLengthForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 	}
-	return clauseCandidateSelection::ClauseCandidateSelector::initUsingSequentialCandidateSelection(clauseCandidateGeneratorConfiguration.numCandidateClauses);
+	return clauseCandidateSelection::ClauseCandidateSelector::initUsingSequentialCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.numCandidateClauses, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 }
 
 ClauseCandidateGeneratorConfiguration generateClauseCandidateGeneratorConfigurationFromCommandLine(std::size_t numClausesOfFormulaAfterPreprocessing, const utils::CommandLineArgumentParser& commandLineArgumentParser)
 {
 	std::optional<long> optionalRngSeed;
 	std::optional<clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic> optionalCandidateSelectionHeuristic;
+	std::optional<clauseCandidateSelection::ClauseCandidateSelector::ClauseLengthRestriction> optionalClauseLengthRestriction;
 	std::size_t nClausesToConsider;
 	std::size_t nClauseMatchesToSearchFor;
 
@@ -180,7 +183,19 @@ ClauseCandidateGeneratorConfiguration generateClauseCandidateGeneratorConfigurat
 			throw std::invalid_argument("Invalid value " + *clauseCandidateSelectionCommandLineArugment->optionalArgumentValue + "for blocking set clause literal selection heuristic");
 		}
 	}
-	return { nClausesToConsider, nClauseMatchesToSearchFor, optionalCandidateSelectionHeuristic, optionalRngSeed };
+
+	if (const std::optional<utils::CommandLineArgumentParser::CommandLineArgumentRegistration>& optionalMaxAllowedClauseLengthCommandLineArgument = commandLineArgumentParser.getValueOfArgument(clauseSelectionMaxAllowedClauseSizeCommandLineKey); optionalMaxAllowedClauseLengthCommandLineArgument.has_value()
+		&& optionalMaxAllowedClauseLengthCommandLineArgument->wasFoundInCommandLineArgument)
+	{
+		if (!optionalMaxAllowedClauseLengthCommandLineArgument.value().tryGetArgumentValueAsInteger())
+			throw std::invalid_argument("Number of clause matches to search for was not defined as an integer value but was actually " + *optionalMaxAllowedClauseLengthCommandLineArgument.value().optionalArgumentValue);
+
+		const int numericMaxClauseLengthRestrictionValue = *optionalMaxAllowedClauseLengthCommandLineArgument->tryGetArgumentValueAsInteger();
+		if (numericMaxClauseLengthRestrictionValue < 0)
+			throw std::invalid_argument("Maximum allowed clause length must be a positive integer");
+		optionalClauseLengthRestriction = clauseCandidateSelection::ClauseCandidateSelector::ClauseLengthRestriction({ static_cast<std::size_t>(numericMaxClauseLengthRestrictionValue)});
+	}
+	return { nClausesToConsider, nClauseMatchesToSearchFor, optionalCandidateSelectionHeuristic, optionalRngSeed, optionalClauseLengthRestriction };
 }
 
 BlockingSetCandidateGeneratorConfiguration generateBlockingSetCandidateGeneratorConfigurationFromCommandLine(const utils::CommandLineArgumentParser& commandLineArgumentParser)
@@ -294,6 +309,7 @@ int main(int argc, char* argv[])
 	commandLineArgumentParser.registerCommandLineArgument(blockingSetMaximumSizeRestrictionCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
 	commandLineArgumentParser.registerCommandLineArgument(helpCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createValueLessArgument().asOptionalArgument());
 	commandLineArgumentParser.registerCommandLineArgument(blockingSetEliminatorSelectorCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createStringArgument());
+	commandLineArgumentParser.registerCommandLineArgument(clauseSelectionMaxAllowedClauseSizeCommandLineKey, utils::CommandLineArgumentParser::CommandLineArgumentRegistration::createIntegerArgument().asOptionalArgument());
 
 	try
 	{
@@ -362,7 +378,7 @@ int main(int argc, char* argv[])
 	std::cout << "=== START - CLAUSE CANDIDATE GENERATION INITIALIZATION ===\n";
 	const TimePoint clauseCandidateGeneratorInitStartTime = getCurrentTime();
 	clauseCandidateSelection::ClauseCandidateSelector::ptr clauseCandidateSelector = initializeClauseCandidateSelector(*cnfFormula, clauseCandidateGeneratorConfiguration);
-	std::vector<std::size_t> indicesOfCandidateClauses(clauseCandidateGeneratorConfiguration.numCandidateClauses, 0);
+	std::vector<std::size_t> indicesOfCandidateClauses(clauseCandidateSelector->getNumCandidates(), 0);
 	for (std::size_t i = 0; i < indicesOfCandidateClauses.size(); ++i)
 	{
 		const std::optional<std::size_t> candidateClauseIndex = clauseCandidateSelector->selectNextCandidate();

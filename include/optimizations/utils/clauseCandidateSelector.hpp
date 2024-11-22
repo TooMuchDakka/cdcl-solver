@@ -20,8 +20,13 @@ namespace clauseCandidateSelection {
 			MaximumClauseLength
 		};
 
-		explicit ClauseCandidateSelector(const std::size_t numCandidates, const CandidateSelectionHeuristic candidateSelectionHeuristic, std::optional<unsigned int> rngSeed)
-			: candidateSelectionHeuristic(candidateSelectionHeuristic), lastChosenCandidateIndexInQueue(0) {
+		struct ClauseLengthRestriction
+		{
+			std::size_t maxAllowedClauseLength;
+		};
+
+		explicit ClauseCandidateSelector(const std::size_t numCandidates, const CandidateSelectionHeuristic candidateSelectionHeuristic, std::optional<unsigned int> rngSeed, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction)
+			: candidateSelectionHeuristic(candidateSelectionHeuristic), optionalClauseLengthRestriction(optionalClauseLengthRestriction), lastChosenCandidateIndexInQueue(0) {
 			if (candidateSelectionHeuristic != CandidateSelectionHeuristic::Random && rngSeed.has_value())
 				throw std::invalid_argument("Rng seed can only be set when random candidate selection heuristic was chosen");
 
@@ -31,23 +36,15 @@ namespace clauseCandidateSelection {
 
 			if (candidateSelectionHeuristic == CandidateSelectionHeuristic::Random)
 			{
-				auto optionalRng = std::default_random_engine{};
-				optionalRng.seed(*rngSeed);
-
-				std::shuffle(candidateClauseIndexQueue.begin(), candidateClauseIndexQueue.end(), optionalRng);
+				optionalRngEngine = std::default_random_engine{};
+				if (rngSeed.has_value())
+					optionalRngEngine->seed(*rngSeed);
 			}
+				
 		}
 
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingSequentialCandidateSelection(const std::size_t numCandidates) {
-			return std::make_unique<ClauseCandidateSelector>(numCandidates, CandidateSelectionHeuristic::Sequential, std::nullopt);
-		}
-
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingRandomCandidateSelection(const std::size_t numCandidates, const unsigned int rngSeed) {
-			return std::make_unique<ClauseCandidateSelector>(numCandidates, CandidateSelectionHeuristic::Random, rngSeed);
-		}
-
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition) {
-			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MinimumClauseOverlap, std::nullopt); instance)
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingSequentialCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const std::size_t numCandidates, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction) {
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(numCandidates, CandidateSelectionHeuristic::Sequential, std::nullopt, optionalClauseLengthRestriction))
 			{
 				instance->initializeCandidateSequence(problemDefinition);
 				return instance;
@@ -55,8 +52,8 @@ namespace clauseCandidateSelection {
 			return nullptr;
 		}
 
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition) {
-			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MaximumClauseOverlap, std::nullopt); instance)
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingRandomCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const std::size_t numCandidates, const unsigned int rngSeed, std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction) {
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(numCandidates, CandidateSelectionHeuristic::Random, rngSeed, optionalClauseLengthRestriction))
 			{
 				instance->initializeCandidateSequence(problemDefinition);
 				return instance;
@@ -64,9 +61,27 @@ namespace clauseCandidateSelection {
 			return nullptr;
 		}
 
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimumClauseLenghtForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition)
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction) {
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MinimumClauseOverlap, std::nullopt, optionalClauseLengthRestriction); instance)
+			{
+				instance->initializeCandidateSequence(problemDefinition);
+				return instance;
+			}
+			return nullptr;
+		}
+
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximalClauseOverlapForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction) {
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MaximumClauseOverlap, std::nullopt, optionalClauseLengthRestriction); instance)
+			{
+				instance->initializeCandidateSequence(problemDefinition);
+				return instance;
+			}
+			return nullptr;
+		}
+
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMinimumClauseLenghtForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction)
 		{
-			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MinimumClauseLength, std::nullopt); instance)
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MinimumClauseLength, std::nullopt, optionalClauseLengthRestriction); instance)
 			{
 				instance->initializeCandidateSequence(problemDefinition);
 				return instance;
@@ -74,9 +89,9 @@ namespace clauseCandidateSelection {
 			return nullptr;
 		}
 
-		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximumClauseLengthForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition)
+		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingMaximumClauseLengthForCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction)
 		{
-			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MaximumClauseLength, std::nullopt); instance)
+			if (auto instance = std::make_unique<ClauseCandidateSelector>(problemDefinition.getNumDeclaredClausesOfFormula(), CandidateSelectionHeuristic::MaximumClauseLength, std::nullopt, optionalClauseLengthRestriction); instance)
 			{
 				instance->initializeCandidateSequence(problemDefinition);
 				return instance;
@@ -86,8 +101,11 @@ namespace clauseCandidateSelection {
 
 		void initializeCandidateSequence(const dimacs::ProblemDefinition& problemDefinition);
 		[[nodiscard]] std::optional<std::size_t> selectNextCandidate();
+		[[nodiscard]] std::size_t getNumCandidates() const;
 	protected:
 		CandidateSelectionHeuristic candidateSelectionHeuristic;
+		std::optional<std::default_random_engine> optionalRngEngine;
+		std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction;
 		std::vector<std::size_t> candidateClauseIndexQueue;
 		std::size_t lastChosenCandidateIndexInQueue;
 
@@ -102,6 +120,7 @@ namespace clauseCandidateSelection {
 		}
 		[[nodiscard]] static std::unordered_map<std::size_t, std::size_t> buildOverlapCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxOverlapAsSelectionHeuristic);
 		[[nodiscard]] static std::unordered_map<std::size_t, std::size_t> buildLengthCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxLengthAsSelectionHeuristic);
+		static void filterClausesNotMatchingLengthRestriction(const dimacs::ProblemDefinition& problemDefinition, std::vector<std::size_t>& clauseIndices, const ClauseLengthRestriction clauseLengthRestriction);
 	};
 }
 

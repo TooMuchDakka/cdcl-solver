@@ -57,6 +57,7 @@ struct ClauseCandidateGeneratorConfiguration
 	std::size_t numCandidateClauseMatchesToSearchFor;
 	std::optional<clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic> optionalCandidateSelectionHeuristic;
 	std::optional<long> optionalRngSeed;
+	std::optional<clauseCandidateSelection::ClauseCandidateSelector::ClauseLengthRestriction> optionalClauseLengthRestriction;
 };
 
 struct BlockedClauseCandidateGeneratorConfiguration
@@ -82,19 +83,19 @@ blockedClauseElimination::BlockingLiteralGenerator::ptr initializeBlockedClauseC
 clauseCandidateSelection::ClauseCandidateSelector::ptr initializeClauseCandidateSelector(const dimacs::ProblemDefinition& parsedCnfFormula, const ClauseCandidateGeneratorConfiguration& clauseCandidateGeneratorConfiguration)
 {
 	if (clauseCandidateGeneratorConfiguration.optionalRngSeed.has_value())
-		return clauseCandidateSelection::ClauseCandidateSelector::initUsingRandomCandidateSelection(clauseCandidateGeneratorConfiguration.numCandidateClauses, *clauseCandidateGeneratorConfiguration.optionalRngSeed);
+		return clauseCandidateSelection::ClauseCandidateSelector::initUsingRandomCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.numCandidateClauses, *clauseCandidateGeneratorConfiguration.optionalRngSeed, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 	if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.has_value())
 	{
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseOverlap)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimalClauseOverlapForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimalClauseOverlapForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseOverlap)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximalClauseOverlapForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximalClauseOverlapForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MinimumClauseLength)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimumClauseLenghtForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMinimumClauseLenghtForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 		if (clauseCandidateGeneratorConfiguration.optionalCandidateSelectionHeuristic.value() == clauseCandidateSelection::ClauseCandidateSelector::CandidateSelectionHeuristic::MaximumClauseLength)
-			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximumClauseLengthForCandidateSelection(parsedCnfFormula);
+			return clauseCandidateSelection::ClauseCandidateSelector::initUsingMaximumClauseLengthForCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.optionalClauseLengthRestriction);
 	}
-	return clauseCandidateSelection::ClauseCandidateSelector::initUsingSequentialCandidateSelection(clauseCandidateGeneratorConfiguration.numCandidateClauses);
+	return clauseCandidateSelection::ClauseCandidateSelector::initUsingSequentialCandidateSelection(parsedCnfFormula, clauseCandidateGeneratorConfiguration.numCandidateClauses, std::nullopt);
 }
 
 ClauseCandidateGeneratorConfiguration generateClauseCandidateGeneratorConfigurationFromCommandLine(std::size_t numClausesOfFormulaAfterPreprocessing, const utils::CommandLineArgumentParser& commandLineArgumentParser)

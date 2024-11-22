@@ -10,13 +10,24 @@ std::optional<std::size_t> ClauseCandidateSelector::selectNextCandidate()
 	return candidateClauseIndexQueue[lastChosenCandidateIndexInQueue++];
 }
 
+std::size_t ClauseCandidateSelector::getNumCandidates() const
+{
+	return candidateClauseIndexQueue.size();
+}
+
+
 // NON-PUBLIC FUNCTIONALITY
 void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemDefinition& problemDefinition)
 {
+	if (optionalClauseLengthRestriction.has_value())
+		filterClausesNotMatchingLengthRestriction(problemDefinition, candidateClauseIndexQueue, *optionalClauseLengthRestriction);
+
 	switch (candidateSelectionHeuristic)
 	{
 		case CandidateSelectionHeuristic::Sequential:
+			break;
 		case CandidateSelectionHeuristic::Random:
+			std::shuffle(candidateClauseIndexQueue.begin(), candidateClauseIndexQueue.end(), *optionalRngEngine);
 			break;
 		case CandidateSelectionHeuristic::MinimumClauseOverlap:
 		{
@@ -142,4 +153,17 @@ std::unordered_map<std::size_t, std::size_t> ClauseCandidateSelector::buildLengt
 		overlapCache.emplace(i, clauseLength);
 	}
 	return overlapCache;
+}
+
+void ClauseCandidateSelector::filterClausesNotMatchingLengthRestriction(const dimacs::ProblemDefinition& problemDefinition, std::vector<std::size_t>& clauseIndices, const ClauseLengthRestriction clauseLengthRestriction)
+{
+	clauseIndices.erase(
+		std::remove_if(
+			clauseIndices.begin(),
+			clauseIndices.end(),
+			[&problemDefinition, &clauseLengthRestriction](const std::size_t clauseIndex)
+			{
+				const dimacs::ProblemDefinition::Clause* accessedClauseForIndex = problemDefinition.getClauseByIndexInFormula(clauseIndex);
+				return accessedClauseForIndex ? accessedClauseForIndex->literals.size() > clauseLengthRestriction.maxAllowedClauseLength : false;
+			}), clauseIndices.end());
 }
