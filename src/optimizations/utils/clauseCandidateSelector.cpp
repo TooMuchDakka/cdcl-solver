@@ -10,31 +10,34 @@ std::optional<std::size_t> ClauseCandidateSelector::selectNextCandidate()
 	return candidateClauseIndexQueue[lastChosenCandidateIndexInQueue++];
 }
 
-std::size_t ClauseCandidateSelector::getNumCandidates() const
+std::size_t ClauseCandidateSelector::getNumGeneratableCandidates() const noexcept
 {
-	return candidateClauseIndexQueue.size();
+	return numGeneratableCandidates;
 }
-
 
 // NON-PUBLIC FUNCTIONALITY
 void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemDefinition& problemDefinition)
 {
-	if (optionalClauseLengthRestriction.has_value())
-		filterClausesNotMatchingLengthRestriction(problemDefinition, candidateClauseIndexQueue, *optionalClauseLengthRestriction);
+	const std::size_t numPotentialCandidates = candidateSelectionHeuristic == CandidateSelectionHeuristic::Sequential ? numUserRequestedCandiates : problemDefinition.getNumClausesAfterOptimizations();
+	const std::optional<std::vector<std::size_t>> totalIndexSequence = generateIndexSequence(numPotentialCandidates, problemDefinition, optionalClauseLengthRestriction);
+	if (!totalIndexSequence.has_value())
+		throw std::logic_error("Failed to generate candidate sequence");
 
+	std::vector<std::size_t> unsortedCandidateSequence = *totalIndexSequence;
+	numGeneratableCandidates = std::min(totalIndexSequence->size(), numUserRequestedCandiates);
 	switch (candidateSelectionHeuristic)
 	{
 		case CandidateSelectionHeuristic::Sequential:
 			break;
 		case CandidateSelectionHeuristic::Random:
-			std::shuffle(candidateClauseIndexQueue.begin(), candidateClauseIndexQueue.end(), *optionalRngEngine);
+			std::shuffle(unsortedCandidateSequence.begin(), unsortedCandidateSequence.end(), *optionalRngEngine);
 			break;
 		case CandidateSelectionHeuristic::MinimumClauseOverlap:
 		{
 			const auto& overlapCachePerClause = buildOverlapCacheForClauses(problemDefinition, false);
 			std::sort(
-				candidateClauseIndexQueue.begin(),
-				candidateClauseIndexQueue.end(),
+				unsortedCandidateSequence.begin(),
+				unsortedCandidateSequence.end(),
 				[&overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 				{
 					return determineOrderingOfElementAccordingToHeuristic(
@@ -50,8 +53,8 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 		{
 			const auto& overlapCachePerClause = buildOverlapCacheForClauses(problemDefinition, true);
 			std::sort(
-				candidateClauseIndexQueue.begin(),
-				candidateClauseIndexQueue.end(),
+				unsortedCandidateSequence.begin(),
+				unsortedCandidateSequence.end(),
 				[&overlapCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 				{
 					return determineOrderingOfElementAccordingToHeuristic(
@@ -67,8 +70,8 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 		{
 			const auto& clauseLengthCachePerClause = buildLengthCacheForClauses(problemDefinition, false);
 			std::sort(
-				candidateClauseIndexQueue.begin(),
-				candidateClauseIndexQueue.end(),
+				unsortedCandidateSequence.begin(),
+				unsortedCandidateSequence.end(),
 				[&clauseLengthCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 				{
 					return determineOrderingOfElementAccordingToHeuristic(
@@ -84,8 +87,8 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 		{
 			const auto& clauseLengthCachePerClause = buildLengthCacheForClauses(problemDefinition, true);
 			std::sort(
-				candidateClauseIndexQueue.begin(),
-				candidateClauseIndexQueue.end(),
+				unsortedCandidateSequence.begin(),
+				unsortedCandidateSequence.end(),
 				[&clauseLengthCachePerClause](const std::size_t lClauseIdx, const std::size_t rClauseIdx)
 				{
 					return determineOrderingOfElementAccordingToHeuristic(
@@ -100,6 +103,9 @@ void ClauseCandidateSelector::initializeCandidateSequence(const dimacs::ProblemD
 	default:
 		throw std::invalid_argument("Clause candidate selector does not support the chosen heuristic: " + std::to_string(candidateSelectionHeuristic));
 	}
+
+	candidateClauseIndexQueue.reserve(numGeneratableCandidates);
+	candidateClauseIndexQueue.insert(candidateClauseIndexQueue.end(), unsortedCandidateSequence.cbegin(), unsortedCandidateSequence.cend());
 }
 
 std::optional<std::size_t> ClauseCandidateSelector::determineNumberOfOverlapsBetweenClauses(std::size_t idxOfClauseInFormula, const dimacs::ProblemDefinition& problemDefinition)
@@ -155,7 +161,19 @@ std::unordered_map<std::size_t, std::size_t> ClauseCandidateSelector::buildLengt
 	return overlapCache;
 }
 
-void ClauseCandidateSelector::filterClausesNotMatchingLengthRestriction(const dimacs::ProblemDefinition& problemDefinition, std::vector<std::size_t>& clauseIndices, const ClauseLengthRestriction clauseLengthRestriction)
+std::optional<std::vector<std::size_t>> ClauseCandidateSelector::generateIndexSequence(std::size_t numElements, const dimacs::ProblemDefinition& problemDefinition, const std::optional<ClauseLengthRestriction>& optionalClauseLengthRestriction)
+{
+	std::vector<std::size_t> indexSequence(numElements, 0);
+	for (std::size_t i = 1; i < numElements; ++i)
+		indexSequence[i] = i;
+
+	if (optionalClauseLengthRestriction.has_value())
+		filterClausesNotMatchingLengthRestriction(problemDefinition, indexSequence, *optionalClauseLengthRestriction);
+
+	return indexSequence;
+}
+
+void ClauseCandidateSelector::filterClausesNotMatchingLengthRestriction(const dimacs::ProblemDefinition& problemDefinition, std::vector<std::size_t>& clauseIndices, ClauseLengthRestriction clauseLengthRestriction)
 {
 	clauseIndices.erase(
 		std::remove_if(

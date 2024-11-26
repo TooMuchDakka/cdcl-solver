@@ -26,13 +26,9 @@ namespace clauseCandidateSelection {
 		};
 
 		explicit ClauseCandidateSelector(const std::size_t numCandidates, const CandidateSelectionHeuristic candidateSelectionHeuristic, std::optional<unsigned int> rngSeed, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction)
-			: candidateSelectionHeuristic(candidateSelectionHeuristic), optionalClauseLengthRestriction(optionalClauseLengthRestriction), lastChosenCandidateIndexInQueue(0) {
+			: numUserRequestedCandiates(numCandidates), numGeneratableCandidates(0), candidateSelectionHeuristic(candidateSelectionHeuristic), optionalClauseLengthRestriction(optionalClauseLengthRestriction), lastChosenCandidateIndexInQueue(0) {
 			if (candidateSelectionHeuristic != CandidateSelectionHeuristic::Random && rngSeed.has_value())
 				throw std::invalid_argument("Rng seed can only be set when random candidate selection heuristic was chosen");
-
-			candidateClauseIndexQueue.resize(numCandidates);
-			for (std::size_t i = 1; i < candidateClauseIndexQueue.size(); ++i)
-				candidateClauseIndexQueue[i] = i;
 
 			if (candidateSelectionHeuristic == CandidateSelectionHeuristic::Random)
 			{
@@ -40,7 +36,6 @@ namespace clauseCandidateSelection {
 				if (rngSeed.has_value())
 					optionalRngEngine->seed(*rngSeed);
 			}
-				
 		}
 
 		[[nodiscard]] static ClauseCandidateSelector::ptr initUsingSequentialCandidateSelection(const dimacs::ProblemDefinition& problemDefinition, const std::size_t numCandidates, const std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction) {
@@ -101,8 +96,10 @@ namespace clauseCandidateSelection {
 
 		void initializeCandidateSequence(const dimacs::ProblemDefinition& problemDefinition);
 		[[nodiscard]] std::optional<std::size_t> selectNextCandidate();
-		[[nodiscard]] std::size_t getNumCandidates() const;
+		[[nodiscard]] std::size_t getNumGeneratableCandidates() const noexcept;
 	protected:
+		std::size_t numUserRequestedCandiates;
+		std::size_t numGeneratableCandidates;
 		CandidateSelectionHeuristic candidateSelectionHeuristic;
 		std::optional<std::default_random_engine> optionalRngEngine;
 		std::optional<ClauseLengthRestriction> optionalClauseLengthRestriction;
@@ -120,7 +117,8 @@ namespace clauseCandidateSelection {
 		}
 		[[nodiscard]] static std::unordered_map<std::size_t, std::size_t> buildOverlapCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxOverlapAsSelectionHeuristic);
 		[[nodiscard]] static std::unordered_map<std::size_t, std::size_t> buildLengthCacheForClauses(const dimacs::ProblemDefinition& problemDefinition, bool usingMaxLengthAsSelectionHeuristic);
-		static void filterClausesNotMatchingLengthRestriction(const dimacs::ProblemDefinition& problemDefinition, std::vector<std::size_t>& clauseIndices, const ClauseLengthRestriction clauseLengthRestriction);
+		[[nodiscard]] static std::optional<std::vector<std::size_t>> generateIndexSequence(std::size_t numElements, const dimacs::ProblemDefinition& problemDefinition, const std::optional<ClauseLengthRestriction>& optionalClauseLengthRestriction);
+		static void filterClausesNotMatchingLengthRestriction(const dimacs::ProblemDefinition& problemDefinition, std::vector<std::size_t>& clauseIndices, ClauseLengthRestriction clauseLengthRestriction);
 	};
 }
 

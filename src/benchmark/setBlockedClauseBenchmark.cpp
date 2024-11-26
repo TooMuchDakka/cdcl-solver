@@ -378,7 +378,7 @@ int main(int argc, char* argv[])
 	std::cout << "=== START - CLAUSE CANDIDATE GENERATION INITIALIZATION ===\n";
 	const TimePoint clauseCandidateGeneratorInitStartTime = getCurrentTime();
 	clauseCandidateSelection::ClauseCandidateSelector::ptr clauseCandidateSelector = initializeClauseCandidateSelector(*cnfFormula, clauseCandidateGeneratorConfiguration);
-	std::vector<std::size_t> indicesOfCandidateClauses(clauseCandidateSelector->getNumCandidates(), 0);
+	std::vector<std::size_t> indicesOfCandidateClauses(clauseCandidateSelector->getNumGeneratableCandidates(), 0);
 	for (std::size_t i = 0; i < indicesOfCandidateClauses.size(); ++i)
 	{
 		const std::optional<std::size_t> candidateClauseIndex = clauseCandidateSelector->selectNextCandidate();
@@ -392,6 +392,7 @@ int main(int argc, char* argv[])
 	const TimePoint clauseCandidateGeneratorInitEndTime = getCurrentTime();
 
 	const std::chrono::milliseconds clauseCandidateGeneratorInitDuration = getDurationBetweenTimestamps(clauseCandidateGeneratorInitEndTime, clauseCandidateGeneratorInitStartTime);
+	std::cout << "Candidate generator selected " + std::to_string(indicesOfCandidateClauses.size()) + " candidates when " + std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) + " were requested\n";
 	std::cout << "Duration for initialization of clause candidate generator duration: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
 	std::cout << "=== END - CLAUSE CANDIDATE GENERATOR INITIALIZATION ===\n\n";
 
@@ -425,11 +426,16 @@ int main(int argc, char* argv[])
 	std::cout << "=== END - BLOCKING SET ELIMINATOR INITIALIZATION ===\n\n";
 
 	std::cout << "=== START - BLOCKING SET SEARCH ===\n";
-	std::cout << "Search for set blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor) << " set blocked clauses were found...\n";
-	std::cout << "Search for set blocked clauses will stop when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) << " candidates where considered...\n";
+	std::cout << "User requested that search for set blocked clauses stops when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor) << " set blocked clauses were found...\n";
+	std::cout << "User requested that search for set blocked clauses stops when " << std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) << " candidates where considered...\n";
+
+	const std::size_t numCandidateToConsider = indicesOfCandidateClauses.size();
+	const std::size_t numSetBlockedClausesToSearchFor = std::min(clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor, numCandidateToConsider);
+	std::cout << "Search for set blocked clauses stops when " << std::to_string(numSetBlockedClausesToSearchFor) << " set blocked clauses were found...\n";
+	std::cout << "Search for set blocked clauses stops when " << std::to_string(numCandidateToConsider) << " candidates where considered...\n";
 
 	constexpr std::size_t percentageThreshold = 5;
-	std::size_t numClausesToProcessUntilPercentageThresholdIsReached = clauseCandidateGeneratorConfiguration.numCandidateClauses / (100 / percentageThreshold);
+	std::size_t numClausesToProcessUntilPercentageThresholdIsReached = numCandidateToConsider / (100 / percentageThreshold);
 	if (numClausesToProcessUntilPercentageThresholdIsReached == 0)
 		++numClausesToProcessUntilPercentageThresholdIsReached;
 
@@ -437,7 +443,7 @@ int main(int argc, char* argv[])
 	std::size_t remainingNumClausesForPercentageThreshold = numClausesToProcessUntilPercentageThresholdIsReached;
 
 	std::vector<std::size_t> identifiersOfSetBlockedClauses;
-	std::size_t numCandiatesConsidered = 0;
+	std::size_t numCandidatesConsidered = 0;
 
 	std::chrono::milliseconds totalBenchmarkExecutionTime = dimacsFormulaParsingDuration + clauseCandidateGeneratorInitDuration + blockingSetCandidateGeneratorInitDuration + blockingSetEliminatorInitDuration;
 	std::chrono::milliseconds setBlockedClauseCheckDuration = std::chrono::milliseconds(0);
@@ -445,17 +451,17 @@ int main(int argc, char* argv[])
 	std::cout << "Progress will be logged every time " << std::to_string(numClausesToProcessUntilPercentageThresholdIsReached) << " candidates where processed...\n\n";
 	for (const std::size_t clauseIdentifier : indicesOfCandidateClauses)
 	{
-		if (identifiersOfSetBlockedClauses.size() >= clauseCandidateGeneratorConfiguration.numCandidateClauseMatchesToSearchFor)
+		if (identifiersOfSetBlockedClauses.size() >= numSetBlockedClausesToSearchFor)
 		{
 			std::cout << "Reached required number of set blocked clauses found, will stop search...\n";
 			break;
 		}
-		if (numCandiatesConsidered > clauseCandidateGeneratorConfiguration.numCandidateClauses)
+		if (numCandidatesConsidered > numCandidateToConsider)
 		{
 			std::cout << "Reached required number of clause candidates, will stop search...\n";
 			break;
 		}
-		++numCandiatesConsidered;
+		++numCandidatesConsidered;
 
 		const TimePoint blockingSetCheckStartTime = getCurrentTime();
 		if (const std::optional<setBlockedClauseElimination::BaseSetBlockedClauseEliminator::FoundBlockingSet>& foundBlockingSet = blockingSetEliminator->determineBlockingSet(clauseIdentifier, *blockingSetCandidateGenerator, blockingSetCandidateGeneratorConfiguration.optionalCandidateSizeRestriction); foundBlockingSet.has_value())
@@ -485,7 +491,7 @@ int main(int argc, char* argv[])
 	std::cout << "=== END - VERIFICATION OF RESULTS ===\n\n";
 
 	std::cout << "=== RESULTS ===\n";
-	std::cout << std::to_string(identifiersOfSetBlockedClauses.size()) + " clauses out of " + std::to_string(clauseCandidateGeneratorConfiguration.numCandidateClauses) + " were set blocked!\n\n";
+	std::cout << std::to_string(identifiersOfSetBlockedClauses.size()) + " clauses out of " + std::to_string(numCandidateToConsider) + " were set blocked!\n\n";
 
 	std::cout << "Duration for processing of DIMACS formula: " + std::to_string(dimacsFormulaParsingDuration.count()) + "ms\n";
 	std::cout << "Duration for initialization of candidate clause generator: " + std::to_string(clauseCandidateGeneratorInitDuration.count()) + "ms\n";
